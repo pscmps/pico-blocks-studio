@@ -38,6 +38,26 @@ Web Serial needs HTTPS or localhost. This editor's USB workflow does not support
 
 The right sidebar contains only first-time firmware setup, subsequent uploads, and power precautions. Other topics are in the menu's HELP. The first-time overlay can be dismissed permanently using its checkbox and restored from HELP. The overlay is not a hardware firmware detector.
 
+## Direct Wi-Fi upload (experimental)
+
+USB remains the default. The prototype targets **Pico W / Pico 2 W, MicroPython 1.29+, desktop / Android Chrome 142+**. Hardware and Android-device testing are still pending. Chrome on iPhone uses the Safari-family engine and is not included in this support target. Using [Chrome's Local Network Access permission](https://developer.chrome.com/blog/local-network-access), this HTTPS editor sends directly to the board's HTTP API. No download, phone file, board-hosted upload page, or relay is involved.
+
+1. **Once, on a PC over USB:** install the normal board-specific MicroPython UF2, select the board and connect. Open Menu → Wi-Fi upload → First time, enter the router's 2.4 GHz Wi-Fi credentials, then USB setup & save program. This stops the current program, installs the receiver and credentials, replaces `main.py` with the current blocks, and starts the write-mode receiver. No custom UF2 is needed.
+2. **Pair:** use the displayed IP and 64-character device key. On a phone, open this same editor, select the same board and enter those values. Optionally remember connection settings. Grant the browser's local-network permission when prompted.
+3. **Send:** select Wi-Fi as the upload connection, check the connection, close the dialog, then Save & run. The program goes directly to the board. After saving, the editor requests a reboot; it does not verify that the user program runs correctly.
+4. **Next time:** power-cycle or reset using RUN–GND, then **press and release BOOT within 3 seconds AFTER reset**. Wait up to about 20 seconds for Wi-Fi, then reconnect and send from this editor. Holding BOOT through reset enters UF2 mode instead. No repeated USB setup is needed.
+
+### Scope, safety and recovery
+
+- The receiver runs only in write mode, not while the user program runs. Wireless stop, temporary execution, log streaming and JOG transport are not included. USB remains available; existing Wi-Fi JOG still uses its own AP. When leaving AP JOG to upload, reconnect the phone to the router's Wi-Fi too.
+- Trusted LAN only: HTTP is unencrypted. A random 256-bit device key and exact Origin checks control access, but do not provide TLS confidentiality against LAN eavesdropping. Never expose the port through a router. Guest-network client isolation prevents access. Pico needs 2.4 GHz; the phone can use 5 GHz if bridged to the same LAN.
+- Wi-Fi credentials and key live in `picoblocks-wifi.json` on the board. The editor does not persist the Wi-Fi password. Opt-in browser storage remembers the IP and key in localStorage; avoid it on shared browsers. Running setup again rotates the key.
+- Up to 128 KiB, in 768-byte chunks, staged to a temporary file and SHA-256 verified before LittleFS same-directory rename replaces `main.py`. Interrupted / corrupt uploads preserve the old program. A lost commit response has an unknown save outcome: reconnect in write mode and resend. Real power-loss resilience is untested.
+- USB Save & run preserves the separate receiver and credentials, including the BOOT hook. Setup replaces `main.py` with the current blocks. If another tool replaces `main.py`, repeat setup. Receiver upgrades and lost-key recovery also use USB setup.
+- If DHCP changes the address, check the USB `PICOBLOCKS_UPLOAD` log or router. DHCP reservation is useful. The receiver does not register a `.local` name. Wi-Fi startup failure returns to USB REPL so credentials can be corrected.
+
+Automated tests: `node tests/wifi.js`, `python tests/wifi_runtime.py`. They cover the actual receiver's HTTP/CORS parsing, authentication, partial/corrupt/oversize transfers, commit and restart request. Browser LAN permission and real-board checks remain separate.
+
 ## Boards and pins
 
 PIO is not limited to a dedicated UART pin pair. The editor intentionally offers only the supported board's exposed connector pins, excluding internal LCD / microSD connections on GEEK boards.

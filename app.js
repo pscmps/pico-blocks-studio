@@ -786,6 +786,7 @@ class SCS009PIO:
       : t("この基板ではRST／RESETボタン、または電源の入れ直しを使います。BOOT判定には対応するMicroPythonが必要です。");
     const profile = BOARD_PROFILES[selectedBoard];
     elements.boardSelect.value = selectedBoard;
+    PicoWifi.configure(selectedBoard, !!profile.wifi);
     $("#wifiHelp").hidden = !profile.wifi;
     $("#lcdHelp").hidden = !GeekDisplay.supported(selectedBoard);
     elements.boardPinHint.textContent = t`接続で選べる端子: ${profile.pins.map(pinLabel).join(" · ")}${profile.layout === "xiao" ? t("。今回は両側のD0〜D10端子に対応（背面パッドは対象外）。") : ""}`;
@@ -1053,22 +1054,30 @@ class SCS009PIO:
   }
 
   function setConnection(state, label) {
+    const wireless = PicoWifi.selected();
+    if (wireless && !isBusy) {
+      state = PicoWifi.connected() ? "online" : "offline";
+      label = PicoWifi.connected() ? t("Wi-Fi接続済み") : t("Wi-Fi未接続");
+    }
     elements.connectionState.dataset.state = state;
     elements.connectionLabel.textContent = label;
     const connected = state === "online" || state === "busy";
-    elements.run.disabled = !connected || isBusy;
+    elements.run.disabled = wireless || !connected || isBusy;
     elements.save.disabled = !connected || isBusy;
-    elements.writeMode.disabled = !connected || isBusy;
-    elements.stop.disabled = !connected || isBusy;
+    elements.writeMode.disabled = wireless || !connected || isBusy;
+    elements.stop.disabled = wireless || !connected || isBusy;
     elements.connect.disabled = isBusy;
-    elements.actionHint.textContent = connected
+    elements.connect.lastChild.textContent = wireless ? t(" Wi-Fi接続") : port ? t(" 切断する") : t(" RPボードを接続");
+    elements.actionHint.textContent = wireless ? t("無線は書き込み待機中の「保存して実行」に対応。実行中の停止・シリアル表示はUSBを使います。") : connected
       ? t("接続済み。ブロックを作って実行できます。")
       : t("先に「RPボードを接続」を押してください。");
   }
 
   function setBusy(busy, label = t("処理中…")) {
     $("#languageSelect").disabled = busy;
+    elements.boardSelect.disabled = busy;
     isBusy = busy;
+    PicoWifi.setBusy(busy);
     setConnection(busy ? "busy" : port ? "online" : "offline", busy ? label : port ? t("接続済み") : t("未接続"));
     updateControllerConnection();
   }
@@ -1115,7 +1124,7 @@ class SCS009PIO:
 
   function notifyWaiters() {
     for (const waiter of [...waiters]) {
-      if (serialBuffer.includes(waiter.pattern)) {
+      if (typeof waiter.pattern === "string" ? serialBuffer.includes(waiter.pattern) : waiter.pattern.test(serialBuffer)) {
         waiters.delete(waiter);
         clearTimeout(waiter.timer);
         waiter.resolve(serialBuffer);
@@ -1124,7 +1133,7 @@ class SCS009PIO:
   }
 
   function waitFor(pattern, timeout = 3500) {
-    if (serialBuffer.includes(pattern)) return Promise.resolve(serialBuffer);
+    if (typeof pattern === "string" ? serialBuffer.includes(pattern) : pattern.test(serialBuffer)) return Promise.resolve(serialBuffer);
     return new Promise((resolve, reject) => {
       const waiter = { pattern, resolve, reject, timer: null };
       waiter.timer = setTimeout(() => {
@@ -1219,6 +1228,7 @@ class SCS009PIO:
   }
 
   async function connect() {
+    if (PicoWifi.selected()) { PicoWifi.open(); return; }
     if (!("serial" in navigator)) {
       showToast(t("このブラウザーはWeb Serialに対応していません。PC版ChromeまたはEdgeを使用してください。"), "error");
       return;
@@ -1293,6 +1303,10 @@ class SCS009PIO:
   }
 
   async function saveProgram() {
+    if (PicoWifi.selected()) {
+      if (!isBusy && validateProgram()) await PicoWifi.upload(generatePython());
+      return;
+    }
     if (!port || isBusy) return;
     if (!validateProgram()) return;
     controllerActive = false;
@@ -1521,6 +1535,7 @@ class SCS009PIO:
   document.addEventListener("click", () => setMenuOpen(false));
   let lastJogKey = 0;
   document.addEventListener("keydown", (event) => {
+    if ($("#wifiDialog").open) return;
     if (exchangeDialog.open || helpDialog.open || !firstRunGuide.hidden) return;
     if (elements.controllerDrawer.getAttribute("aria-hidden") !== "false") return;
     if (event.target.closest("input, select, textarea, [contenteditable=true]") || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -1571,7 +1586,6 @@ class SCS009PIO:
     setWiringCollapsed(elements.appShell.classList.contains("wiring-collapsed"));
     setBoardMode(boardMode);
     setConnection(port ? "online" : "offline", port ? t("接続済み") : t("未接続"));
-    elements.connect.lastChild.textContent = port ? t(" 切断する") : t(" RPボードを接続");
     updateControllerConnection();
     updateControllerUi();
     refreshExchangePrompt();
@@ -1584,6 +1598,28 @@ class SCS009PIO:
     localStorage.setItem("picoblocks-workspace-v1", JSON.stringify(Blockly.serialization.workspaces.save(workspace)));
   });
 
+  PicoWifi.init({
+    changed: () => setConnection(port ? "online" : "offline", port ? t("接続済み") : t("未接続")),
+    busy: setBusy, mode: setBoardMode, toast: showToast, closeMenu: () => setMenuOpen(false),
+    hasUSB: () => !!port,
+    progress: label => setConnection("busy", label),
+    install: async (receiver, config) => {
+      validateProgram({throwOnError:true});
+      controllerActive = false;
+      updateControllerConnection();
+      showTab("console");
+      await executeRaw(PicoWifi.installCommand(receiver, config, generatePython(), bytesLiteral), 20000);
+      if (!serialBuffer.includes("PICOBLOCKS_SAVED")) throw new Error(t("保存完了を確認できませんでした。"));
+      // No automatic application run during provisioning. Start the write-only receiver.
+      serialBuffer = "";
+      await writeSource("import _picoblocks_wifi\n_picoblocks_wifi.serve()\n");
+      await writeControl(0x04);
+      await waitFor("PICOBLOCKS_UPLOAD http://", 30000);
+      await waitFor(/PICOBLOCKS_UPLOAD http:\/\/[0-9.]+\r?\n/, 3000);
+      setBoardMode("WRITE");
+      return serialBuffer.match(/PICOBLOCKS_UPLOAD (http:\/\/[0-9.]+)/)[1];
+    },
+  });
   loadWorkspace();
   setWiringCollapsed(localStorage.getItem("picoblocks-wiring-collapsed-v1") === "1");
   validateSCS009Pins();

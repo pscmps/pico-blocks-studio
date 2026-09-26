@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const app = fs.readFileSync('app.js','utf8');
 const calls=[];
-const context=vm.createContext({PicoBoot:require('../boot.js'),TextEncoder,port:{},isBusy:false,controllerActive:false,serialBuffer:'',
+const context=vm.createContext({PicoWifi:{selected:()=>false},PicoBoot:require('../boot.js'),TextEncoder,port:{},isBusy:false,controllerActive:false,serialBuffer:'',
   t: (value,...args)=>typeof value==='string'?value:String.raw({raw:value},...args),
   validateProgram:()=>true,getUartControllerBlock:()=>null,generatePython:()=> 'while True:\n    pass\n',
   updateControllerConnection:()=>{},showTab:()=>{},showToast:message=>calls.push(['toast',message]),appendConsole:()=>{},

@@ -333,6 +333,11 @@ kbd { margin-left: 7px; padding: 2px 7px; border: 1px solid var(--line); border-
 #wiringDevice { width: 100%; margin: 8px 0; padding: 7px; border: 1px solid #e1e5eb; border-radius: 7px; background: #fff; color: #475467; font: inherit; font-size: 11px; }
 .exchange-dialog { width: min(700px, calc(100vw - 32px)); max-height: 90dvh; overflow: auto; border: 1px solid #e1e5eb; border-radius: 16px; padding: 28px; color: #344054; background: white; box-shadow: 0 24px 80px #17203326; }
 .exchange-dialog::backdrop { background: #17203355; }
+.wifi-field { display: grid; gap: 6px; margin: 14px 0; font-size: 12px; }
+.wifi-field input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fafbfc; font: inherit; color: inherit; }
+.wifi-remember { display: flex; gap: 8px; align-items: center; margin: 14px 0; font-size: 12px; }
+#wifiStatus { white-space: pre-wrap; color: #426576; }
+#wifiTransport[hidden], #wifiMenuItem[hidden] { display: none; }
 .exchange-heading { display: flex; justify-content: space-between; align-items: start; }
 .exchange-heading small { font-size: 10px; letter-spacing: .13em; color: #7d8997; }
 .exchange-heading h2 { font-size: 20px; margin: 6px 0; }

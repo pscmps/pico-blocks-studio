@@ -25,6 +25,17 @@ def _picoblocks_should_run():
 if _picoblocks_should_run():
 ${source.split('\n').map(line => '    ' + line).join('\n')}
     print('PICOBLOCKS_FINISHED')
+else:
+    # Optional receiver is a separate file and survives USB/Wi-Fi program saves.
+    try:
+        import _picoblocks_wifi
+    except ImportError:
+        pass
+    else:
+        try:
+            _picoblocks_wifi.serve()
+        except Exception as _pb_wifi_error:
+            print('PICOBLOCKS_UPLOAD_ERROR', _pb_wifi_error)
 `;
   }
   function saveCommand(source, bytesLiteral) {

@@ -45,6 +45,15 @@ for kwargs in [{'supported': False}, {'broken': True}]:
     assert not events and 'PICOBLOCKS_MODE WRITE' in messages
 assert run_boot(0)[0] == [] and run_boot()[0] == ['app']  # Wait is not persistent.
 
+# Optional receiver runs only in BOOT-selected write mode, never beside user code.
+receiver_calls=[]
+receiver=types.ModuleType('_picoblocks_wifi')
+receiver.serve=lambda:receiver_calls.append('serve')
+sys.modules['_picoblocks_wifi']=receiver
+run_boot();assert receiver_calls==[]
+run_boot(0);assert receiver_calls==['serve']
+sys.modules.pop('_picoblocks_wifi')
+
 # Use the real browser-side bytes encoder to exercise Unicode and quoting.
 save = node("""
 const fs=require('node:fs'), vm=require('node:vm');
