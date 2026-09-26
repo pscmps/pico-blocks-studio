@@ -107,6 +107,10 @@
           </ol>
           <p>「今すぐ実行」は一時実行、「main.pyに保存」は電源を入れ直しても自動実行します。</p>
         </details>
+        <details class="help-card">
+          <summary>SCS009を接続する前に</summary>
+          <p>SCS009の電源はRPボードから取らず、サーボ用の外部電源を使ってGNDを共通にしてください。DATA線は1線式TTL半二重です。RP2040 / RP2350のGPIOを保護できるレベル変換・半二重バッファ回路を介してください。</p>
+        </details>
       </aside>
     </main>
 

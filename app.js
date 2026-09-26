@@ -117,6 +117,56 @@
       nextStatement: null,
       colour: 39,
     },
+    {
+      type: "scs009_setup",
+      message0: "SCS009 PIO通信を準備",
+      message1: "DATA GP %1  PIO SM %2",
+      args1: [
+        { type: "field_number", name: "PIN", value: 2, min: 0, max: 29, precision: 1 },
+        { type: "field_number", name: "SM", value: 0, min: 0, max: 7, precision: 1 },
+      ],
+      message2: "通信速度 %1",
+      args2: [
+        {
+          type: "field_dropdown",
+          name: "BAUD",
+          options: [["1 Mbps", "1000000"], ["500 kbps", "500000"], ["38400 bps", "38400"]],
+        },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 14,
+      tooltip: "SCS009 / SCS0009の1線式半二重通信をPIOで準備します。外部レベル変換回路が必要です。",
+    },
+    {
+      type: "scs009_torque",
+      message0: "SCS009 ID %1 のトルクを %2",
+      args0: [
+        { type: "field_number", name: "ID", value: 1, min: 0, max: 253, precision: 1 },
+        { type: "field_dropdown", name: "STATE", options: [["ON", "1"], ["OFF", "0"]] },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 14,
+      tooltip: "指定IDのトルクを有効または無効にします。",
+    },
+    {
+      type: "scs009_move",
+      message0: "SCS009 ID %1 を位置 %2 へ",
+      args0: [
+        { type: "field_number", name: "ID", value: 1, min: 0, max: 253, precision: 1 },
+        { type: "field_number", name: "POSITION", value: 511, min: 0, max: 1023, precision: 1 },
+      ],
+      message1: "時間値 %1  速度値 %2",
+      args1: [
+        { type: "field_number", name: "TIME", value: 0, min: 0, max: 65535, precision: 1 },
+        { type: "field_number", name: "SPEED", value: 500, min: 0, max: 1023, precision: 1 },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 14,
+      tooltip: "0〜1023が約0〜300°です。時間値と速度値はSCS1.1メモリーテーブルの生値です。",
+    },
   ]);
 
   const toolbox = {
@@ -124,34 +174,68 @@
     contents: [
       {
         kind: "category",
-        name: "はじめる",
+        name: "基本",
         colour: "#27b7a7",
-        contents: [{ kind: "block", type: "program_start" }],
-      },
-      {
-        kind: "category",
-        name: "うごき",
-        colour: "#f0a65a",
+        expanded: true,
         contents: [
-          { kind: "block", type: "pico_led" },
-          { kind: "block", type: "gpio_write" },
-          { kind: "block", type: "wait_ms" },
+          {
+            kind: "category",
+            name: "はじめる",
+            colour: "#27b7a7",
+            contents: [{ kind: "block", type: "program_start" }],
+          },
+          {
+            kind: "category",
+            name: "うごき",
+            colour: "#f0a65a",
+            contents: [
+              { kind: "block", type: "pico_led" },
+              { kind: "block", type: "gpio_write" },
+              { kind: "block", type: "wait_ms" },
+            ],
+          },
+          {
+            kind: "category",
+            name: "くり返し",
+            colour: "#5189e8",
+            contents: [
+              { kind: "block", type: "repeat_times" },
+              { kind: "block", type: "forever_loop" },
+            ],
+          },
+          {
+            kind: "category",
+            name: "表示",
+            colour: "#a36ce0",
+            contents: [{ kind: "block", type: "print_text" }],
+          },
         ],
       },
       {
         kind: "category",
-        name: "くり返し",
-        colour: "#5189e8",
+        name: "SCS009",
+        colour: "#ff7a59",
+        expanded: true,
         contents: [
-          { kind: "block", type: "repeat_times" },
-          { kind: "block", type: "forever_loop" },
+          {
+            kind: "category",
+            name: "接続",
+            colour: "#ff7a59",
+            contents: [{ kind: "block", type: "scs009_setup" }],
+          },
+          {
+            kind: "category",
+            name: "動かす",
+            colour: "#ff7a59",
+            contents: [{ kind: "block", type: "scs009_move" }],
+          },
+          {
+            kind: "category",
+            name: "設定",
+            colour: "#ff7a59",
+            contents: [{ kind: "block", type: "scs009_torque" }],
+          },
         ],
-      },
-      {
-        kind: "category",
-        name: "表示",
-        colour: "#a36ce0",
-        contents: [{ kind: "block", type: "print_text" }],
       },
     ],
   };
@@ -226,6 +310,78 @@
     return text.split("\n").filter(Boolean).map((line) => pad + line).join("\n") + (text ? "\n" : "");
   }
 
+  const SCS009_DRIVER = `import rp2
+
+@rp2.asm_pio(
+    out_init=rp2.PIO.OUT_HIGH,
+    set_init=rp2.PIO.OUT_HIGH,
+    sideset_init=rp2.PIO.OUT_HIGH,
+    out_shiftdir=rp2.PIO.SHIFT_RIGHT,
+    autopull=False,
+)
+def _scs009_uart_tx():
+    pull()
+    set(pindirs, 1)
+    set(x, 7).side(0) [7]
+    label("scs_data_bits")
+    out(pins, 1) [6]
+    jmp(x_dec, "scs_data_bits")
+    nop().side(1) [6]
+    set(pindirs, 0)
+
+
+class SCS009PIO:
+    INST_WRITE = 0x03
+    TORQUE_ENABLE = 0x28
+    GOAL_POSITION_L = 0x2A
+
+    def __init__(self, data_pin=2, sm_id=0, baud=1_000_000):
+        self.pin = Pin(data_pin, Pin.IN, Pin.PULL_UP)
+        self.baud = int(baud)
+        self.byte_time_us = (12_000_000 + self.baud - 1) // self.baud
+        self.sm = rp2.StateMachine(
+            sm_id,
+            _scs009_uart_tx,
+            freq=self.baud * 8,
+            out_base=self.pin,
+            set_base=self.pin,
+            sideset_base=self.pin,
+        )
+        self.sm.active(1)
+        self.sm.exec("set(pindirs, 0)")
+
+    @staticmethod
+    def _limit(value, low, high):
+        return max(low, min(high, int(value)))
+
+    def _send(self, packet):
+        for value in packet:
+            self.sm.put(value)
+        while self.sm.tx_fifo():
+            pass
+        time.sleep_us(self.byte_time_us)
+
+    def write(self, servo_id, address, values):
+        servo_id = self._limit(servo_id, 0, 253)
+        params = [int(address) & 0xFF] + [int(v) & 0xFF for v in values]
+        body = [servo_id, len(params) + 2, self.INST_WRITE] + params
+        checksum = (~sum(body)) & 0xFF
+        self._send(bytes([0xFF, 0xFF] + body + [checksum]))
+
+    def torque(self, servo_id, enabled=True):
+        self.write(servo_id, self.TORQUE_ENABLE, [1 if enabled else 0])
+
+    def move(self, servo_id, position, time_value=0, speed_value=0):
+        position = self._limit(position, 0, 1023)
+        time_value = self._limit(time_value, 0, 65535)
+        speed_value = self._limit(speed_value, 0, 1023)
+        self.write(servo_id, self.GOAL_POSITION_L, [
+            position & 0xFF, (position >> 8) & 0xFF,
+            time_value & 0xFF, (time_value >> 8) & 0xFF,
+            speed_value & 0xFF, (speed_value >> 8) & 0xFF,
+        ])
+`;
+
   function chainToPython(block, level = 0) {
     let code = "";
     let current = block;
@@ -247,6 +403,15 @@
           break;
         case "gpio_write":
           piece = `Pin(${Number(current.getFieldValue("PIN"))}, Pin.OUT).value(${current.getFieldValue("VALUE")})\n`;
+          break;
+        case "scs009_setup":
+          piece = `# SCS009 PIO通信はプログラム先頭で準備済みです\n`;
+          break;
+        case "scs009_torque":
+          piece = `scs009.torque(${Number(current.getFieldValue("ID"))}, ${current.getFieldValue("STATE") === "1" ? "True" : "False"})\n`;
+          break;
+        case "scs009_move":
+          piece = `scs009.move(${Number(current.getFieldValue("ID"))}, ${Number(current.getFieldValue("POSITION"))}, ${Number(current.getFieldValue("TIME"))}, ${Number(current.getFieldValue("SPEED"))})\n`;
           break;
         case "repeat_times": {
           const times = Math.max(0, Math.floor(Number(current.getFieldValue("TIMES")) || 0));
@@ -270,10 +435,21 @@
 
   function generatePython() {
     const roots = workspace.getTopBlocks(true);
+    const allBlocks = workspace.getAllBlocks(false);
+    const usesSCS009 = allBlocks.some((block) => block.type.startsWith("scs009_"));
+    const setup = allBlocks.find((block) => block.type === "scs009_setup");
+    const scsConfig = {
+      pin: setup ? Number(setup.getFieldValue("PIN")) : 2,
+      sm: setup ? Number(setup.getFieldValue("SM")) : 0,
+      baud: setup ? Number(setup.getFieldValue("BAUD")) : 1000000,
+    };
     const start = roots.find((block) => block.type === "program_start");
     const first = start ? start : roots.find((block) => block.previousConnection || block.nextConnection);
     const body = first ? chainToPython(first) : "print(\"ブロックを置いてください\")\n";
-    return `# PicoBlocks Studio が生成しました\nfrom machine import Pin\nimport time\n\ntry:\n    led = Pin(\"LED\", Pin.OUT)\nexcept:\n    led = Pin(25, Pin.OUT)\n\n${body}`;
+    const scsCode = usesSCS009
+      ? `\n${SCS009_DRIVER}\nscs009 = SCS009PIO(data_pin=${scsConfig.pin}, sm_id=${scsConfig.sm}, baud=${scsConfig.baud})\n`
+      : "";
+    return `# PicoBlocks Studio が生成しました\nfrom machine import Pin\nimport time\n${scsCode}\ntry:\n    led = Pin(\"LED\", Pin.OUT)\nexcept:\n    led = Pin(25, Pin.OUT)\n\n${body}`;
   }
 
   let saveTimer = null;
