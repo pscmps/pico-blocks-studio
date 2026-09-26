@@ -41,6 +41,8 @@ for (const board of Object.keys(profiles)) {
   assert.ok(categories.indexOf('PWMサーボ')<categories.indexOf('SCS009'));
   assert.ok(categories.indexOf('SCS009')<categories.indexOf('XL330'));
   assert.ok(categories.indexOf('XL330')<categories.indexOf('STS3215'));
+  assert.equal(categories.at(-1), 'STS3235');
+  assert.ok(vm.runInContext('buildToolbox().contents.find(c=>c.name==="SCS009").contents.every(c=>c.kind==="block")', context));
   const prompt=Exchange.prompt(board,profiles[board],schema);
   assert.ok(prompt.includes('AI_GUIDE.md') && prompt.includes('basic_map'));
   generate(wrap(node('basic_print',{}, {VALUE:node('basic_adc',{PIN:schema.basic_adc.fields.PIN.options[0],MODE:'RAW'})}),board));
@@ -55,7 +57,7 @@ for (const op of ['ADD','SUB','MUL','DIV','MOD']) {
   const code=generate(wrap(node('basic_print',{}, {VALUE:node('basic_math',{OP:op},{A:num(12),B:num(3)})})));
   assert.ok(code.includes('print((12 '));
 }
-for (const model of ['pwm','scs009','xl330','sts3215']) {
+for (const model of ['pwm','scs009','xl330','sts3215','sts3235']) {
   const fields=model==='pwm'?{CHANNEL:1,PIN:'0',MIN_US:1000,MAX_US:2000}:{PIN:'0',BAUD:'1000000'};
   generate(wrap(chain(node(model+'_setup',fields),node(model+'_value',model==='pwm'?{CHANNEL:1}:{ID:1},{VALUE:node('basic_map',{}, {VALUE:num(65535),IN_MIN:num(0),IN_MAX:num(65535),OUT_MIN:num(0),OUT_MAX:num(model==='pwm'?180:1023)})}))));
   assert.equal(vm.runInContext('validateProgram()',context),true);

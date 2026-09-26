@@ -70,7 +70,7 @@ fails(OSError, lambda:sts.ping(1))
 bus.response = bytearray(STS.packet(1, 0)); bus.response[-1] ^= 1
 fails(ValueError, lambda:sts.ping(1))
 
-for driver, mode in [(xl, 3), (sts, 0)]:
+for driver, mode in [(xl, 3), (sts, 0), (env['STS3235'](bus), 0)]:
     writes = []
     driver.write = lambda *args:writes.append(args)
     driver.read = lambda sid, addr, size: ({11:b'\x03', 10:b'\x00', 132:b'\x00\x08\x00\x00'}.get(addr, b'\x00') if driver is xl else {33:b'\x00', 18:b'\x00', 11:b'\xff\x0f', 56:b'\x00\x08'}.get(addr, b'\x00'))

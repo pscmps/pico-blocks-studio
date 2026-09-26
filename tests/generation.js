@@ -34,7 +34,7 @@ for (const board of ['pico','picow','pico2','pico2w','rp2040_geek','rp2350_geek'
     assert.ok(!config.wifi);
   }
   generate([block('pwm_setup',{PIN:config.pins[0],CHANNEL:1,MIN_US:1000,MAX_US:2000}),block('pwm_move',{CHANNEL:1,ANGLE:90})]);
-  for (const model of ['xl330','sts3215']) {
+  for (const model of ['xl330','sts3215','sts3235']) {
     const code = generate([block(model+'_setup',{PIN:config.pins[0],BAUD:57600}),block(model+'_ping',{ID:1}),block(model+'_move',{ID:1,POSITION:2048,SPEED:20,ACCEL:10}),block(model+'_bind',{ID:1,AXIS:'Y',CENTER:2048,STEP:10,SPEED:20}),block('uart_controller_setup')]);
     assert.ok(code.includes(`${model}.move(1, 2048, 20, 10)`));
     assert.ok(code.includes('"max":4095'));
@@ -72,4 +72,4 @@ assert.equal(valid([block('pwm_setup',{PIN:0,CHANNEL:1,MIN_US:1000,MAX_US:2000})
 assert.equal(valid([block('pwm_setup',{PIN:0,CHANNEL:1,MIN_US:2000,MAX_US:1000})]), false);
 assert.equal(valid([block('pwm_setup',{PIN:0,CHANNEL:1,MIN_US:1000,MAX_US:2000}),block('gpio_write',{PIN:0})]), false);
 if (process.argv.includes('--json')) process.stdout.write(JSON.stringify(sources));
-else console.log('PASS: 8 boards, 30 generated programs, Wi-Fi-only and shared JOG, PIO allocation');
+else console.log(`PASS: 8 boards, ${sources.length} generated programs, Wi-Fi-only and shared JOG, PIO allocation`);

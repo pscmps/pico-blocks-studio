@@ -302,7 +302,7 @@
         { type: "field_dropdown", name: "AXIS", options: [["↑ ↓", "Y"], ["← →", "X"], ["W S", "Z"], ["A D", "R"]] },
         { type: "field_number", name: "ID", value: 1, min: 0, max: 253, precision: 1 },
       ],
-      message1: "中央 %1  増減幅 %2  速度 %3",
+      message1: "中央 %1  増減幅 %2  速度値（機種固有）%3",
       args1: [
         { type: "field_number", name: "CENTER", value: 511, min: 0, max: 1023, precision: 1 },
         { type: "field_number", name: "STEP", value: 10, min: 1, max: 1023, precision: 1 },
@@ -311,7 +311,7 @@
       previousStatement: null,
       nextStatement: null,
       colour: 262,
-      tooltip: "UARTコントローラの1軸をSCS009の位置指令へ割り当てます。",
+      tooltip: "USB／Wi-Fi共通のJOG割り当て。速度500はサーボに送る生の速度値で、500 msではありません。増減幅は1回のキー操作で動かす位置の差です。",
     },
   ]);
 
@@ -368,26 +368,12 @@
         kind: "category",
         name: "SCS009",
         colour: "#ff7a59",
-        expanded: true,
         contents: [
-          {
-            kind: "category",
-            name: "接続",
-            colour: "#ff7a59",
-            contents: [{ kind: "block", type: "scs009_setup" }],
-          },
-          {
-            kind: "category",
-            name: "動かす",
-            colour: "#ff7a59",
-            contents: [{ kind: "block", type: "scs009_move" }, { kind: "block", type: "scs009_value", inputs: {VALUE: {shadow: {type: "basic_number", fields: {NUM: 511}}}} }],
-          },
-          {
-            kind: "category",
-            name: "設定",
-            colour: "#ff7a59",
-            contents: [{ kind: "block", type: "scs009_torque" }],
-          },
+          { kind: "block", type: "scs009_setup" },
+          { kind: "block", type: "scs009_torque" },
+          { kind: "block", type: "scs009_move" },
+          { kind: "block", type: "scs009_value", inputs: {VALUE: {shadow: {type: "basic_number", fields: {NUM: 511}}}} },
+          { kind: "block", type: "uart_scs_bind" },
         ],
       },
       ...ServoBlocks.toolbox().filter(category => category.name !== "PWMサーボ"),
@@ -725,20 +711,21 @@ class SCS009PIO:
 
   function renderWiringDiagram() {
     const profile = BOARD_PROFILES[selectedBoard];
-    const setups = workspace.getAllBlocks(false).filter(block => /^(scs009|xl330|sts3215|pwm)_setup$/.test(block.type));
-    const chosen = workspace.getBlockById($("#wiringDevice").value);
-    const setup = setups.includes(chosen) ? chosen : setups[0];
-    const servoName = setup ? ({ scs009_setup: "SCS009", xl330_setup: "XL330", sts3215_setup: "STS3215", pwm_setup: "PWMサーボ" })[setup.type] : "";
+    const blocks = workspace.getAllBlocks(false);
+    const groups = ServoWiring.groups(blocks, getUartControllerBlock() ? getJogAxes() : {});
     const deviceSelect = $("#wiringDevice");
-    deviceSelect.replaceChildren(...setups.map(b => {
-      const option = document.createElement("option"); option.value = b.id;
-      option.textContent = `${({ scs009_setup: "SCS009", xl330_setup: "XL330", sts3215_setup: "STS3215", pwm_setup: "PWMサーボ" })[b.type]} · ${pinLabel(Number(b.getFieldValue("PIN")))}`;
+    const group = groups.find(g => g.key === deviceSelect.value) || groups[0];
+    const setup = group ? {type: group.model + "_setup"} : null;
+    const servoName = group?.name || "";
+    deviceSelect.replaceChildren(...groups.map(g => {
+      const option = document.createElement("option"); option.value = g.key;
+      option.textContent = `${g.name} · ${g.model === "pwm" ? g.devices.length + "台" : pinLabel(g.pin)}`;
       return option;
     }));
-    if (setup) deviceSelect.value = setup.id;
-    deviceSelect.hidden = setups.length < 2;
-    const selectedPin = setup ? Number(setup.getFieldValue("PIN")) : null;
-    const drawing = profile.layout === "pico" ? picoBoardDrawing(profile, selectedPin) : profile.layout === "xiao" ? xiaoBoardDrawing(profile, selectedPin) : geekBoardDrawing(profile, selectedPin);
+    if (group) deviceSelect.value = group.key;
+    deviceSelect.hidden = groups.length < 2;
+    const drawPin = pin => profile.layout === "pico" ? picoBoardDrawing(profile, pin) : profile.layout === "xiao" ? xiaoBoardDrawing(profile, pin) : geekBoardDrawing(profile, pin);
+    const drawing = drawPin(null);
     elements.pinoutLink.href = profile.pinoutUrl;
     elements.pinoutLink.textContent = `${profile.name}の公式ピン情報`;
     elements.wiringDiagram.classList.toggle("is-board-only", !setup);
@@ -762,28 +749,11 @@ class SCS009PIO:
         </svg>`;
       return;
     }
-    if (!drawing.dataPoint) return;
-    elements.wiringSummary.textContent = `接続ブロックの設定: ${pinLabel(selectedPin)}を${servoName}の${setup.type === "pwm_setup" ? "信号" : "DATA"}へ接続します。`;
-    elements.wiringDiagram.innerHTML = `
-      <svg viewBox="0 0 260 460" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <style>${diagramStyle}</style>
-        <title>${profile.name}と${servoName}の簡易配線図</title>
-        <path d="M${drawing.dataPoint.x} ${drawing.dataPoint.y} C235 ${drawing.dataPoint.y},70 330,112 330" class="data-wire"/>
-        <path d="M${drawing.groundPoint.x} ${drawing.groundPoint.y} C238 ${drawing.groundPoint.y},75 372,112 372" class="ground-wire"/>
-        <path d="M118 416 C150 416,82 351,112 351" class="power-wire"/>
-        <path d="M118 434 C165 434,78 372,112 372" class="ground-wire"/>
-        ${drawing.board}
-        <text x="130" y="282" text-anchor="middle" class="caption">黄色で選択中: GP${selectedPin}</text>
-        <rect x="112" y="306" width="136" height="82" rx="11" class="device-box"/>
-        <text x="180" y="320" text-anchor="middle" class="board-title">${servoName} コネクタ</text>
-        <circle cx="122" cy="330" r="6" class="terminal"/><text x="135" y="333" class="terminal-label">${setup.type === "pwm_setup" ? "SIGNAL / PWM" : "DATA"}</text>
-        <circle cx="122" cy="351" r="6" class="terminal"/><text x="135" y="354" class="terminal-label">V+（外部電源）</text>
-        <circle cx="122" cy="372" r="6" class="terminal"/><text x="135" y="375" class="terminal-label">GND（共通）</text>
-        <rect x="12" y="398" width="106" height="52" rx="10" class="device-box"/>
-        <text x="65" y="412" text-anchor="middle" class="board-title">サーボ用外部電源</text>
-        <circle cx="108" cy="416" r="5" class="terminal"/><text x="101" y="419" text-anchor="end" class="terminal-label">＋</text>
-        <circle cx="108" cy="434" r="5" class="terminal"/><text x="101" y="437" text-anchor="end" class="terminal-label">GND</text>
-      </svg>`;
+    elements.wiringSummary.textContent = group.model === "pwm"
+      ? `PWM ${group.devices.length}台：番号ごとにコネクタと信号線を色分け。電源・GNDは共通です。`
+      : `${pinLabel(group.pin)} → ${servoName}。ブロック・JOGで使用するIDをデイジーチェーン表示します。`;
+    const diagram = ServoWiring.render(group, drawPin, pinLabel);
+    elements.wiringDiagram.innerHTML = `<svg viewBox="0 0 260 ${diagram.height}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><style>${diagramStyle}</style><title>${profile.name}と${servoName}の簡易配線図</title>${diagram.content}</svg>`;
   }
 
   function updateBoardUi() {
@@ -813,7 +783,7 @@ class SCS009PIO:
   }
 
   function validateSCS009Pins() {
-    for (const block of workspace.getAllBlocks(false).filter((item) => /^(scs009|xl330|sts3215|pwm)_setup$/.test(item.type) || /^basic_(adc|read|write)$/.test(item.type))) {
+    for (const block of workspace.getAllBlocks(false).filter((item) => /^(scs009|xl330|sts3215|sts3235|pwm)_setup$/.test(item.type) || /^basic_(adc|read|write)$/.test(item.type))) {
       const allowed = (block.type === "basic_adc" ? adcOptions() : pinOptions()).map(([, pin]) => pin);
       const oldPin = block.getFieldValue("PIN");
       // Blockly 11 has dynamic getOptions, but not the newer setOptions API.
@@ -878,7 +848,7 @@ class SCS009PIO:
     const blocks = workspace.getAllBlocks(false);
     const hasScs = blocks.some(block => block.type === "scs009_setup");
     const config = PicoJog.defaults(hasScs);
-    for (const block of blocks.filter(block => /^(uart_scs|xl330|sts3215|pwm)_bind$/.test(block.type))) {
+    for (const block of blocks.filter(block => /^(uart_scs|xl330|sts3215|sts3235|pwm)_bind$/.test(block.type))) {
       const target = block.type === "uart_scs_bind" ? "scs009" : block.type.split("_")[0];
       const connected = blocks.some(b => b.type === target + "_setup" && (target !== "pwm" || b.getFieldValue("CHANNEL") === block.getFieldValue("ID")));
       config[block.getFieldValue("AXIS")] = {
@@ -894,7 +864,7 @@ class SCS009PIO:
     const blocks = workspace.getAllBlocks(false);
     const wifi = blocks.filter(block => block.type === "wifi_jog_setup");
     let error = "";
-    const bindings = blocks.filter(block => /^(uart_scs|xl330|sts3215|pwm)_bind$/.test(block.type));
+    const bindings = blocks.filter(block => /^(uart_scs|xl330|sts3215|sts3235|pwm)_bind$/.test(block.type));
     if (new Set(bindings.map(b => b.getFieldValue("AXIS"))).size !== bindings.length) error = "JOGの同じ軸への割り当ては1個だけにしてください。USBとWi-Fiで共用します。";
     if (wifi.length && !BOARD_PROFILES[selectedBoard].wifi) error = "Wi-Fi JOGはPico W / Pico 2 Wで使えます。ボードを選び直すかWi-Fiブロックを外してください。";
     if (wifi.length > 1) error = "Wi-Fiサーバの開始ブロックは1個にしてください。";
@@ -902,10 +872,10 @@ class SCS009PIO:
       const ssid = wifi[0].getFieldValue("SSID"), password = wifi[0].getFieldValue("PASSWORD");
       if (!ssid || encoder.encode(ssid).length > 32 || !/^[\x20-\x7e]{8,63}$/.test(password)) error = "Wi-Fi名は1〜32バイト、パスワードは半角8〜63文字で指定してください。";
     }
-    const setups = blocks.filter(b => /^(scs009|xl330|sts3215|pwm)_setup$/.test(b.type));
+    const setups = blocks.filter(b => /^(scs009|xl330|sts3215|sts3235|pwm)_setup$/.test(b.type));
     if (setups.filter(b => b.type !== "pwm_setup").length > 2) error = "PIO通信のサーボ接続は合計2種類までです（Wi-Fi用のPIOを確保します）。PWMサーボは別に追加できます。";
     if (new Set(setups.map(b => b.getFieldValue("PIN"))).size !== setups.length) error = "サーボ接続のGPIOが重複しています。種類ごとに別のGPIOを指定してください。";
-    for (const key of ["scs009", "xl330", "sts3215"]) {
+    for (const key of ["scs009", "xl330", "sts3215", "sts3235"]) {
       if (setups.filter(b => b.type === key + "_setup").length > 1) error = `${key}の接続ブロックは1個にしてください。同じ種類のサーボはIDで指定します。`;
       if (blocks.some(b => b.type.startsWith(key + "_") && b.type !== key + "_setup") && !setups.some(b => b.type === key + "_setup")) error = `${key}の接続ブロックを追加してください。`;
     }

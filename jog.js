@@ -47,6 +47,8 @@ def _apply_controller_value(axis, value):
             xl330.move(config['id'], value, config['speed'])
         elif target == 'sts3215':
             sts3215.move(config['id'], value, config['speed'])
+        elif target == 'sts3235':
+            sts3235.move(config['id'], value, config['speed'])
         else:
             scs009.move(config['id'], value, 0, config['speed'])
     controller_values[axis] = value

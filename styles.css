@@ -136,9 +136,9 @@ select:focus-visible {
 .wiring-heading { min-height: 34px; display: flex; align-items: flex-start; justify-content: space-between; padding-right: 78px; }
 .original-diagram { color: var(--faint); font-size: 0.66rem; border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px; white-space: nowrap; }
 .wiring-summary { min-height: 38px; margin: 10px 0 12px; color: var(--muted); font-size: 0.76rem; line-height: 1.55; }
-.wiring-diagram { width: 100%; aspect-ratio: 260 / 460; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #f8fafc; }
+.wiring-diagram { width: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #f8fafc; }
 .wiring-diagram.is-board-only { aspect-ratio: 260 / 300; }
-.wiring-diagram svg { display: block; width: 100%; height: 100%; }
+.wiring-diagram svg { display: block; width: 100%; height: auto; }
 .wiring-legend { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 12px 0 9px; color: var(--muted); font-size: 0.68rem; }
 .wiring-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .wiring-legend i { width: 16px; height: 3px; border-radius: 2px; }
@@ -295,7 +295,7 @@ kbd { margin-left: 7px; padding: 2px 7px; border: 1px solid var(--line); border-
   .app-shell, .app-shell.wiring-collapsed { height: auto; min-height: calc(100vh - 72px); grid-template-columns: 1fr; padding: 10px; }
   .wiring-panel { min-height: 420px; }
   .wiring-content { min-width: 0; }
-  .wiring-diagram, .wiring-diagram.is-board-only { height: min(62vh, 620px); aspect-ratio: auto; }
+  .wiring-diagram, .wiring-diagram.is-board-only { max-height: 62vh; overflow-y: auto; aspect-ratio: auto; }
   .app-shell.wiring-collapsed .wiring-panel { min-height: 44px; grid-template-columns: 44px 0; }
   .app-shell.wiring-collapsed .wiring-toggle { min-height: 34px; width: auto; flex-direction: row; }
   .app-shell.wiring-collapsed .wiring-toggle span { writing-mode: horizontal-tb; letter-spacing: normal; }

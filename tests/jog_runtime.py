@@ -91,6 +91,12 @@ env['_jog_config']['Y'] = dict(id=3, target='xl330', center=2048, step=10, speed
 env['xl330'] = types.SimpleNamespace(move=lambda *args:moves.append(('xl330',) + args))
 env['_apply_controller_value']('Y', 9999)
 assert moves[-1] == ('xl330', 3, 4095, 20)
+env['_jog_config']['X'] = dict(id=5, target='sts3235', center=2048, step=10, speed=500, min=0, max=4095)
+env['sts3235'] = types.SimpleNamespace(move=lambda *args:moves.append(('sts3235',) + args))
+env['_apply_controller_value']('X', 2000)
+assert moves[-1] == ('sts3235', 5, 2000, 500)
+assert b'200 OK' in request('POST', '/jog/X/1')
+assert moves[-1] == ('sts3235', 5, 2010, 500)
 env['_jog_config']['R'] = dict(id=2, target='pwm', center=90, step=2, speed=0, min=0, max=180)
 env['pwm_servos'] = {2:types.SimpleNamespace(angle=lambda value:moves.append(('pwm', value)))}
 env['_apply_controller_value']('R', -10)

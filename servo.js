@@ -5,6 +5,7 @@ const ServoBlocks = (() => {
     xl330: { name: "XL330", colour: 204, center: 2048, max: 4095, speed: 20, baud: "57600" },
     sts3215: { name: "STS3215", colour: 330, center: 2048, max: 4095, speed: 500, baud: "1000000" },
     pwm: { name: "PWMサーボ", colour: 42, center: 90, max: 180, speed: 0 },
+    sts3235: { name: "STS3235", colour: 350, center: 2048, max: 4095, speed: 500, baud: "1000000" },
   };
   const axes = [["↑ ↓", "Y"], ["← →", "X"], ["W S", "Z"], ["A D", "R"]];
   const num = (name, value, min, max) => ({ type: "field_number", name, value, min, max, precision: 1 });
@@ -40,6 +41,12 @@ const ServoBlocks = (() => {
       }
       add("bind", { message0: `JOGの %1 を ${m.name} ${key === "pwm" ? "番号" : "ID"} %2 に割り当て`, args0: [{ type: "field_dropdown", name: "AXIS", options: axes }, num("ID", 1, key === "pwm" ? 1 : 0, key === "pwm" ? 16 : key === "xl330" ? 252 : 253)], message1: "中央 %1  増減幅 %2" + (key === "pwm" ? "（度）" : "  速度値 %3"), args1: [num("CENTER", m.center, 0, m.max), num("STEP", key === "pwm" ? 2 : 10, 1, m.max), ...(key === "pwm" ? [] : [num("SPEED", m.speed, 1, key === "xl330" ? 100 : 3400)])] });
     }
+    for (const def of defs) {
+      if (def.args1?.some(field => field.name === "SPEED")) {
+        def.message1 = def.message1.replace("速度値", "速度値（機種固有）");
+        def.tooltip = (def.tooltip || "") + " 速度値はサーボへ渡す設定値です。時間（ms）ではなく、同じ値でも機種によって速さが異なります。";
+      }
+    }
     Blockly.defineBlocksWithJsonArray(defs);
   }
   function toolbox() {
@@ -60,10 +67,10 @@ const ServoBlocks = (() => {
     return null;
   }
   function runtime(blocks) {
-    const setups = blocks.filter(b => /^(xl330|sts3215|pwm)_setup$/.test(b.type));
+    const setups = blocks.filter(b => /^(xl330|sts3215|sts3235|pwm)_setup$/.test(b.type));
     let code = setups.some(b => b.type !== "pwm_setup") ? BUS_DRIVER : "";
     if (setups.some(b => b.type === "xl330_setup")) code += XL330_DRIVER;
-    if (setups.some(b => b.type === "sts3215_setup")) code += STS_DRIVER;
+    if (setups.some(b => /^sts(3215|3235)_setup$/.test(b.type))) code += STS_DRIVER;
     if (setups.some(b => b.type === "pwm_setup")) code += PWM_DRIVER + "\npwm_servos = {}\n";
     let nextSm = blocks.some(b => b.type === "scs009_setup") ? 2 : 0;
     for (const b of setups) {
@@ -71,7 +78,7 @@ const ServoBlocks = (() => {
       if (b.type === "pwm_setup") code += `pwm_servos[${n("CHANNEL")}] = PWMServo(${n("PIN")}, ${n("MIN_US")}, ${n("MAX_US")})\n`;
       else {
         const key = b.type.split("_")[0];
-        code += `${key} = ${key === "xl330" ? "XL330" : "STS3215"}(ServoBus(${n("PIN")}, ${n("BAUD")}, ${nextSm}))\n`;
+        code += `${key} = ${key === "xl330" ? "XL330" : key === "sts3235" ? "STS3235" : "STS3215"}(ServoBus(${n("PIN")}, ${n("BAUD")}, ${nextSm}))\n`;
         nextSm += 2;
       }
     }
@@ -253,17 +260,17 @@ class STS3215:
     def request(self, servo_id, instruction, params=b''):
         data = self.bus.exchange(self.packet(servo_id, instruction, params), 1)
         if len(data) < 6 or data[:2] != b'\xff\xff' or data[2] != servo_id or len(data) != data[3] + 4:
-            raise ValueError('STS3215 invalid response')
+            raise ValueError('STS invalid response')
         if ((~sum(data[2:-1])) & 255) != data[-1]:
-            raise ValueError('STS3215 checksum mismatch')
+            raise ValueError('STS checksum mismatch')
         if data[4]:
-            raise OSError('STS3215 status error: ' + str(data[4]))
+            raise OSError('STS status error: ' + str(data[4]))
         return data[5:-1]
 
     def read(self, servo_id, address, size):
         data = self.request(servo_id, 2, bytes([address, size]))
         if len(data) != size:
-            raise ValueError('STS3215 read length mismatch')
+            raise ValueError('STS read length mismatch')
         return data
 
     def write(self, servo_id, address, data):
@@ -280,7 +287,7 @@ class STS3215:
 
     def check_mode(self, servo_id):
         if self.read(servo_id, 33, 1)[0] != 0 or self.read(servo_id, 18, 1)[0] & 16 or self.read(servo_id, 11, 2) == b'\x00\x00':
-            raise ValueError('STS3215 needs single-turn position mode; multi-turn EEPROM settings are not changed automatically')
+            raise ValueError('STS needs single-turn position mode; multi-turn EEPROM settings are not changed automatically')
 
     def move(self, servo_id, position, speed=500, acceleration=20):
         position = _bounded(position, 0, 4095)
@@ -293,6 +300,10 @@ class STS3215:
         if enabled:
             self.move(servo_id, self.position(servo_id))
         self.write(servo_id, 40, bytes([1 if enabled else 0]))
+
+# STS3235 uses the STS little-endian control table and single-turn commands.
+class STS3235(STS3215):
+    pass
 `;
   const PWM_DRIVER = String.raw`
 from machine import PWM

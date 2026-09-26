@@ -49,7 +49,7 @@ const BasicBlocks = (() => {
         this.setColour(39);
       }};
     }
-    for (const model of ["pwm", "scs009", "xl330", "sts3215"]) {
+    for (const model of ["pwm", "scs009", "xl330", "sts3215", "sts3235"]) {
       const isPwm = model === "pwm";
       Blockly.defineBlocksWithJsonArray([stmt(model+"_value", `${isPwm ? "PWMサーボ" : model.toUpperCase()} ${isPwm ? "番号" : "ID"} %1 を %2 ${isPwm ? "°へ" : "の位置へ"}`, [{type:"field_number",name:isPwm?"CHANNEL":"ID",value:1,min:isPwm?1:0,max:isPwm?16:model==="xl330"?252:253,precision:1},value("VALUE")],{colour:isPwm?42:14,tooltip:"計算・変数・ADCの値をつなげます。サーボの接続・トルク設定は別ブロックです。"})]);
     }
@@ -111,6 +111,7 @@ const BasicBlocks = (() => {
       case "scs009_value": return `scs009.move(${Number(f("ID"))}, int(${input("VALUE","511")}), 0, 500)\n`;
       case "xl330_value": return `xl330.move(${Number(f("ID"))}, int(${input("VALUE","2048")}), 20, 20)\n`;
       case "sts3215_value": return `sts3215.move(${Number(f("ID"))}, int(${input("VALUE","2048")}), 500, 20)\n`;
+      case "sts3235_value": return `sts3235.move(${Number(f("ID"))}, int(${input("VALUE","2048")}), 500, 20)\n`;
       default: return null;
     }
   }

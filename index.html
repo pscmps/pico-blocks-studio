@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css?v=help1" />
+    <link rel="stylesheet" href="./styles.css?v=multi-servo1" />
   </head>
   <body>
     <header class="topbar">
@@ -77,7 +77,7 @@
           <div id="wiringDiagram" class="wiring-diagram" role="img" aria-label="選択したボードの端子・配線図"></div>
           <div id="scsWiringDetails" class="scs-wiring-details" hidden>
             <div class="wiring-legend" aria-label="配線色の説明">
-              <span><i class="wire-data"></i>DATA</span>
+              <span><i class="wire-data"></i>DATA／信号（番号別の色）</span>
               <span><i class="wire-power"></i>外部電源＋</span>
               <span><i class="wire-ground"></i>共通GND</span>
             </div>
@@ -196,6 +196,7 @@
       </div>
 
       <p class="controller-lead">↑↓でID1、←→でID2、W/SでID3、A/DでID4。SCS接続ブロックで標準割り当てが有効になり、割り当てブロックで変更できます。表示は指令位置です。</p>
+      <p class="controller-lead">「速度値 500」はサーボ固有の設定値で、500 msではありません。「増減幅」はキー1回で動かす位置の差です。</p>
 
       <div class="controller-connection">
         <div>
@@ -244,7 +245,8 @@
       <p>知りたい項目だけ開いてください。</p>
       <button id="showFirstRun" class="button button-secondary" type="button">初回案内をもう一度表示</button>
       <details class="help-card"><summary>ブロックの操作・対話AIとの受け渡し</summary><p>左のツリーからブロックを置き、「プログラム開始」につなぎます。ブロック本体をダブルクリックすると複製できます。</p><p>メニューの「対話AIとプログラムを作る」で依頼文をコピーし、返答のJSONを取り込めます。取り込みは現在のブロックを置き換えますが、直前の状態に戻せます。</p></details>
-      <details class="help-card" id="jogHelp"><summary>USBとWi-FiのJOG割り当て</summary><p>PWM・SCS009・XL330・STS3215の割り当てはUSB／Wi-Fi共通。Wi-Fi JOGだけならUART開始ブロックは不要です。</p><p>両方から操作すると、同じ指令位置を処理順に増減します。優先権・排他ロックはないため、操作者を決めてください。同じ軸への割り当ては1個だけです。</p><p>↑↓＝Y、←→＝X、W/S＝Z、A/D＝R、Space＝中央復帰。表示は実測位置ではなく指令位置です。</p></details>
+      <details class="help-card" id="jogHelp"><summary>USBとWi-FiのJOG割り当て</summary><p>PWM・SCS009・XL330・STS3215・STS3235の割り当てはUSB／Wi-Fi共通。Wi-Fi JOGだけならUART開始ブロックは不要です。</p><p>「速度値 500」はサーボに送る機種固有の設定値で、500 msではありません。「増減幅」はキー1回で動かす位置の差です。同じ速度値でも機種によって速さは異なります。PWMのJOGは角度の増減幅だけを指定します。</p><p>両方から操作すると、同じ指令位置を処理順に増減します。優先権・排他ロックはないため、操作者を決めてください。同じ軸への割り当ては1個だけです。</p><p>↑↓＝Y、←→＝X、W/S＝Z、A/D＝R、Space＝中央復帰。表示は実測位置ではなく指令位置です。</p></details>
+      <details class="help-card"><summary>サーボを複数つなぐときの配線図</summary><p>PWMは番号とGPIOを分けて接続ブロックを追加します。全台のコネクタ・信号線が番号別の色で表示されます。色は図で見分けるためのものです。</p><p>シリアルサーボは同じ種類の接続ブロックを1個にして、操作・JOGブロックのIDを変えます。重複を除いたIDごとにコネクタが増え、DATA・V+・GNDのデイジーチェーンを表示します。ID未指定のときは仮のコネクタ1個です。SCSの標準JOG割り当ても表示対象です。</p><p>接続図は実機検出ではありません。同じバスの各サーボには事前に異なるIDを設定してください（この画面ではIDを書き換えません）。実物の端子順・定格電圧を確認し、台数に応じた電源と配線容量を確保してください。異なる電圧のサーボ電源は共用しません。</p></details>
       <details id="wifiHelp" class="help-card" hidden><summary>スマホでWi-Fi JOG</summary><p>Wi-Fi JOGの開始ブロックでWi-Fi名とパスワードを設定し、「保存して実行」を押します。</p><p>スマホをそのWi-Fiへ接続し、<a id="wifiJogAddress" href="http://192.168.4.1/" target="_blank" rel="noopener">http://192.168.4.1/</a> を開きます。実際のアドレスは起動時にシリアル欄へ表示されます。</p><p>Pico W / Pico 2 W用。インターネット接続は不要です。</p></details>
       <details id="scsHelp" class="help-card" hidden><summary>サーボを接続する前に</summary><p></p></details>
       <details class="help-card"><summary>配線図・ADC・サーボ設定</summary><p>左の図は端子名の模式図です。実物の向きや線色ではなく、公式ピン配置と端子名で確認してください。XIAOはD番号とGPIO番号を併記しています。</p><p id="boardPinHint" class="board-pin-hint"></p><p>ADC入力は0〜3.3 Vのみ。GPIOへ5 Vを入れないでください。サーボは種類ごとに接続ブロックを置き、位置や速度の範囲を実機に合わせます。</p></details>
@@ -274,11 +276,12 @@
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/ja.js"></script>
-    <script src="./servo.js?v=basics1"></script>
-    <script src="./jog.js?v=servos1"></script>
-    <script src="./basic.js?v=basics1"></script>
+    <script src="./servo.js?v=multi-servo1"></script>
+    <script src="./jog.js?v=multi-servo1"></script>
+    <script src="./basic.js?v=multi-servo1"></script>
+    <script src="./wiring.js?v=multi-servo1"></script>
     <script src="./exchange.js?v=basics1"></script>
     <script src="./boot.js?v=boot1"></script>
-    <script src="./app.js?v=help1"></script>
+    <script src="./app.js?v=multi-servo1"></script>
   </body>
 </html>
