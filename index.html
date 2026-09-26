@@ -37,6 +37,17 @@
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 12h8m-4-4v8M7 4v3m10-3v3M5 9h14v4a7 7 0 0 1-14 0V9Z"/></svg>
           RPボードを接続
         </button>
+        <div class="menu-wrap">
+          <button id="menuButton" class="menu-button" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+          </button>
+          <div id="appMenu" class="app-menu" hidden>
+            <button id="controllerMenuItem" type="button" disabled>
+              <span>コントローラ</span>
+              <small>UARTブロックを置くと使えます</small>
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -150,6 +161,57 @@
         </details>
       </aside>
     </main>
+
+    <aside id="controllerDrawer" class="controller-drawer" aria-label="UART JOGコントローラ" aria-hidden="true">
+      <div class="controller-heading">
+        <div>
+          <span class="controller-kicker">UART JOG</span>
+          <h2>3軸コントローラ</h2>
+        </div>
+        <button id="controllerCloseButton" class="icon-button" type="button" aria-label="コントローラを閉じる">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></svg>
+        </button>
+      </div>
+
+      <p class="controller-lead">PCからX・Y・Zの値をUARTへ送ります。SCS009への割り当てはブロック側で決めます。</p>
+
+      <div class="controller-connection">
+        <div>
+          <strong id="controllerConnectionLabel">RPボード 未接続</strong>
+          <small id="controllerPortSummary">上部の接続と同じUSBシリアルを使います</small>
+        </div>
+        <button id="controllerConnectButton" class="button button-secondary" type="button">RPボードを接続</button>
+      </div>
+
+      <div class="axis-readout" aria-label="送信する軸の値">
+        <div><span>X</span><strong id="jogValueX">511</strong><small id="jogBindingX">未割り当て</small></div>
+        <div><span>Y</span><strong id="jogValueY">511</strong><small id="jogBindingY">未割り当て</small></div>
+        <div><span>Z</span><strong id="jogValueZ">511</strong><small id="jogBindingZ">未割り当て</small></div>
+      </div>
+
+      <div class="jog-pad" aria-label="X・Y軸操作">
+        <button type="button" data-jog-axis="Y" data-jog-direction="1" aria-label="Yを増やす">↑</button>
+        <button type="button" data-jog-axis="X" data-jog-direction="-1" aria-label="Xを減らす">←</button>
+        <span>XY</span>
+        <button type="button" data-jog-axis="X" data-jog-direction="1" aria-label="Xを増やす">→</button>
+        <button type="button" data-jog-axis="Y" data-jog-direction="-1" aria-label="Yを減らす">↓</button>
+      </div>
+
+      <div class="z-jog" aria-label="Z軸操作">
+        <span>Z</span>
+        <button type="button" data-jog-axis="Z" data-jog-direction="-1">−</button>
+        <strong id="jogZInline">511</strong>
+        <button type="button" data-jog-axis="Z" data-jog-direction="1">＋</button>
+      </div>
+
+      <button id="jogCenterButton" class="center-button" type="button">中央へ戻す <kbd>Space</kbd></button>
+
+      <div class="controller-note">
+        <strong>接続は1本だけ</strong>
+        <p>MicroPythonの書き込みに使うUSBケーブルを、そのままコントローラ通信にも使います。USB-UARTアダプタや追加配線は不要です。</p>
+        <p>送信形式: <code>JOG X 520</code> のような1行です。</p>
+      </div>
+    </aside>
 
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 

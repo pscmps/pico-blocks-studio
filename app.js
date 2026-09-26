@@ -91,6 +91,16 @@
     scsWiringDetails: $("#scsWiringDetails"),
     scsHelp: $("#scsHelp"),
     pinoutLink: $("#pinoutLink"),
+    menuButton: $("#menuButton"),
+    appMenu: $("#appMenu"),
+    controllerMenuItem: $("#controllerMenuItem"),
+    controllerDrawer: $("#controllerDrawer"),
+    controllerClose: $("#controllerCloseButton"),
+    controllerConnect: $("#controllerConnectButton"),
+    controllerConnectionLabel: $("#controllerConnectionLabel"),
+    controllerPortSummary: $("#controllerPortSummary"),
+    jogCenter: $("#jogCenterButton"),
+    jogZInline: $("#jogZInline"),
   };
 
   let port = null;
@@ -101,6 +111,10 @@
   let consoleStarted = false;
   let isBusy = false;
   const waiters = new Set();
+  let controllerActive = false;
+  let controllerConfigSignature = "";
+  const controllerValues = { X: 511, Y: 511, Z: 511 };
+  const controllerAxes = { X: { center: 511, step: 10 }, Y: { center: 511, step: 10 }, Z: { center: 511, step: 10 } };
 
   const theme = Blockly.Theme.defineTheme("picoBlocks", {
     base: Blockly.Themes.Zelos,
@@ -230,6 +244,38 @@
     },
   };
 
+  Blockly.Blocks.uart_controller_setup = {
+    init() {
+      this.appendDummyInput().appendField("PCからUART値を受信");
+      this.appendDummyInput().appendField("USBシリアル接続を共用");
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(262);
+      this.setTooltip("書き込みに使うWeb Serial接続から、X・Y・ZのJOG値を受信します。");
+    },
+  };
+
+  Blockly.defineBlocksWithJsonArray([
+    {
+      type: "uart_scs_bind",
+      message0: "UARTの %1 軸を SCS009 ID %2 に割り当て",
+      args0: [
+        { type: "field_dropdown", name: "AXIS", options: [["X", "X"], ["Y", "Y"], ["Z", "Z"]] },
+        { type: "field_number", name: "ID", value: 1, min: 0, max: 253, precision: 1 },
+      ],
+      message1: "中央 %1  増減幅 %2  速度 %3",
+      args1: [
+        { type: "field_number", name: "CENTER", value: 511, min: 0, max: 1023, precision: 1 },
+        { type: "field_number", name: "STEP", value: 10, min: 1, max: 1023, precision: 1 },
+        { type: "field_number", name: "SPEED", value: 500, min: 0, max: 1023, precision: 1 },
+      ],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 262,
+      tooltip: "UARTコントローラの1軸をSCS009の位置指令へ割り当てます。",
+    },
+  ]);
+
   function buildToolbox() {
     const motionBlocks = [
       ...(BOARD_PROFILES[selectedBoard].ledPin === null ? [] : [{ kind: "block", type: "pico_led" }]),
@@ -259,6 +305,26 @@
               { kind: "block", type: "repeat_times" },
               { kind: "block", type: "forever_loop" },
             ],
+          },
+        ],
+      },
+      {
+        kind: "category",
+        name: "UART",
+        colour: "#7c6ee6",
+        expanded: true,
+        contents: [
+          {
+            kind: "category",
+            name: "接続",
+            colour: "#7c6ee6",
+            contents: [{ kind: "block", type: "uart_controller_setup" }],
+          },
+          {
+            kind: "category",
+            name: "コントローラ",
+            colour: "#7c6ee6",
+            contents: [{ kind: "block", type: "uart_scs_bind" }],
           },
         ],
       },
@@ -452,6 +518,12 @@ class SCS009PIO:
         case "scs009_setup":
           piece = `# SCS009はプログラム先頭で接続済みです\n`;
           break;
+        case "uart_controller_setup":
+          piece = `# UARTコントローラはプログラム先頭で接続済みです\n`;
+          break;
+        case "uart_scs_bind":
+          piece = `# ${current.getFieldValue("AXIS")}軸をSCS009 ID ${Number(current.getFieldValue("ID"))}へ割り当て済みです\n`;
+          break;
         case "scs009_torque":
           piece = `scs009.torque(${Number(current.getFieldValue("ID"))}, ${current.getFieldValue("STATE") === "1" ? "True" : "False"})\n`;
           break;
@@ -482,6 +554,8 @@ class SCS009PIO:
     const roots = workspace.getTopBlocks(true);
     const allBlocks = workspace.getAllBlocks(false);
     const profile = BOARD_PROFILES[selectedBoard];
+    const uartSetup = allBlocks.find((block) => block.type === "uart_controller_setup");
+    const bindings = allBlocks.filter((block) => block.type === "uart_scs_bind");
     const usesSCS009 = allBlocks.some((block) => block.type.startsWith("scs009_"));
     const usesLed = allBlocks.some((block) => block.type === "pico_led");
     const setup = allBlocks.find((block) => block.type === "scs009_setup");
@@ -491,12 +565,42 @@ class SCS009PIO:
     };
     const start = roots.find((block) => block.type === "program_start");
     const first = start ? start : roots.find((block) => block.previousConnection || block.nextConnection);
-    const body = first ? chainToPython(first) : "print(\"ブロックを置いてください\")\n";
+    let body = first ? chainToPython(first) : "print(\"ブロックを置いてください\")\n";
     const scsCode = usesSCS009
       ? `\n${SCS009_DRIVER}\nscs009 = SCS009PIO(data_pin=${scsConfig.pin}, baud=${scsConfig.baud})\n`
       : "";
     const ledCode = usesLed && profile.ledPin !== null ? `\nled = Pin(${profile.ledPin}, Pin.OUT)\n` : "";
-    return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time\n${scsCode}${ledCode}\n${body}`;
+    let uartCode = "";
+    if (uartSetup) {
+      const mappingLines = (setup ? bindings : []).map((block, index) => {
+        const axis = block.getFieldValue("AXIS");
+        const servoId = Number(block.getFieldValue("ID"));
+        const speed = Number(block.getFieldValue("SPEED"));
+        return `${index === 0 ? "if" : "elif"} axis == ${pyString(axis)}:\n        scs009.move(${servoId}, value, 0, ${speed})`;
+      }).join("\n    ");
+      uartCode = `
+controller_values = {"X": 511, "Y": 511, "Z": 511}
+_controller_input = select.poll()
+_controller_input.register(sys.stdin, select.POLLIN)
+
+def _apply_controller_value(axis, value):
+    value = max(0, min(1023, int(value)))
+    controller_values[axis] = value
+    ${mappingLines || "# SCS009などへの割り当ては、ここへ追加できます\n    pass"}
+
+def _controller_poll():
+    if _controller_input.poll(0):
+        parts = sys.stdin.readline().strip().split()
+        if len(parts) == 3 and parts[0] == "JOG" and parts[1] in controller_values:
+            try:
+                _apply_controller_value(parts[1], parts[2])
+            except ValueError:
+                pass
+`;
+      body += `\n# PCからのJOG指令を待ちます\nwhile True:\n    _controller_poll()\n    time.sleep_ms(5)\n`;
+    }
+    const serialImports = uartSetup ? "\nimport sys\nimport select" : "";
+    return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ledCode}${uartCode}\n${body}`;
   }
 
   const PICO_LEFT_PINS = ["GP0", "GP1", "GND", "GP2", "GP3", "GP4", "GP5", "GND", "GP6", "GP7", "GP8", "GP9", "GND", "GP10", "GP11", "GP12", "GP13", "GND", "GP14", "GP15"];
@@ -650,6 +754,7 @@ class SCS009PIO:
     validateSCS009Pins();
     updateBoardUi();
     elements.pythonCode.textContent = generatePython();
+    updateControllerUi();
   }
 
   function setWiringCollapsed(collapsed) {
@@ -666,6 +771,7 @@ class SCS009PIO:
     const code = generatePython();
     elements.pythonCode.textContent = code;
     renderWiringDiagram();
+    updateControllerUi();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       localStorage.setItem("picoblocks-workspace-v1", JSON.stringify(Blockly.serialization.workspaces.save(workspace)));
@@ -679,6 +785,136 @@ class SCS009PIO:
     toast.textContent = message;
     elements.toastRegion.appendChild(toast);
     setTimeout(() => toast.remove(), 3600);
+  }
+
+  function getUartControllerBlock() {
+    return workspace.getAllBlocks(false).find((block) => block.type === "uart_controller_setup") || null;
+  }
+
+  function getUartControllerConfig() {
+    const block = getUartControllerBlock();
+    if (!block) return null;
+    return { transport: "usb-serial" };
+  }
+
+  function updateControllerUi() {
+    const config = getUartControllerConfig();
+    const hasController = Boolean(config);
+    elements.controllerMenuItem.disabled = !hasController;
+    elements.run.lastChild.textContent = hasController ? (controllerActive ? " 操作中" : " コントローラを開始") : " 今すぐ実行";
+    if (controllerActive) elements.run.disabled = true;
+    const menuHelp = elements.controllerMenuItem.querySelector("small");
+    menuHelp.textContent = hasController ? "X・Y・Zを有線で操作" : "UARTブロックを置くと使えます";
+
+    if (!hasController && elements.controllerDrawer.getAttribute("aria-hidden") === "false") closeController();
+    if (!config) return;
+
+    const nextAxes = { X: { center: 511, step: 10, label: "未割り当て" }, Y: { center: 511, step: 10, label: "未割り当て" }, Z: { center: 511, step: 10, label: "未割り当て" } };
+    const hasScsSetup = workspace.getAllBlocks(false).some((block) => block.type === "scs009_setup");
+    const bindings = workspace.getAllBlocks(false).filter((block) => block.type === "uart_scs_bind");
+    for (const block of bindings) {
+      const axis = block.getFieldValue("AXIS");
+      nextAxes[axis] = {
+        center: Number(block.getFieldValue("CENTER")),
+        step: Number(block.getFieldValue("STEP")),
+        label: `SCS009 ID ${Number(block.getFieldValue("ID"))}${hasScsSetup ? "" : "（接続未設定）"}`,
+      };
+    }
+    const signature = JSON.stringify(nextAxes);
+    if (signature !== controllerConfigSignature) {
+      for (const axis of ["X", "Y", "Z"]) {
+        controllerAxes[axis] = nextAxes[axis];
+        controllerValues[axis] = nextAxes[axis].center;
+      }
+      controllerConfigSignature = signature;
+    }
+    elements.controllerPortSummary.textContent = port
+      ? "RPボードへのWeb Serial接続を共用します"
+      : "上部の「RPボードを接続」と同じ接続を使います";
+    for (const axis of ["X", "Y", "Z"]) {
+      $(`#jogValue${axis}`).textContent = controllerValues[axis];
+      $(`#jogBinding${axis}`).textContent = nextAxes[axis].label;
+    }
+    elements.jogZInline.textContent = controllerValues.Z;
+  }
+
+  function setMenuOpen(open) {
+    elements.appMenu.hidden = !open;
+    elements.menuButton.setAttribute("aria-expanded", String(open));
+  }
+
+  function openController() {
+    if (!getUartControllerBlock()) return;
+    setMenuOpen(false);
+    updateControllerUi();
+    elements.controllerDrawer.setAttribute("aria-hidden", "false");
+  }
+
+  function closeController() {
+    elements.controllerDrawer.setAttribute("aria-hidden", "true");
+  }
+
+  function updateControllerConnection() {
+    elements.controllerConnectionLabel.textContent = controllerActive
+      ? "コントローラ操作中"
+      : port ? "RPボード 接続済み" : "RPボード 未接続";
+    elements.controllerConnect.textContent = controllerActive
+      ? "コントローラを停止"
+      : port ? "コントローラを開始" : "RPボードを接続";
+    elements.controllerConnect.classList.toggle("is-connected", controllerActive);
+    const enabled = controllerActive;
+    for (const button of document.querySelectorAll("[data-jog-axis]")) button.disabled = !enabled;
+    elements.jogCenter.disabled = !enabled;
+    updateControllerUi();
+  }
+
+  async function connectController() {
+    if (!port) {
+      await connect();
+      return;
+    }
+    if (controllerActive) {
+      await stopProgram();
+      controllerActive = false;
+      updateControllerConnection();
+      return;
+    }
+    try {
+      setBusy(true, "準備中…");
+      showTab("console");
+      await enterRawRepl();
+      serialBuffer = "";
+      await writeBytes(generatePython());
+      await writeControl(0x04);
+      await waitFor("OK", 3000);
+      controllerActive = true;
+      showToast("同じUSB接続でコントローラを開始しました。", "success");
+    } catch (error) {
+      controllerActive = false;
+      showToast(`コントローラを開始できませんでした: ${error.message}`, "error");
+    } finally {
+      setBusy(false);
+      updateControllerConnection();
+    }
+  }
+
+  async function sendControllerValue(axis, value) {
+    controllerValues[axis] = Math.max(0, Math.min(1023, Math.round(value)));
+    updateControllerUi();
+    if (!controllerActive || !port) return;
+    try {
+      await writeBytes(`JOG ${axis} ${controllerValues[axis]}\n`);
+    } catch (error) {
+      showToast(`UARTへ送信できませんでした: ${error.message}`, "error");
+    }
+  }
+
+  function jogAxis(axis, direction) {
+    sendControllerValue(axis, controllerValues[axis] + controllerAxes[axis].step * direction);
+  }
+
+  async function centerJog() {
+    for (const axis of ["X", "Y", "Z"]) await sendControllerValue(axis, controllerAxes[axis].center);
   }
 
   function setConnection(state, label) {
@@ -814,9 +1050,11 @@ class SCS009PIO:
       elements.connect.lastChild.textContent = " 切断する";
       showToast("RPボードに接続しました。", "success");
       appendConsole("\n[接続しました]\n");
+      updateControllerConnection();
     } catch (error) {
       port = null;
       setConnection("offline", "未接続");
+      updateControllerConnection();
       if (error.name !== "NotFoundError") showToast(`接続できませんでした: ${error.message}`, "error");
     }
   }
@@ -824,6 +1062,7 @@ class SCS009PIO:
   async function disconnect() {
     const activePort = port;
     port = null;
+    controllerActive = false;
     try {
       if (reader) await reader.cancel();
       if (readLoopPromise) await readLoopPromise;
@@ -835,9 +1074,18 @@ class SCS009PIO:
     elements.connect.lastChild.textContent = " RPボードを接続";
     setConnection("offline", "未接続");
     appendConsole("\n[切断しました]\n");
+    updateControllerConnection();
   }
 
   async function runProgram() {
+    if (getUartControllerBlock()) {
+      if (controllerActive) {
+        showToast("コントローラはすでに動作中です。");
+        return;
+      }
+      await connectController();
+      return;
+    }
     setBusy(true, "実行中…");
     showTab("console");
     try {
@@ -852,6 +1100,8 @@ class SCS009PIO:
   }
 
   async function saveProgram() {
+    controllerActive = false;
+    updateControllerConnection();
     setBusy(true, "保存中…");
     showTab("console");
     try {
@@ -872,6 +1122,8 @@ class SCS009PIO:
       await writeControl(0x03, 0x03, 0x02);
       appendConsole("\n[停止しました]\n");
       showToast("プログラムを停止しました。");
+      controllerActive = false;
+      updateControllerConnection();
     } catch (error) {
       showToast(error.message, "error");
     }
@@ -907,6 +1159,34 @@ class SCS009PIO:
     elements.serialConsole.textContent = "";
     consoleStarted = true;
   });
+  elements.menuButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setMenuOpen(elements.appMenu.hidden);
+  });
+  elements.appMenu.addEventListener("click", (event) => event.stopPropagation());
+  elements.controllerMenuItem.addEventListener("click", openController);
+  elements.controllerClose.addEventListener("click", closeController);
+  elements.controllerConnect.addEventListener("click", connectController);
+  elements.jogCenter.addEventListener("click", centerJog);
+  for (const button of document.querySelectorAll("[data-jog-axis]")) {
+    button.addEventListener("click", () => jogAxis(button.dataset.jogAxis, Number(button.dataset.jogDirection)));
+  }
+  document.addEventListener("click", () => setMenuOpen(false));
+  document.addEventListener("keydown", (event) => {
+    if (elements.controllerDrawer.getAttribute("aria-hidden") !== "false") return;
+    if (event.target.closest("input, select, textarea, button")) return;
+    const commands = {
+      ArrowLeft: ["X", -1], ArrowRight: ["X", 1], ArrowUp: ["Y", 1], ArrowDown: ["Y", -1],
+      "[": ["Z", -1], "]": ["Z", 1],
+    };
+    if (event.code === "Space") {
+      event.preventDefault();
+      centerJog();
+    } else if (commands[event.key]) {
+      event.preventDefault();
+      jogAxis(...commands[event.key]);
+    }
+  });
 
   navigator.serial?.addEventListener("disconnect", (event) => {
     if (event.target === port) disconnect();
@@ -923,4 +1203,6 @@ class SCS009PIO:
   updateBoardUi();
   elements.pythonCode.textContent = generatePython();
   setConnection("offline", "未接続");
+  updateControllerConnection();
+  updateControllerUi();
 })();

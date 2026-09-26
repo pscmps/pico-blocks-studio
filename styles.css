@@ -38,6 +38,8 @@ select:focus-visible {
 }
 
 .topbar {
+  position: relative;
+  z-index: 130;
   height: 72px;
   display: flex;
   align-items: center;
@@ -83,13 +85,25 @@ select:focus-visible {
   background: #f59e0b;
 }
 
-.device-strip { gap: 14px; }
+.device-strip { gap: 12px; }
 .connection-state { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.88rem; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); box-shadow: 0 0 0 4px rgba(152, 162, 179, 0.14); }
 .connection-state[data-state="online"] { color: var(--teal); }
 .connection-state[data-state="online"] .status-dot { background: var(--teal); box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12); }
 .connection-state[data-state="busy"] { color: var(--orange); }
 .connection-state[data-state="busy"] .status-dot { background: var(--orange); animation: pulse 1s infinite alternate; }
+
+.menu-wrap { position: relative; }
+.menu-button { width: 42px; height: 42px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); background: var(--surface); cursor: pointer; }
+.menu-button:hover, .menu-button[aria-expanded="true"] { color: var(--ink); background: var(--surface-2); }
+.menu-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.app-menu { position: absolute; z-index: 120; top: calc(100% + 9px); right: 0; width: 242px; padding: 7px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 14px 34px rgba(16, 24, 40, 0.13); }
+.app-menu button { width: 100%; display: grid; gap: 3px; padding: 11px 12px; border: 0; border-radius: 8px; color: var(--ink); background: transparent; text-align: left; cursor: pointer; }
+.app-menu button:not(:disabled):hover { background: var(--surface-2); }
+.app-menu button:disabled { color: var(--faint); cursor: not-allowed; }
+.app-menu span { font-size: 0.84rem; font-weight: 750; }
+.app-menu small { color: var(--muted); font-size: 0.69rem; }
+.app-menu button:disabled small { color: var(--faint); }
 
 .app-shell {
   height: calc(100vh - 72px);
@@ -118,7 +132,7 @@ select:focus-visible {
 .wiring-toggle { min-width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 8px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); background: var(--surface-2); font: inherit; font-size: 0.72rem; font-weight: 800; cursor: pointer; }
 .wiring-toggle:hover { color: var(--ink); }
 .wiring-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.wiring-content { min-width: 300px; padding: 17px 15px 16px; overflow-y: auto; }
+.wiring-content { grid-column: 2; min-width: 300px; padding: 17px 15px 16px; overflow-y: auto; }
 .wiring-heading { min-height: 34px; display: flex; align-items: flex-start; justify-content: space-between; padding-right: 78px; }
 .original-diagram { color: var(--faint); font-size: 0.66rem; border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px; white-space: nowrap; }
 .wiring-summary { min-height: 38px; margin: 10px 0 12px; color: var(--muted); font-size: 0.76rem; line-height: 1.55; }
@@ -207,6 +221,44 @@ h2 { font-size: 1.05rem; }
 .help-card p { margin: 0 0 15px; font-size: 0.75rem; line-height: 1.65; }
 .firmware-link { color: var(--teal); text-underline-offset: 3px; }
 
+.controller-drawer { position: fixed; z-index: 110; top: 72px; right: 0; width: min(390px, 100vw); height: calc(100vh - 72px); padding: 22px; overflow-y: auto; border-left: 1px solid var(--line); background: rgba(255, 255, 255, 0.98); box-shadow: -18px 0 45px rgba(16, 24, 40, 0.11); transform: translateX(0); transition: transform 180ms ease, visibility 180ms ease; }
+.controller-drawer[aria-hidden="true"] { visibility: hidden; transform: translateX(102%); }
+.controller-heading { display: flex; align-items: flex-start; justify-content: space-between; }
+.controller-kicker { display: block; margin-bottom: 5px; color: #6d5bd0; font-size: 0.67rem; font-weight: 800; letter-spacing: 0.14em; }
+.controller-lead { margin: 13px 0 20px; color: var(--muted); font-size: 0.8rem; line-height: 1.65; }
+.controller-connection { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 15px 0 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.controller-connection > div { display: grid; gap: 3px; }
+.controller-connection strong { font-size: 0.82rem; }
+.controller-connection small { color: var(--muted); font-size: 0.7rem; }
+.controller-connection .button { width: 100%; }
+.controller-connection .button.is-connected { color: var(--teal); border-color: #99d5ce; background: #f0fdfa; }
+.axis-readout { display: grid; grid-template-columns: repeat(3, 1fr); margin: 22px 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.axis-readout div { min-width: 0; display: grid; justify-items: center; gap: 4px; padding: 13px 5px 11px; background: #fff; }
+.axis-readout div + div { border-left: 1px solid var(--line); }
+.axis-readout span { color: #6d5bd0; font-size: 0.68rem; font-weight: 850; }
+.axis-readout strong { font-size: 1.28rem; font-variant-numeric: tabular-nums; }
+.axis-readout small { max-width: 100%; overflow: hidden; color: var(--muted); font-size: 0.61rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.jog-pad { width: 196px; display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 58px); gap: 8px; margin: 4px auto 20px; }
+.jog-pad button, .z-jog button { border: 1px solid var(--line); border-radius: 13px; color: #4537a5; background: #f5f3ff; font-size: 1.35rem; font-weight: 700; cursor: pointer; }
+.jog-pad button:hover, .z-jog button:hover { border-color: #b9afea; background: #eeebff; }
+.jog-pad button:active, .z-jog button:active { transform: translateY(1px); }
+.jog-pad button:nth-child(1) { grid-column: 2; grid-row: 1; }
+.jog-pad button:nth-child(2) { grid-column: 1; grid-row: 2; }
+.jog-pad span { grid-column: 2; grid-row: 2; display: grid; place-items: center; color: var(--faint); font-size: 0.68rem; font-weight: 800; }
+.jog-pad button:nth-child(4) { grid-column: 3; grid-row: 2; }
+.jog-pad button:nth-child(5) { grid-column: 2; grid-row: 3; }
+.z-jog { display: grid; grid-template-columns: auto 48px minmax(72px, 1fr) 48px; align-items: center; gap: 8px; margin: 0 0 13px; }
+.z-jog > span { color: #6d5bd0; font-size: 0.76rem; font-weight: 850; }
+.z-jog button { height: 44px; }
+.z-jog strong { text-align: center; font-variant-numeric: tabular-nums; }
+.center-button { width: 100%; min-height: 44px; border: 1px solid #b9afea; border-radius: 11px; color: #4537a5; background: #fff; font-weight: 750; cursor: pointer; }
+.center-button:hover { background: #f8f7ff; }
+kbd { margin-left: 7px; padding: 2px 7px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; color: var(--muted); background: var(--surface-2); font: 0.67rem/1.4 inherit; }
+.controller-note { margin-top: 22px; padding-top: 17px; border-top: 1px solid var(--line); color: var(--muted); }
+.controller-note strong { color: var(--ink); font-size: 0.76rem; }
+.controller-note p { margin: 7px 0 0; font-size: 0.7rem; line-height: 1.6; }
+.controller-note code { padding: 2px 5px; border-radius: 4px; background: var(--surface-3); font: 0.68rem "Cascadia Code", Consolas, monospace; }
+
 .toast-region { position: fixed; right: 20px; bottom: 20px; z-index: 10000; display: grid; gap: 8px; }
 .toast { max-width: 360px; padding: 12px 15px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-2); color: var(--ink); box-shadow: var(--shadow); font-size: 0.82rem; animation: toast-in 180ms ease-out; }
 .toast[data-kind="error"] { border-color: rgba(255, 113, 133, 0.5); }
@@ -240,6 +292,7 @@ h2 { font-size: 1.05rem; }
   .app-shell, .app-shell.wiring-collapsed { height: auto; min-height: calc(100vh - 72px); grid-template-columns: 1fr; padding: 10px; }
   .wiring-panel { min-height: 420px; }
   .wiring-content { min-width: 0; }
+  .wiring-diagram, .wiring-diagram.is-board-only { height: min(62vh, 620px); aspect-ratio: auto; }
   .app-shell.wiring-collapsed .wiring-panel { min-height: 44px; grid-template-columns: 44px 0; }
   .app-shell.wiring-collapsed .wiring-toggle { min-height: 34px; width: auto; flex-direction: row; }
   .app-shell.wiring-collapsed .wiring-toggle span { writing-mode: horizontal-tb; letter-spacing: normal; }
@@ -252,6 +305,9 @@ h2 { font-size: 1.05rem; }
   .brand small { display: none; }
   .brand-mark { width: 34px; height: 34px; }
   .button-secondary svg { display: none; }
+  .device-strip { gap: 7px; }
+  .device-strip > .button-secondary { font-size: 0.75rem; }
+  .controller-drawer { padding: 18px; }
   .panel-heading { height: 70px; padding-inline: 13px; }
   h1 { font-size: 1rem; }
   .blocklyToolboxDiv { width: 96px !important; }
