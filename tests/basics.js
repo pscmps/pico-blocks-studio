@@ -6,7 +6,7 @@ const Exchange = require('../exchange.js');
 const Basic = require('../basic.js');
 const app = fs.readFileSync('app.js', 'utf8');
 const workspace = new Blockly.Workspace();
-const context = vm.createContext({Blockly, BasicBlocks: Basic, ServoBlocks: require('../servo.js'), PicoJog: require('../jog.js'), workspace,
+const context = vm.createContext({Blockly, BasicBlocks: Basic, ServoBlocks: require('../servo.js'), PicoJog: require('../jog.js'), GeekDisplay: require('../display.js'), workspace,
   localStorage: {getItem: () => 'pico'}, encoder: new TextEncoder(), showToast: () => {}});
 vm.runInContext(app.slice(app.indexOf('  const PICO_PINS'), app.indexOf('  const elements')), context);
 vm.runInContext(app.slice(app.indexOf('  const theme'), app.indexOf('  const workspace')), context);
@@ -36,6 +36,7 @@ function generate(data) {
 for (const board of Object.keys(profiles)) {
   const schema=catalog(board);
   assert.equal(Boolean(schema.wifi_jog_setup),Boolean(profiles[board].wifi));
+  assert.equal(Boolean(schema.lcd_print),profiles[board].layout === 'geek');
   assert.equal(JSON.stringify(schema.basic_adc.fields.PIN.options),JSON.stringify(profiles[board].pins.filter(p=>p>=26&&p<=29).map(String)));
   const categories=vm.runInContext('buildToolbox().contents.map(c=>c.name)',context);
   assert.ok(categories.indexOf('PWMサーボ')<categories.indexOf('SCS009'));
@@ -48,6 +49,17 @@ for (const board of Object.keys(profiles)) {
   generate(wrap(node('basic_print',{}, {VALUE:node('basic_adc',{PIN:schema.basic_adc.fields.PIN.options[0],MODE:'RAW'})}),board));
 }
 const schema=catalog();
+for (const board of ['rp2040_geek','rp2350_geek']) {
+  const source=generate(wrap(chain(node('lcd_clear'),node('lcd_usb_mirror',{ENABLED:'1'}),node('basic_print',{}, {VALUE:node('basic_text',{TEXT:'READY'})}),node('lcd_print',{}, {VALUE:num(123)}),node('lcd_line',{ROW:2},{VALUE:node('basic_adc',{PIN:'28',MODE:'RAW'})}),node('uart_controller_setup')),board));
+  assert.ok(source.includes('_get_lcd().println(123)'));
+  assert.ok(source.includes('_lcd_serial_print("READY")'));
+  assert.ok(source.includes('_get_lcd().line(2, (_adc_28.read_u16()))'));
+  assert.equal((source.match(/class GeekTextLCD:/g)||[]).length,1);
+  assert.ok(vm.runInContext('validateProgram()',context));
+  vm.runInContext("selectedBoard='pico'",context);
+  assert.equal(vm.runInContext('validateProgram()',context),false);
+}
+assert.throws(()=>parse(wrap(node('lcd_print',{}, {VALUE:num(1)}),'pico')),/未対応/);
 for (const [type,spec] of Object.entries(schema).filter(([type])=>type.startsWith('basic_'))) {
   const fields=Object.fromEntries(Object.entries(spec.fields).map(([name,f])=>[name,f.default]));
   const b=node(type,fields);

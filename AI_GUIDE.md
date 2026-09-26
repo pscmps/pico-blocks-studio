@@ -105,6 +105,7 @@ ADCは `read_u16()` の0〜65535、入力0〜3.3 V。5 Vを入れない。`VOLT`
 - 固定値の細かな速度指定には従来の `*_move` を使う。可動範囲は機構に合わせてさらに狭める。
 - バスサーボには `*_torque` の `ID` と `STATE: "1"` を明示してから動かす。接続だけではトルクONにしない。XL330/STS3215/STS3235は標準の単回転位置モード専用。STS3235は `sts3235_setup/ping/read/torque/move/value/bind` を使い、フィールドはSTS3215と同じです。
 - `SPEED` はサーボへ送る速度の生値で、msではありません。JOGの `STEP` はキー1回あたりの位置差です。
+- GEEK2機種だけ `lcd_print`（VALUEを改行表示）、`lcd_line`（ROW:1〜8とVALUEで指定行を上書き）、`lcd_clear`、`lcd_usb_mirror`（ENABLED:"1"/"0"、basic_printだけを複写）が使えます。VALUEにはbasic_text・数値・変数を接続できます。15文字×8行、白文字、英数字と半角記号のみ。日本語は?へ置換されます。改行表示は折り返し・スクロール、指定行は15文字で切り詰めです。追加の接続・初期化ブロックは不要です。USB受信やJOG通信をLCDへ自動転送しません。
 - PWMは番号・GPIOを分けて接続を追加すると、配線図のコネクタが番号別に色分けされます。シリアルサーボは同種の接続ブロック1個と異なるIDの操作・割り当てを使い、配線図にはIDごとのデイジーチェーンが描かれます。混在時は全種類を同じ図へ描き、シリアル系にはPWMと重複しない種類別の固定色を使います。V+は種類ごとに分離しGNDを共通にします。実機のIDは事前に別々に設定し、図の色と実物の線色を混同しないでください。
 - `uart_controller_setup` は書き込み用USBと同じ口でJOGを受信。W付きPicoのみ `wifi_jog_setup` の `SSID/PASSWORD` でアクセスポイントを作れる。
 - JOGの `AXIS` はY（↑↓）、X（←→）、Z（WS）、R（AD）。割り当ては `uart_scs_bind` / `xl330_bind` / `sts3215_bind` / `pwm_bind`。`ID`（PWMは番号）、`CENTER`、`STEP`、バスサーボは `SPEED` を指定する。

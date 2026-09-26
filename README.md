@@ -108,6 +108,27 @@ STS3235はSTS系のlittle-endianパケット・メモリテーブルを使い、
 
 ## 使い方
 
+### GEEK内蔵LCDの文字表示
+
+RP2040-GEEK / RP2350-GEEKでは「基本 → LCD文字表示」を使用できます。Pico / XIAOではカテゴリを隠し、LCDブロックを残してボードを変更した場合は実行・保存を拒否します。
+
+- 「LCDに〜を改行して表示」: 文字列・数値・変数を表示。15文字で折り返し、8行を超えると上へスクロール。
+- 「LCDの〜行目に〜を表示」: 1〜8行目を上書き。15文字まで。以前の長い文字列は残りません。改行ログの挿入位置は変えません。
+- 「LCDの文字をすべて消す」: 全画面を黒くし、ログの挿入位置を1行目へ戻します。
+- 「USBシリアル表示をLCDにも表示する／しない」: その実行後の `basic_print` のみを複写。受信データ・JOGプロトコル・サーボの内部ログ・すべてのPython printを自動複写するものではありません。
+
+標準8×8フォントを2倍にして白文字・黒背景で描きます。英数字と半角記号に対応し、日本語等は `?` に置換します。図形、任意色、日本語フォント、USB受信文字列の自動表示は今回の範囲外です。くり返し更新には100 ms程度の待ち時間を入れてください。
+
+ST7789、SPI1 24 MHz、DC=GP8 / CS=GP9 / SCK=GP10 / MOSI=GP11 / RST=GP12 / BL=GP25。横240×縦135、MADCTL=0x70、RAMオフセット(40,53)。SPI初期化がGP8をMISOへ設定する古いファームも考慮し、初期化後にGP8をD/C出力に戻します。バックライトはPWMを使わずON/OFFのみなのでサーボPWMチャンネルを消費しません。PIOも使用しません。
+
+全画面RGBバッファを置かず、120バイトの文字用モノクロバッファと480バイトの送信用行バッファで描きます。ドライバは生成プログラム内に含め、最初の表示時に初期化します。追加ライブラリや専用UF2は不要です。**実機でのLCD表示は未検証**です。
+
+参照した既存実装は [GEEK用Cドライバ](https://github.com/pscmps/dynamixel-pio-xl330-m077-t-rp2040/blob/1522efcbecaf9a2fe6a8c7b3629f5df566a5518a/firmware/pico-sdk-rp2040-geek/src/rp2040_geek_lcd.c)（Pico SDK版）です。指定されたRθ関連Zephyr版は未特定で、直接移植したものではありません。端子情報は [Zephyr公式GEEKボード資料](https://docs.zephyrproject.org/latest/boards/waveshare/rp2040_geek/doc/index.html) と [Waveshare RP2350-GEEK回路図](https://files.waveshare.com/wiki/RP2350-GEEK/RP2350-GEEK.pdf) を照合しています。フォントは [MicroPython framebuf](https://docs.micropython.org/en/v1.29.0/library/framebuf.html) の標準フォントを使用し、既存Cフォントのデータは複製していません。
+
+`python tests/display_runtime.py` でSPI初期化・画面範囲・2倍描画・折り返し・上書き・複写・エラー時CS解除・生成Python構文を検査できます。
+
+### 基本操作
+
 1. 画面右側で使用するボードを選びます。
 2. 「初期ファームを書き込む」を開き、機種別の手順でMicroPythonを書き込みます。
 3. PC版のChromeまたはEdgeで公開ページを開きます。

@@ -275,6 +275,7 @@
 
   ServoBlocks.register(Blockly, pinOptions);
   BasicBlocks.register(Blockly, pinOptions, adcOptions);
+  GeekDisplay.register(Blockly);
 
   Blockly.Blocks.uart_controller_setup = {
     init() {
@@ -341,6 +342,7 @@
             contents: motionBlocks,
           },
           ...BasicBlocks.toolbox(),
+          ...GeekDisplay.toolbox(selectedBoard),
         ],
       },
       {
@@ -583,7 +585,7 @@ class SCS009PIO:
           break;
         }
         default:
-          piece = BasicBlocks.statement(current, chainToPython, indent, Boolean(getUartControllerBlock())) || ServoBlocks.statement(current) || `pass  # 未対応のブロック: ${current.type}\n`;
+          piece = GeekDisplay.statement(current, BasicBlocks.expression, workspace.getAllBlocks(false)) || BasicBlocks.statement(current, chainToPython, indent, Boolean(getUartControllerBlock())) || ServoBlocks.statement(current) || `pass  # 未対応のブロック: ${current.type}\n`;
       }
       code += piece;
       current = current.getNextBlock();
@@ -621,7 +623,7 @@ class SCS009PIO:
       body += `\n# PCからのJOG指令を待ちます\nwhile True:\n    _controller_poll()\n    time.sleep_ms(5)\n`;
     }
     const serialImports = uartSetup ? "\nimport sys\nimport select\nimport json" : "";
-    return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks)}${BasicBlocks.runtime(allBlocks)}${ledCode}${uartCode}\n${body}`;
+    return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks)}${BasicBlocks.runtime(allBlocks)}${GeekDisplay.runtime(allBlocks)}${ledCode}${uartCode}\n${body}`;
   }
 
   const PICO_LEFT_PINS = ["GP0", "GP1", "GND", "GP2", "GP3", "GP4", "GP5", "GND", "GP6", "GP7", "GP8", "GP9", "GND", "GP10", "GP11", "GP12", "GP13", "GND", "GP14", "GP15"];
@@ -702,7 +704,7 @@ class SCS009PIO:
       <path d="M79 24h102v20H79z" class="usb"/>
       <rect x="63" y="61" width="134" height="76" rx="8" class="lcd"/>
       <text x="130" y="91" text-anchor="middle" class="board-title">${profile.name.replace("Waveshare ", "")}</text>
-      <text x="130" y="108" text-anchor="middle" class="board-subtitle">LCDはこの図では未使用</text>
+      <text x="130" y="108" text-anchor="middle" class="board-subtitle">内蔵LCD · 240 × 135</text>
       <rect x="88" y="149" width="84" height="32" rx="7" class="chip"/>
       <text x="130" y="168" text-anchor="middle" class="board-subtitle">EXTERNAL CONNECTORS</text>
       ${connectors}`;
@@ -776,6 +778,7 @@ class SCS009PIO:
     const profile = BOARD_PROFILES[selectedBoard];
     elements.boardSelect.value = selectedBoard;
     $("#wifiHelp").hidden = !profile.wifi;
+    $("#lcdHelp").hidden = !GeekDisplay.supported(selectedBoard);
     elements.boardPinHint.textContent = `接続で選べる端子: ${profile.pins.map(pinLabel).join(" · ")}${profile.layout === "xiao" ? "。今回は両側のD0〜D10端子に対応（背面パッドは対象外）。" : ""}`;
     elements.firmwareLink.href = profile.firmwareUrl;
     elements.firmwareLink.textContent = `${profile.name}用ファームを入手 ↗`;
@@ -815,6 +818,8 @@ class SCS009PIO:
     selectedBoard = boardId;
     localStorage.setItem("picoblocks-board-v1", selectedBoard);
     workspace.updateToolbox(buildToolbox());
+    workspace.getToolbox()?.clearSelection();
+    workspace.getFlyout()?.hide();
     validateSCS009Pins();
     updateBoardUi();
     elements.pythonCode.textContent = generatePython();
@@ -877,6 +882,7 @@ class SCS009PIO:
     const blocks = workspace.getAllBlocks(false);
     const wifi = blocks.filter(block => block.type === "wifi_jog_setup");
     let error = "";
+    if (GeekDisplay.uses(blocks) && !GeekDisplay.supported(selectedBoard)) error = "LCD文字表示はRP2040-GEEK / RP2350-GEEK専用です。ボードを選び直すかLCDブロックを外してください。";
     const bindings = blocks.filter(block => /^(uart_scs|xl330|sts3215|sts3235|pwm)_bind$/.test(block.type));
     if (new Set(bindings.map(b => b.getFieldValue("AXIS"))).size !== bindings.length) error = "JOGの同じ軸への割り当ては1個だけにしてください。USBとWi-Fiで共用します。";
     if (wifi.length && !BOARD_PROFILES[selectedBoard].wifi) error = "Wi-Fi JOGはPico W / Pico 2 Wで使えます。ボードを選び直すかWi-Fiブロックを外してください。";

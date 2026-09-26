@@ -244,6 +244,7 @@
       <div class="exchange-heading"><h2 id="helpTitle">HELP</h2><button id="helpClose" type="button" aria-label="HELPを閉じる">×</button></div>
       <p>知りたい項目だけ開いてください。</p>
       <button id="showFirstRun" class="button button-secondary" type="button">初回案内をもう一度表示</button>
+      <details id="lcdHelp" class="help-card" hidden><summary>GEEKのLCD文字表示</summary><p>GEEKを選ぶと「基本 → LCD文字表示」が出ます。初期化や追加配線は不要。文字列・数値・変数をつなぎ、改行表示／指定行の書き換え／全消去ができます。</p><p>白文字・黒背景で15文字×8行。改行表示は折り返し・スクロール、指定行は15文字で切り詰めます。英数字・半角記号に対応し、日本語などは「?」に置き換えます。</p><p>「USBシリアル表示をLCDにも表示する」を実行すると、その後の「USBシリアルへ表示」ブロックの内容が両方に出ます。PCからの受信・サーボ読取りの内部ログ・JOG通信は自動転送しません。くり返し表示には100 ms程度の待ち時間を入れてください。</p><p>ドライバは生成Pythonに含まれ、初期ファームの入れ直し・追加ライブラリの転送は不要です。実機での表示は未確認です。</p></details>
       <details class="help-card"><summary>ブロックの操作・対話AIとの受け渡し</summary><p>左のツリーからブロックを置き、「プログラム開始」につなぎます。ブロック本体をダブルクリックすると複製できます。</p><p>メニューの「対話AIとプログラムを作る」で依頼文をコピーし、返答のJSONを取り込めます。取り込みは現在のブロックを置き換えますが、直前の状態に戻せます。</p></details>
       <details class="help-card" id="jogHelp"><summary>USBとWi-FiのJOG割り当て</summary><p>PWM・SCS009・XL330・STS3215・STS3235の割り当てはUSB／Wi-Fi共通。Wi-Fi JOGだけならUART開始ブロックは不要です。</p><p>「速度値 500」はサーボに送る機種固有の設定値で、500 msではありません。「増減幅」はキー1回で動かす位置の差です。同じ速度値でも機種によって速さは異なります。PWMのJOGは角度の増減幅だけを指定します。</p><p>両方から操作すると、同じ指令位置を処理順に増減します。優先権・排他ロックはないため、操作者を決めてください。同じ軸への割り当ては1個だけです。</p><p>↑↓＝Y、←→＝X、W/S＝Z、A/D＝R、Space＝中央復帰。表示は実測位置ではなく指令位置です。</p></details>
       <details class="help-card"><summary>サーボを複数つなぐときの配線図</summary><p>PWMは番号とGPIOを分けて接続ブロックを追加します。全台のコネクタ・信号線が番号別の色で表示されます。色は図で見分けるためのものです。</p><p>シリアルサーボは同じ種類の接続ブロックを1個にして、操作・JOGブロックのIDを変えます。重複を除いたIDごとにコネクタが増え、DATA・V+・GNDのデイジーチェーンを表示します。ID未指定のときは仮のコネクタ1個です。SCSの標準JOG割り当ても表示対象です。</p><p>接続図は実機検出ではありません。同じバスの各サーボには事前に異なるIDを設定してください（この画面ではIDを書き換えません）。実物の端子順・定格電圧を確認し、台数に応じた電源と配線容量を確保してください。異なる電圧のサーボ電源は共用しません。</p></details>
@@ -282,6 +283,7 @@
     <script src="./wiring.js?v=mixed-wiring2"></script>
     <script src="./exchange.js?v=basics1"></script>
     <script src="./boot.js?v=boot1"></script>
-    <script src="./app.js?v=mixed-wiring2"></script>
+    <script src="./display.js?v=lcd1"></script>
+    <script src="./app.js?v=lcd1"></script>
   </body>
 </html>
