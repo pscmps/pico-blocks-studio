@@ -43,6 +43,7 @@ npm test
 python tests/basics_runtime.py
 python tests/servo_runtime.py
 python tests/jog_runtime.py
+python tests/boot_runtime.py
 ```
 
 基本ブロック・8ボードの候補・入力検査・取り込み失敗時の保護・バックアップ復元・Python構文と模擬実行を検査します。実機のADC精度やサーボ動作はこの検査には含みません。
@@ -94,7 +95,27 @@ XL330は外部3.7〜6.0 V電源（初回5 V）、DATAへの220 Ω直列保護抵
 2. 「初期ファームを書き込む」を開き、機種別の手順でMicroPythonを書き込みます。
 3. PC版のChromeまたはEdgeで公開ページを開きます。
 4. USBでボードを接続し、「RPボードを接続」を押します。
-5. ブロックを組み、「今すぐ実行」または「main.pyに保存」を押します。
+5. ブロックを組み、「今すぐ実行」または「保存して実行」を押します。
+
+### 書き込み待機と単独実行
+
+「保存して実行」は、生成プログラムと起動ゲートを `main.py` に保存します。保存中は一時ファイルへ書いて内容を照合してから置き換えます。通常の試運転や接続だけでは保存内容は変わりません。初期UF2は従来どおり各機種用のMicroPythonを使用し、特別なファームへの変更は不要です。
+
+- 通常の電源ON／RSTでは、ユーザープログラムの開始前に3秒間BOOTを確認し、その後に保存プログラムを実行します。
+- **電源ON／RSTを離した後**に3秒以内にBOOT（BOOTSEL）を押すと、その起動だけユーザープログラムを実行せずREPLへ戻ります。次回の普通の再起動ではまた自動実行します。
+- BOOTを押したまま電源ON／RSTすると、Python待機ではなくROMのUF2モードになります。BOOTを離して再起動してください。
+- 純正Pico / Pico W / Pico 2 / Pico 2 WにはRSTボタンがありません。電源入れ直し、またはRUN–GND間に追加したリセットボタンを使います。GEEK / XIAOではRST／RESETを使えます。
+- 接続中に「書き込み待機」を押すと、Ctrl-Cからraw REPLへ移り、soft resetで以前のPWM・PIO・ネットワーク等を片付けてから通常REPLへ戻ります。raw REPLのsoft resetではmain.pyは再実行されません。保存ファイルは消しません。
+- 「今すぐ実行」は保存を変更しない一時実行です。無限ループでも完了待ちにはせず、停止ボタンで中断できます。
+- 「停止」はPythonの中断です。PWMなどが残る場合があります。「書き込み待機」で周辺機能をリセットしても、バスサーボの保持トルクは残る場合があります。いずれも緊急停止の代替ではありません。
+- USBを抜いてもボードとサーボへの適切な給電が続けば動作を継続します。電源も切れたら、次回給電時に最後に保存したmain.pyが起動します。Wi-Fi JOGはPC不要です。
+- BOOTを読むAPIがない／読み取りに失敗するファームでは、勝手に実行せず書き込み待機に入ります。対応する新しい機種別MicroPythonへ更新してください。
+
+右側のモード表示はこの接続で確認できた状態です。再接続直後は「モード未確認」となり、自動的に保存プログラムを止めたり起動したりしません。BOOT待機は**この版で保存し直したプログラム**にだけ追加されます。旧main.pyや一時実行には追加されません。
+
+USB / Wi-FiのJOG割り当ては共通です。Wi-FiだけならUART開始ブロックは不要です。両方から操作すると、ボードの処理順に同じ指令位置を更新します（排他ロックや片側優先はなし）。同じ軸への複数の割り当ては拒否します。
+
+参考: [MicroPython起動手順・raw REPLのsoft reset](https://docs.micropython.org/en/latest/reference/reset_boot.html)、[BOOTSEL API](https://docs.micropython.org/en/latest/library/rp2.html#rp2.bootsel_button)、[RP2040/RP2350対応の実装](https://github.com/micropython/micropython/blob/v1.29.0/ports/rp2/modrp2.c)、[Picoリセット操作](https://www.raspberrypi.com/news/how-to-add-a-reset-button-to-your-raspberry-pi-pico/)。起動ゲートと保存処理は模擬環境で検査済みですが、各基板の実ボタン操作・USB再接続・サーボ実機動作は未検証です。
 
 左側の「基本」「UART」「SCS009」は開閉できるツリーです。「SCS009」内にはPIO通信の準備、トルクON/OFF、位置移動ブロックがあります。「プログラム開始」はワークスペースに最初から1個だけ固定され、ツリーから追加したり削除したりできません。LCDは機種ごとに処理が異なるため、表示カテゴリは設けていません。
 

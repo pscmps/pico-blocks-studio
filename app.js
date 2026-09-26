@@ -89,6 +89,8 @@
     run: $("#runButton"),
     save: $("#saveButton"),
     stop: $("#stopButton"),
+    writeMode: $("#writeModeButton"),
+    boardMode: $("#boardMode"),
     undo: $("#undoButton"),
     redo: $("#redoButton"),
     copy: $("#copyButton"),
@@ -133,6 +135,11 @@
   let serialBuffer = "";
   let consoleStarted = false;
   let isBusy = false;
+  let boardMode = "UNKNOWN";
+  function setBoardMode(mode) {
+    boardMode = mode;
+    elements.boardMode.textContent = ({UNKNOWN:"モード未確認",BOOT:"起動待ち · BOOT受付中",WRITE:"書き込み待機",RUN:"実行中",FINISHED:"実行終了",STOPPED:"中断中（出力は要確認）"})[mode] || "モード未確認";
+  }
   const waiters = new Set();
   let controllerActive = false;
   let controllerConfigSignature = "";
@@ -780,6 +787,9 @@ class SCS009PIO:
   }
 
   function updateBoardUi() {
+    $("#resetHint").textContent = BOARD_PROFILES[selectedBoard].layout === "pico"
+      ? "純正Pico系にRSTボタンはありません。電源の入れ直し、またはRUN–GNDへ追加したリセットボタンを使います。"
+      : "この基板ではRST／RESETボタン、または電源の入れ直しを使います。BOOT判定には対応するMicroPythonが必要です。";
     const profile = BOARD_PROFILES[selectedBoard];
     elements.boardSelect.value = selectedBoard;
     $("#wifiHelp").hidden = !profile.wifi;
@@ -887,6 +897,8 @@ class SCS009PIO:
     const blocks = workspace.getAllBlocks(false);
     const wifi = blocks.filter(block => block.type === "wifi_jog_setup");
     let error = "";
+    const bindings = blocks.filter(block => /^(uart_scs|xl330|sts3215|pwm)_bind$/.test(block.type));
+    if (new Set(bindings.map(b => b.getFieldValue("AXIS"))).size !== bindings.length) error = "JOGの同じ軸への割り当ては1個だけにしてください。USBとWi-Fiで共用します。";
     if (wifi.length && !BOARD_PROFILES[selectedBoard].wifi) error = "Wi-Fi JOGはPico W / Pico 2 Wで使えます。ボードを選び直すかWi-Fiブロックを外してください。";
     if (wifi.length > 1) error = "Wi-Fiサーバの開始ブロックは1個にしてください。";
     if (wifi.length) {
@@ -1012,10 +1024,11 @@ class SCS009PIO:
       showTab("console");
       await enterRawRepl();
       serialBuffer = "";
-      await writeSource(generatePython());
+      await writeSource('print("")\n' + generatePython());
       await writeControl(0x04);
       await waitFor("OK", 3000);
       await waitFor("PICOBLOCKS_READY", 15000);
+      setBoardMode("RUN");
       controllerActive = true;
       showToast("同じUSB接続でコントローラを開始しました。", "success");
     } catch (error) {
@@ -1050,9 +1063,11 @@ class SCS009PIO:
     const connected = state === "online" || state === "busy";
     elements.run.disabled = !connected || isBusy;
     elements.save.disabled = !connected || isBusy;
-    elements.stop.disabled = !connected;
+    elements.writeMode.disabled = !connected || isBusy;
+    elements.stop.disabled = !connected || isBusy;
+    elements.connect.disabled = isBusy;
     elements.actionHint.textContent = connected
-      ? "試運転は一時実行、保存すると次回の電源投入時にも動きます。"
+      ? "試運転は一時実行。「保存して実行」で単独動作とBOOTの待機切り替えが使えます。"
       : "先に「RPボードを接続」を押してください。";
   }
 
@@ -1069,6 +1084,11 @@ class SCS009PIO:
     while ((lineEnd = controllerOutput.indexOf("\n")) !== -1) {
       const line = controllerOutput.slice(0, lineEnd).trim();
       controllerOutput = controllerOutput.slice(lineEnd + 1);
+      if (line === "PICOBLOCKS_BOOT_WINDOW") setBoardMode("BOOT");
+      if (line === "PICOBLOCKS_MODE WRITE") setBoardMode("WRITE");
+      if (line === "PICOBLOCKS_MODE RUN") setBoardMode("RUN");
+      if (line === "PICOBLOCKS_FINISHED") setBoardMode("FINISHED");
+      if (line.includes("Traceback (most recent call last)")) setBoardMode("STOPPED");
       if (line.startsWith("PICOBLOCKS_STATE ")) {
         try {
           const values = JSON.parse(line.slice(17));
@@ -1177,6 +1197,7 @@ class SCS009PIO:
     await writeControl(0x04);
     await waitFor("soft reboot", 8000);
     await waitFor("raw REPL; CTRL-B to exit\r\n>", 8000);
+    setBoardMode("WRITE");
   }
 
   async function executeRaw(code, timeout = 9000) {
@@ -1213,6 +1234,7 @@ class SCS009PIO:
     try {
       port = await navigator.serial.requestPort();
       await port.open({ baudRate: 115200, bufferSize: 65536 });
+      setBoardMode("UNKNOWN");
       readLoopPromise = readLoop();
       setConnection("online", "接続済み");
       elements.connect.lastChild.textContent = " 切断する";
@@ -1231,6 +1253,7 @@ class SCS009PIO:
     const activePort = port;
     port = null;
     controllerActive = false;
+    setBoardMode("UNKNOWN");
     try {
       if (reader) await reader.cancel();
       if (readLoopPromise) await readLoopPromise;
@@ -1246,6 +1269,7 @@ class SCS009PIO:
   }
 
   async function runProgram() {
+    if (!port || isBusy) return;
     if (!validateProgram()) return;
     if (getUartControllerBlock()) {
       if (controllerActive) {
@@ -1258,9 +1282,13 @@ class SCS009PIO:
     setBusy(true, "実行中…");
     showTab("console");
     try {
-      await executeRaw(generatePython(), 30000);
-      await writeControl(0x02);
-      showToast("プログラムを実行しました。", "success");
+      await enterRawRepl();
+      serialBuffer = "";
+      await writeSource('print("\\nPICOBLOCKS_MODE RUN")\n' + generatePython() + '\nprint("PICOBLOCKS_FINISHED")\n');
+      await writeControl(0x04);
+      await waitFor("OK", 3000);
+      // Do not wait for an infinite user program to exit. Stop remains available.
+      showToast("一時実行を開始しました。保存内容は変更していません。", "success");
     } catch (error) {
       showToast(error.message, "error");
     } finally {
@@ -1269,6 +1297,7 @@ class SCS009PIO:
   }
 
   async function saveProgram() {
+    if (!port || isBusy) return;
     if (!validateProgram()) return;
     controllerActive = false;
     updateControllerConnection();
@@ -1276,10 +1305,22 @@ class SCS009PIO:
     showTab("console");
     try {
       const source = generatePython();
-      const saveCommand = `f=open('main.py','wb')\nf.write(${bytesLiteral(source)})\nf.close()\nprint('PicoBlocks: main.py saved')\n`;
+      const saveCommand = PicoBoot.saveCommand(source, bytesLiteral);
       await executeRaw(saveCommand, 12000);
+      if (!serialBuffer.includes("PICOBLOCKS_SAVED")) throw new Error("保存完了を確認できませんでした。");
+      serialBuffer = "";
+      setBoardMode("BOOT");
       await writeControl(0x02, 0x04);
-      showToast("main.pyに保存しました。ボードを再起動します。", "success");
+      await waitFor("PICOBLOCKS_MODE ", 10000);
+      if (serialBuffer.includes("PICOBLOCKS_MODE WRITE")) {
+        showToast("保存済みです。今回は書き込み待機に入りました。");
+      } else {
+        if (getUartControllerBlock()) {
+          await waitFor("PICOBLOCKS_READY", 15000);
+          controllerActive = true;
+        }
+        showToast("保存して起動しました。外部給電があればUSBを抜いても動作します。", "success");
+      }
     } catch (error) {
       showToast(error.message, "error");
     } finally {
@@ -1288,8 +1329,10 @@ class SCS009PIO:
   }
 
   async function stopProgram() {
+    if (!port || isBusy) return;
     try {
       await writeControl(0x03, 0x03, 0x02);
+      setBoardMode("STOPPED");
       appendConsole("\n[停止しました]\n");
       showToast("プログラムを停止しました。");
       controllerActive = false;
@@ -1297,6 +1340,22 @@ class SCS009PIO:
     } catch (error) {
       showToast(error.message, "error");
     }
+  }
+
+  async function enterWriteMode() {
+    if (!port || isBusy) return;
+    controllerActive = false;
+    setBusy(true, "書き込み待機へ…");
+    showTab("console");
+    try {
+      await enterRawRepl();
+      await writeControl(0x02);
+      setBoardMode("WRITE");
+      showToast("書き込み待機に入りました。保存プログラムは残っています。");
+    } catch (error) {
+      setBoardMode("UNKNOWN");
+      showToast(error.message, "error");
+    } finally { setBusy(false); }
   }
 
   function showTab(name) {
@@ -1315,6 +1374,7 @@ class SCS009PIO:
   elements.run.addEventListener("click", runProgram);
   elements.save.addEventListener("click", saveProgram);
   elements.stop.addEventListener("click", stopProgram);
+  elements.writeMode.addEventListener("click", enterWriteMode);
   elements.boardSelect.addEventListener("change", () => selectBoard(elements.boardSelect.value));
   elements.wiringToggle.addEventListener("click", () => setWiringCollapsed(!elements.appShell.classList.contains("wiring-collapsed")));
   elements.undo.addEventListener("click", () => workspace.undo(false));

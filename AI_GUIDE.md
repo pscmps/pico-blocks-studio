@@ -107,6 +107,8 @@ ADCは `read_u16()` の0〜65535、入力0〜3.3 V。5 Vを入れない。`VOLT`
 - `uart_controller_setup` は書き込み用USBと同じ口でJOGを受信。W付きPicoのみ `wifi_jog_setup` の `SSID/PASSWORD` でアクセスポイントを作れる。
 - JOGの `AXIS` はY（↑↓）、X（←→）、Z（WS）、R（AD）。割り当ては `uart_scs_bind` / `xl330_bind` / `sts3215_bind` / `pwm_bind`。`ID`（PWMは番号）、`CENTER`、`STEP`、バスサーボは `SPEED` を指定する。
 - 各サーボへ適合する外部電源を使いGNDを共通化する。5 V/高電圧の電源をGPIOへ入れない。PCのUSBからサーボを給電しない。
+- JOG割り当てはUSB / Wi-Fiで共用する。Wi-Fi開始だけでもPWM等の割り当てを使用できる。同じAXISへの割り当ては1個だけ。
+- 「保存して実行」で起動前の3秒BOOT受付もmain.pyへ保存される。通常は単独で自動実行、起動後3秒以内のBOOTでその回だけ書き込み待機。初期化やサーボ動作はこの受付時間が終わってから始まる。BOOTを保持したままリセットするUF2モードとは別。
 - アプリの停止でPythonを中断しても、PWM出力やバスサーボのトルクが残る場合がある。必要な出力停止・トルクOFFと物理的に電源を切る手段を用意する。
 
 ## 例: ADCの値をUSBシリアルへ表示

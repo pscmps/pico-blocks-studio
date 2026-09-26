@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css?v=basics1" />
+    <link rel="stylesheet" href="./styles.css?v=boot1" />
   </head>
   <body>
     <header class="topbar">
@@ -132,13 +132,14 @@
             </button>
             <button id="saveButton" class="button button-save" type="button" disabled>
               <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5V4Zm4 0v6h6V4m-7 9h8v7H8v-7Z"/></svg>
-              main.pyに保存
+              保存して実行
             </button>
             <button id="stopButton" class="button button-danger" type="button" disabled>
               <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 8h8v8H8z"/></svg>
               停止
             </button>
           </div>
+          <div class="mode-controls"><span id="boardMode" role="status">モード未確認</span><button id="writeModeButton" class="button button-secondary" type="button" disabled>書き込み待機</button></div>
           <p id="actionHint" class="action-hint">先に「RPボードを接続」を押してください。</p>
         </section>
 
@@ -157,12 +158,33 @@
           </div>
         </section>
 
-        <details class="help-card" open>
+        <details class="help-card" id="modeHelp" open>
+          <summary>実行・書き込みモードの使い方</summary>
+          <p>初回は下の手順でMicroPythonを入れます。その後、一度「保存して実行」を押すと、電源ON／RSTから保存プログラムが自動起動します。</p>
+          <ul>
+            <li><strong>通常起動：</strong>最初の3秒間は実行を待ち、その後に保存した処理を開始。</li>
+            <li><strong>BOOTで待機：</strong>電源ON／RSTを離した後、3秒以内にBOOT（BOOTSEL）を押すと、その起動だけ書き込み待機。ボタンを離してUSB接続し、編集・転送できます。</li>
+            <li><strong>PCから待機：</strong>「書き込み待機」で処理を中断し、PWM・PIO等をリセット。保存プログラムは消しません。再開は「保存して実行」またはRST／電源入れ直し。</li>
+            <li><strong>今すぐ実行：</strong>一時的な試運転。保存内容は変わらず、次回起動では最後に保存したプログラムへ戻ります。</li>
+          </ul>
+          <p id="resetHint"></p>
+          <p>BOOT待機は、この版で「保存して実行」したプログラムから有効です。BOOT判定に対応しないファームでは自動実行せず待機するため、機種別の新しいMicroPythonへ更新してください。</p>
+          <p><strong>BOOTを押したまま電源ON／RSTするとUF2用の初期ファーム書き込みモードです。</strong>上のPython書き込み待機とは別です。誤って入ったらBOOTを離して再起動してください。</p>
+          <p>USBを抜いた後も、ボードとサーボに適切な外部電源があれば実行・Wi-Fi JOGを継続できます。電源も切れた場合は、次回給電時に保存プログラムが起動します。</p>
+          <p>書き込み待機・停止は緊急停止ではありません。バスサーボの保持トルクが残る場合があります。必要に応じてトルクOFFと物理的な電源遮断を用意してください。</p>
+        </details>
+        <details class="help-card" id="jogHelp">
+          <summary>USBとWi-FiのJOG割り当て</summary>
+          <p>PWM・SCS009・XL330・STS3215のJOG割り当ては、USB（UART）とWi-Fiで共通です。Wi-Fi JOGだけでも使えます。UART開始ブロックは不要です。</p>
+          <p>両方ある場合は同じ指令位置を共有し、ボードが処理した順に増減します。USB／Wi-Fiの優先権や排他ロックはありません。同時操作では指令が加算されるので、操作者を決めてください。</p>
+          <p>↑↓＝Y、←→＝X、W/S＝Z、A/D＝R、Space＝中央復帰。同じ軸の割り当ては1個だけにします。表示は実測位置ではなく指令位置です。</p>
+        </details>
+        <details class="help-card">
           <summary>初期ファームを書き込む</summary>
           <ol id="firmwareSteps"></ol>
           <p><a id="firmwareLink" class="firmware-link" target="_blank" rel="noopener noreferrer">選択したボードのダウンロードページを開く</a></p>
           <p>データ通信対応のUSBケーブルを使ってください。UF2のコピー後はドライブが自動で閉じて再起動します。その後、ChromeまたはEdgeで「RPボードを接続」を押し、MicroPythonのシリアルポートを選びます。</p>
-          <p>「今すぐ実行」は一時実行、「main.pyに保存」は電源を入れ直しても自動実行します。</p>
+          <p>「今すぐ実行」は一時実行、「保存して実行」はmain.pyに保存して次回起動時にも動きます。BOOTで待機する機能は、この版で保存したプログラムにだけ追加されます。</p>
         </details>
         <details id="scsHelp" class="help-card" hidden>
           <summary>SCS009を接続する前に</summary>
@@ -170,7 +192,7 @@
         </details>
         <details id="wifiHelp" class="help-card" hidden open>
           <summary>スマホでWi-Fi JOG</summary>
-          <p>「Wi-Fi JOGサーバを開始」を置き、Wi-Fi名とパスワードを設定してUSBから実行、またはmain.pyに保存します。</p>
+          <p>「Wi-Fi JOGサーバを開始」を置き、Wi-Fi名とパスワードを設定して「保存して実行」を押します。UART開始ブロックなしでも各サーボのJOG割り当てを使用できます。</p>
           <p>スマホのWi-Fi設定で指定した名前に接続し、ブラウザで <a id="wifiJogAddress" href="http://192.168.4.1/" target="_blank" rel="noopener">http://192.168.4.1/</a> を開きます。起動時に実際のアドレスがシリアル欄に表示されます。</p>
           <p>このWi-Fiはインターネット接続なしで使います。操作ページはPicoが配信します。</p>
         </details>
@@ -259,6 +281,7 @@
     <script src="./jog.js?v=servos1"></script>
     <script src="./basic.js?v=basics1"></script>
     <script src="./exchange.js?v=basics1"></script>
-    <script src="./app.js?v=basics1"></script>
+    <script src="./boot.js?v=boot1"></script>
+    <script src="./app.js?v=boot1"></script>
   </body>
 </html>

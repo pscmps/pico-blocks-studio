@@ -50,11 +50,20 @@ assert.ok(pwmJog.includes('"max":180'));
 vm.runInContext("selectedBoard='pico2w'", context);
 generate([block('xl330_setup',{PIN:0,BAUD:57600}),block('xl330_bind',{ID:1,AXIS:'Y',CENTER:2048,STEP:10,SPEED:20}),block('wifi_jog_setup',{SSID:'test',PASSWORD:'testpassword'})]);
 assert.ok(vm.runInContext('validateProgram()', context));
+// Wi-Fi-only uses the same binding table without a UART setup block.
+const wifiOnly = [block('pwm_setup',{PIN:2,CHANNEL:1,MIN_US:1000,MAX_US:2000}),block('pwm_bind',{ID:1,AXIS:'Y',CENTER:90,STEP:2}),block('wifi_jog_setup',{SSID:'test',PASSWORD:'testpassword'})];
+const wifiOnlyCode = generate(wifiOnly);
+assert.ok(wifiOnlyCode.includes('"target":"pwm"') && wifiOnlyCode.includes('pwm_servos[config[\'id\']].angle(value)'));
+assert.ok(vm.runInContext('getUartControllerBlock()', context));
+const axesWifi = JSON.stringify(vm.runInContext('getJogAxes()', context));
+generate([...wifiOnly,block('uart_controller_setup')]);
+assert.equal(JSON.stringify(vm.runInContext('getJogAxes()', context)),axesWifi);
 function valid(blocks) {
   context.workspace = {getAllBlocks: () => blocks};
   return vm.runInContext('validateProgram()', context);
 }
 assert.equal(valid([block('xl330_move',{ID:1})]), false);
+assert.equal(valid([block('pwm_setup',{PIN:2,CHANNEL:1,MIN_US:1000,MAX_US:2000}),block('pwm_bind',{ID:1,AXIS:'Y'}),block('pwm_bind',{ID:1,AXIS:'Y'})]), false);
 assert.equal(valid([block('xl330_setup',{PIN:0}),block('sts3215_setup',{PIN:0})]), false);
 assert.equal(valid([block('xl330_setup',{PIN:0}),block('sts3215_setup',{PIN:1})]), true);
 assert.equal(valid([block('xl330_setup',{PIN:0}),block('sts3215_setup',{PIN:1}),block('scs009_setup',{PIN:2})]), false);
@@ -63,4 +72,4 @@ assert.equal(valid([block('pwm_setup',{PIN:0,CHANNEL:1,MIN_US:1000,MAX_US:2000})
 assert.equal(valid([block('pwm_setup',{PIN:0,CHANNEL:1,MIN_US:2000,MAX_US:1000})]), false);
 assert.equal(valid([block('pwm_setup',{PIN:0,CHANNEL:1,MIN_US:1000,MAX_US:2000}),block('gpio_write',{PIN:0})]), false);
 if (process.argv.includes('--json')) process.stdout.write(JSON.stringify(sources));
-else console.log('PASS: 8 boards, 28 generated programs, model-specific JOG, PIO allocation');
+else console.log('PASS: 8 boards, 30 generated programs, Wi-Fi-only and shared JOG, PIO allocation');
