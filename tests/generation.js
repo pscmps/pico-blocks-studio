@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const app = fs.readFileSync('app.js', 'utf8');
 const context = vm.createContext({
-  ServoBlocks: require('../servo.js'), PicoJog: require('../jog.js'),
+  ServoBlocks: require('../servo.js'), PicoJog: require('../jog.js'), BasicBlocks: require('../basic.js'),
   localStorage: {getItem: () => 'pico'},
   encoder: new TextEncoder(), showToast: () => {},
 });

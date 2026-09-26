@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css?v=servos1" />
+    <link rel="stylesheet" href="./styles.css?v=basics1" />
   </head>
   <body>
     <header class="topbar">
@@ -45,6 +45,10 @@
             <button id="controllerMenuItem" type="button" disabled>
               <span>コントローラ</span>
               <small>UARTブロックを置くと使えます</small>
+            </button>
+            <button id="exchangeMenuItem" type="button">
+              <span>対話AIとプログラムを作る</span>
+              <small>依頼テンプレート・JSON貼り付け</small>
             </button>
           </div>
         </div>
@@ -228,12 +232,33 @@
       </div>
     </aside>
 
+    <dialog id="exchangeDialog" class="exchange-dialog" aria-labelledby="exchangeTitle">
+      <div class="exchange-heading"><div><small>CHAT → BLOCKS</small><h2 id="exchangeTitle">対話AIとプログラムを作る</h2></div><button id="exchangeClose" type="button" aria-label="閉じる">×</button></div>
+      <p>ChatGPTなどに依頼して、返ってきたJSONをブロックへ。取り込み後も、いつもどおり編集できます。</p>
+      <section>
+        <h3>1. 依頼テンプレートをコピー</h3>
+        <p id="exchangeBoard"></p>
+        <button id="copyPrompt" class="button button-secondary" type="button">依頼文をコピー</button>
+        <a href="https://github.com/pscmps/pico-blocks-studio/blob/main/AI_GUIDE.md" target="_blank" rel="noopener noreferrer">形式のガイド ↗</a>
+        <details><summary>依頼文を表示・手動コピー</summary><textarea id="promptText" aria-label="依頼テンプレート" readonly spellcheck="false"></textarea></details>
+        <p class="exchange-note">選択ボードと使えるブロックの仕様を含みます。現在のプログラムやWi-Fiパスワードは含みません。「作りたい動き」を書き換えて依頼してください。</p>
+      </section>
+      <section>
+        <h3>2. 返ってきたJSONを貼り付け</h3>
+        <textarea id="importText" aria-label="取り込むブロックJSON" placeholder='{"format":"picoblocks","version":1,...}' spellcheck="false"></textarea>
+        <p class="exchange-note">今のブロックを置き換えます。直前の状態を1件保存します。自動で実行・書き込みはしません。Pythonそのものの貼り付けには未対応です。</p>
+        <div class="exchange-actions"><button id="importBlocks" class="button button-primary" type="button">ブロックへ取り込む（置換）</button><button id="restoreImport" class="button button-secondary" type="button">取り込み前に戻す</button></div>
+        <p id="exchangeStatus" role="status" aria-live="polite"></p>
+      </section>
+    </dialog>
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/ja.js"></script>
-    <script src="./servo.js?v=servos1"></script>
+    <script src="./servo.js?v=basics1"></script>
     <script src="./jog.js?v=servos1"></script>
-    <script src="./app.js?v=servos1"></script>
+    <script src="./basic.js?v=basics1"></script>
+    <script src="./exchange.js?v=basics1"></script>
+    <script src="./app.js?v=basics1"></script>
   </body>
 </html>

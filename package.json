@@ -1,0 +1,10 @@
+{
+  "name": "pico-blocks-studio",
+  "private": true,
+  "scripts": {
+    "test": "node tests/generation.js && node tests/basics.js"
+  },
+  "devDependencies": {
+    "blockly": "11.2.2"
+  }
+}

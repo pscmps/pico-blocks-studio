@@ -1,0 +1,137 @@
+# PicoBlocks Studio — 対話AI向けブロックJSONガイド v1
+
+アプリ: https://pscmps.github.io/pico-blocks-studio/
+
+この文書のURL: https://raw.githubusercontent.com/pscmps/pico-blocks-studio/main/AI_GUIDE.md
+
+## 使い方
+
+1. アプリで使用ボードを選択する。
+2. 右上のメニュー →「対話AIとプログラムを作る」→「依頼文をコピー」。
+3. ChatGPT等へ貼り付け、「作りたい動き」に目的・配線・サーボの型番とID・安全な動作範囲を記入する。
+4. AIの返答のJSON部分をアプリへ貼り付け、「ブロックへ取り込む（置換）」を押す。
+5. ブロック・選択ボード・配線・生成Pythonを確認してから手動で実行する。
+
+取り込みは現在のブロックを置き換える。直前の状態とボード選択はブラウザ内に1件保存し、「取り込み前に戻す」で戻せる。AIへの自動送信はしない。テンプレートには現在のプログラムや実際のWi-Fiパスワードを含めない。
+
+これは**ブロックJSONの受け渡し**。任意のPythonからブロックへの逆変換、Python貼り付け実行、外部コードの読み込みには対応しない。AIが正しく作れる保証はないため、範囲と配線を人が確認する。
+
+## 出力契約
+
+返答はJSONコードブロック1つにする。最小形:
+
+```json
+{
+  "format": "picoblocks",
+  "version": 1,
+  "board": "pico",
+  "workspace": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [{"type": "program_start"}]
+    }
+  }
+}
+```
+
+- トップレベルのブロックは `program_start` 1個のみ。ほかはすべてその下につなぐ。
+- 直列処理は `next: {"block": {...}}`。
+- 値・条件・ループの中身は `inputs: {"入力名": {"block": {...}}}`。
+- 数値フィールドはJSON数値。選択式・文字フィールドはJSON文字列。GPIOの選択値はD番号でなくGPIO番号の文字列。
+- 省略したフィールドはカタログの `default` になる。意図した数値・GPIOは省略しない。
+- ID、座標、extraState、mutation、enabled、変数の内部ID等は不要。変数は `NAME` 文字列で扱う。
+- 最大300,000文字、500ブロック、接続の深さ80段。未知の型、範囲外の数値、不正な接続は取り込まない。
+- ボード選択もJSONの `board` に切り替わる。実行・書き込みは自動で始まらない。
+
+## ボードとピン
+
+| board | GPIO候補 | ADC候補 | Wi-Fi JOG |
+| --- | --- | --- | --- |
+| pico / picow / pico2 / pico2w | 0〜22, 26, 27, 28 | 26, 27, 28 | picow / pico2wのみ |
+| rp2040_geek / rp2350_geek | 2, 3, 4, 5, 28, 29 | 28, 29 | なし |
+| xiao_rp2040 | 26, 27, 28, 29, 6, 7, 0, 1, 2, 4, 3 | 26, 27, 28, 29 | なし |
+| xiao_rp2350 | 26, 27, 28, 5, 6, 7, 0, 1, 2, 4, 3 | 26, 27, 28 | なし |
+
+XIAOのGPIO候補の順番はD0〜D10に対応。背面パッドは今回対象外。
+
+ADCは `read_u16()` の0〜65535、入力0〜3.3 V。5 Vを入れない。`VOLT` は基準3.3 Vを仮定した概算。GPIOはADC・入力・出力・サーボで重複利用しない。同じ入力ピンのプル設定は揃える。
+
+## 基本ブロック
+
+カタログの正確な型・フィールド範囲・選択肢は**アプリでコピーしたテンプレート**に含まれる。以下は入力名の早見表。値ブロックは `next` に接続しない。
+
+| type | fields | inputs | 結果/動作 |
+| --- | --- | --- | --- |
+| basic_number | NUM: 数値 | — | 数値 |
+| basic_math | OP: ADD/SUB/MUL/DIV/MOD | A, B: 数値 | 四則演算・余り |
+| basic_unary | OP: ABS/ROUND/FLOOR/SQRT | VALUE: 数値 | 絶対値/丸め/床/平方根 |
+| basic_limit | — | VALUE, MIN, MAX | 上下限へ制限 |
+| basic_map | — | VALUE, IN_MIN, IN_MAX, OUT_MIN, OUT_MAX | 範囲変換、範囲外は制限 |
+| basic_random | — | MIN, MAX | 整数乱数、MIN ≤ MAX |
+| basic_compare | OP: EQ/NE/LT/LE/GT/GE | A, B: 数値 | 真偽値 |
+| basic_boolean | VALUE: TRUE/FALSE | — | 真偽値 |
+| basic_logic | OP: AND/OR | A, B: 真偽値 | 論理演算 |
+| basic_not | — | VALUE: 真偽値 | 否定 |
+| basic_get | NAME: 文字列 | — | 変数の値 |
+| basic_set | NAME: 文字列 | VALUE: 任意 | 変数へ代入 |
+| basic_change | NAME: 文字列 | VALUE: 数値 | 変数を加算 |
+| basic_if | — | IF: 真偽値, DO/ELSE: 処理 | 条件分岐 |
+| basic_repeat | — | TIMES: 数値, DO: 処理 | 回数くり返し |
+| basic_while | — | IF: 真偽値, DO: 処理 | 条件くり返し |
+| forever_loop | — | DO: 処理 | 無限ループ、next不可 |
+| basic_wait | — | MS: 数値 | ミリ秒待機 |
+| basic_ticks | — | — | ミリ秒カウンタ |
+| basic_elapsed | — | START, END | 折り返し対応の時間差 |
+| basic_adc | PIN: GPIO文字列, MODE: RAW/VOLT | — | アナログ入力 |
+| basic_read | PIN: GPIO文字列, PULL: UP/DOWN/NONE | — | デジタル入力0/1 |
+| basic_write | PIN: GPIO文字列 | VALUE: 数値/真偽値 | ゼロならLOW、それ以外HIGH |
+| basic_text | TEXT: 文字列 | — | 文字列 |
+| basic_join | — | A, B: 任意 | 文字列として結合 |
+| basic_print | — | VALUE: 任意 | USBシリアルへ表示（LCDではない） |
+
+変数はプログラム先頭で0に初期化される。同じ `NAME` は同じ変数。除算の0、負数の平方根、範囲変換の同じ入力上下限、文字列の数値演算等は実行時エラーになる。`ROUND` はPythonの `round()`（ちょうど半分は偶数側）。長いループには待機を入れる。時刻は折り返すため単純な引き算ではなく `basic_elapsed` を使う。
+
+今回の基本セットにI2C/SPIの汎用通信、割り込み、任意のPython関数、LCD固有処理は含めない。
+
+## サーボとJOG
+
+- ツリー順はPWMサーボ → SCS009 → XL330 → STS3215。
+- `pwm_setup` の `CHANNEL` は1〜16、`PIN` はGPIO文字列、`MIN_US/MAX_US` は0度/180度のパルス幅。通常初期値1000/2000 µs、サーボ仕様に合わせる。
+- `scs009_setup` / `xl330_setup` / `sts3215_setup` は `PIN` と `BAUD` の文字列を指定する。接続は各種類1個、PIO通信は合計最大2種類。PWMは別枠。
+- 接続・GPIO・ADC・変数の初期化はプログラム先頭にまとめる。接続ブロックを条件やループ内に入れても条件付き初期化にはならない。接続は開始直下に置く。
+- `pwm_value` は `CHANNEL` と数値入力 `VALUE`（0〜180度）。
+- `scs009_value` は `ID` と数値入力 `VALUE`（0〜1023、約300度）。時間値0・速度値500。
+- `xl330_value` / `sts3215_value` は `ID` と数値入力 `VALUE`（0〜4095）。速度値は20/500、加速度値20。
+- 固定値の細かな速度指定には従来の `*_move` を使う。可動範囲は機構に合わせてさらに狭める。
+- バスサーボには `*_torque` の `ID` と `STATE: "1"` を明示してから動かす。接続だけではトルクONにしない。XL330/STS3215は標準の単回転位置モード専用。
+- `uart_controller_setup` は書き込み用USBと同じ口でJOGを受信。W付きPicoのみ `wifi_jog_setup` の `SSID/PASSWORD` でアクセスポイントを作れる。
+- JOGの `AXIS` はY（↑↓）、X（←→）、Z（WS）、R（AD）。割り当ては `uart_scs_bind` / `xl330_bind` / `sts3215_bind` / `pwm_bind`。`ID`（PWMは番号）、`CENTER`、`STEP`、バスサーボは `SPEED` を指定する。
+- 各サーボへ適合する外部電源を使いGNDを共通化する。5 V/高電圧の電源をGPIOへ入れない。PCのUSBからサーボを給電しない。
+- アプリの停止でPythonを中断しても、PWM出力やバスサーボのトルクが残る場合がある。必要な出力停止・トルクOFFと物理的に電源を切る手段を用意する。
+
+## 例: ADCの値をUSBシリアルへ表示
+
+GP26に0〜3.3 Vのアナログ信号を入力し、100 msごとに読み取る。ボード・配線は実機に合わせる。
+
+```json
+{
+  "format": "picoblocks", "version": 1, "board": "pico",
+  "workspace": {"blocks": {"languageVersion": 0, "blocks": [
+    {"type": "program_start", "next": {"block": {
+      "type": "forever_loop", "inputs": {"DO": {"block": {
+        "type": "basic_print", "inputs": {"VALUE": {"block": {
+          "type": "basic_adc", "fields": {"PIN": "26", "MODE": "RAW"}
+        }}}, "next": {"block": {
+          "type": "basic_wait", "inputs": {"MS": {"block": {
+            "type": "basic_number", "fields": {"NUM": 100}
+          }}}
+        }}
+      }}}
+    }}}
+  ]}}
+}
+```
+
+ADCからPWM角度へ変換したい場合は `basic_map` の入力を0〜65535、出力を例えば45〜135とし、それを `pwm_value.inputs.VALUE.block` へ接続する。サーボの接続ブロックと別のGPIO・外部電源が必要。
+
+参考: [MicroPython RP2 quick reference](https://docs.micropython.org/en/latest/rp2/quickref.html)、[Blockly serialization](https://developers.google.com/blockly/guides/configure/web/serialization)。

@@ -43,7 +43,7 @@ const ServoBlocks = (() => {
     Blockly.defineBlocksWithJsonArray(defs);
   }
   function toolbox() {
-    return Object.entries(models).map(([key, m]) => ({ kind: "category", name: m.name, colour: String(m.colour), contents: ["setup", ...(key === "pwm" ? ["move", "pulse", "stop"] : ["ping", "read", "torque", "move"]), "bind"].map(s => ({ kind: "block", type: key + "_" + s })) }));
+    return Object.entries(models).map(([key, m]) => ({ kind: "category", name: m.name, colour: String(m.colour), contents: ["setup", ...(key === "pwm" ? ["move", "pulse", "stop"] : ["ping", "read", "torque", "move"]), "value", "bind"].map(s => ({ kind: "block", type: key + "_" + s, ...(s === "value" ? {inputs: {VALUE: {shadow: {type:"basic_number",fields:{NUM:m.center}}}}} : {}) })) }));
   }
   function statement(block) {
     const [model, op] = block.type.split("_");

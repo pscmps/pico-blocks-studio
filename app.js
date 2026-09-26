@@ -82,6 +82,7 @@
   if (!BOARD_PROFILES[selectedBoard]) selectedBoard = "pico";
   const pinLabel = pin => BOARD_PROFILES[selectedBoard].pinLabels?.[pin] || `GP${pin}`;
   const pinOptions = () => BOARD_PROFILES[selectedBoard].pins.map(pin => [pinLabel(pin), String(pin)]);
+  const adcOptions = () => pinOptions().filter(([, pin]) => Number(pin) >= 26 && Number(pin) <= 29);
 
   const elements = {
     connect: $("#connectButton"),
@@ -266,6 +267,7 @@
   };
 
   ServoBlocks.register(Blockly, pinOptions);
+  BasicBlocks.register(Blockly, pinOptions, adcOptions);
 
   Blockly.Blocks.uart_controller_setup = {
     init() {
@@ -315,7 +317,6 @@
     return {
     kind: "categoryToolbox",
     contents: [
-      ...ServoBlocks.toolbox(),
       ...(BOARD_PROFILES[selectedBoard].wifi ? [{
         kind: "category", name: "Wi-Fi JOG", colour: "#31a8b0",
         contents: [{ kind: "block", type: "wifi_jog_setup" }, { kind: "block", type: "uart_scs_bind" }],
@@ -332,15 +333,7 @@
             colour: "#f0a65a",
             contents: motionBlocks,
           },
-          {
-            kind: "category",
-            name: "くり返し",
-            colour: "#5189e8",
-            contents: [
-              { kind: "block", type: "repeat_times" },
-              { kind: "block", type: "forever_loop" },
-            ],
-          },
+          ...BasicBlocks.toolbox(),
         ],
       },
       {
@@ -363,6 +356,7 @@
           },
         ],
       },
+      ...ServoBlocks.toolbox().filter(category => category.name === "PWMサーボ"),
       {
         kind: "category",
         name: "SCS009",
@@ -379,7 +373,7 @@
             kind: "category",
             name: "動かす",
             colour: "#ff7a59",
-            contents: [{ kind: "block", type: "scs009_move" }],
+            contents: [{ kind: "block", type: "scs009_move" }, { kind: "block", type: "scs009_value", inputs: {VALUE: {shadow: {type: "basic_number", fields: {NUM: 511}}}} }],
           },
           {
             kind: "category",
@@ -389,6 +383,7 @@
           },
         ],
       },
+      ...ServoBlocks.toolbox().filter(category => category.name !== "PWMサーボ"),
     ],
     };
   }
@@ -595,7 +590,7 @@ class SCS009PIO:
           break;
         }
         default:
-          piece = ServoBlocks.statement(current) || `pass  # 未対応のブロック: ${current.type}\n`;
+          piece = BasicBlocks.statement(current, chainToPython, indent, Boolean(getUartControllerBlock())) || ServoBlocks.statement(current) || `pass  # 未対応のブロック: ${current.type}\n`;
       }
       code += piece;
       current = current.getNextBlock();
@@ -633,7 +628,7 @@ class SCS009PIO:
       body += `\n# PCからのJOG指令を待ちます\nwhile True:\n    _controller_poll()\n    time.sleep_ms(5)\n`;
     }
     const serialImports = uartSetup ? "\nimport sys\nimport select\nimport json" : "";
-    return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks)}${ledCode}${uartCode}\n${body}`;
+    return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks)}${BasicBlocks.runtime(allBlocks)}${ledCode}${uartCode}\n${body}`;
   }
 
   const PICO_LEFT_PINS = ["GP0", "GP1", "GND", "GP2", "GP3", "GP4", "GP5", "GND", "GP6", "GP7", "GP8", "GP9", "GND", "GP10", "GP11", "GP12", "GP13", "GND", "GP14", "GP15"];
@@ -811,8 +806,8 @@ class SCS009PIO:
   }
 
   function validateSCS009Pins() {
-    const allowed = BOARD_PROFILES[selectedBoard].pins.map(String);
-    for (const block of workspace.getAllBlocks(false).filter((item) => /^(scs009|xl330|sts3215|pwm)_setup$/.test(item.type))) {
+    for (const block of workspace.getAllBlocks(false).filter((item) => /^(scs009|xl330|sts3215|pwm)_setup$/.test(item.type) || /^basic_(adc|read|write)$/.test(item.type))) {
+      const allowed = (block.type === "basic_adc" ? adcOptions() : pinOptions()).map(([, pin]) => pin);
       const oldPin = block.getFieldValue("PIN");
       // Blockly 11 has dynamic getOptions, but not the newer setOptions API.
       const field = block.getField("PIN");
@@ -888,7 +883,7 @@ class SCS009PIO:
     return config;
   }
 
-  function validateProgram() {
+  function validateProgram({throwOnError = false} = {}) {
     const blocks = workspace.getAllBlocks(false);
     const wifi = blocks.filter(block => block.type === "wifi_jog_setup");
     let error = "";
@@ -906,6 +901,17 @@ class SCS009PIO:
       if (blocks.some(b => b.type.startsWith(key + "_") && b.type !== key + "_setup") && !setups.some(b => b.type === key + "_setup")) error = `${key}の接続ブロックを追加してください。`;
     }
     const pwmSetups = setups.filter(b => b.type === "pwm_setup");
+    const hardware = blocks.filter(b => /^(basic_(adc|read|write)|gpio_write)$/.test(b.type));
+    for (const b of [...setups, ...hardware]) {
+      const allowed = b.type === "basic_adc" ? adcOptions().map(([, pin]) => Number(pin)) : BOARD_PROFILES[selectedBoard].pins;
+      if (!allowed.includes(Number(b.getFieldValue("PIN")))) error = "このボードでは使えないGPIOが指定されています。ピンを選び直してください。";
+    }
+    for (const b of hardware) {
+      const pin = String(b.getFieldValue("PIN"));
+      if (setups.some(s => String(s.getFieldValue("PIN")) === pin)) error = "サーボ接続とADC・GPIOには別々のピンを指定してください。";
+      const mode = item => item.type === "gpio_write" ? "basic_write" : item.type;
+      if (hardware.some(other => String(other.getFieldValue("PIN")) === pin && (mode(other) !== mode(b) || (b.type === "basic_read" && other.getFieldValue("PULL") !== b.getFieldValue("PULL"))))) error = "同じGPIOの入力・出力・ADC・プル設定が競合しています。";
+    }
     if (blocks.some(b => b.type === "gpio_write" && setups.some(s => s.getFieldValue("PIN") === b.getFieldValue("PIN")))) error = "サーボの接続GPIOには、通常のGPIO出力ブロックを同時に使えません。";
     const channels = pwmSetups.map(b => b.getFieldValue("CHANNEL"));
     if (new Set(channels).size !== channels.length) error = "PWMサーボの番号が重複しています。";
@@ -916,6 +922,7 @@ class SCS009PIO:
       if (b.type === "pwm_setup" && Number(b.getFieldValue("MIN_US")) >= Number(b.getFieldValue("MAX_US"))) error = "PWMの0°パルス幅は180°より小さくしてください。";
       if (b.type !== "pwm_setup" && !channels.includes(b.getFieldValue(b.type === "pwm_bind" ? "ID" : "CHANNEL"))) error = "この番号のPWMサーボ接続ブロックを追加してください。";
     }
+    if (error && throwOnError) throw new Error(error);
     if (error) showToast(error, "error");
     return !error;
   }
@@ -1327,6 +1334,96 @@ class SCS009PIO:
     setMenuOpen(elements.appMenu.hidden);
   });
   elements.appMenu.addEventListener("click", (event) => event.stopPropagation());
+  const exchangeDialog = $("#exchangeDialog");
+  const backupKey = "picoblocks-import-backup-v1";
+  const exchangeStatus = (message, error = false) => {
+    $("#exchangeStatus").textContent = message;
+    $("#exchangeStatus").dataset.error = String(error);
+  };
+  function boardCatalog(board) {
+    const previous = selectedBoard;
+    Blockly.Events.disable();
+    try {
+      selectedBoard = board;
+      return BlockExchange.catalog(Blockly, buildToolbox());
+    } finally { selectedBoard = previous; Blockly.Events.enable(); }
+  }
+  function refreshExchangePrompt() {
+    const board = BOARD_PROFILES[selectedBoard];
+    $("#exchangeBoard").textContent = `選択中: ${board.name}`;
+    $("#promptText").value = BlockExchange.prompt(selectedBoard, board, boardCatalog(selectedBoard));
+  }
+  $("#exchangeMenuItem").addEventListener("click", () => {
+    setMenuOpen(false);
+    refreshExchangePrompt();
+    $("#restoreImport").disabled = !localStorage.getItem(backupKey);
+    exchangeStatus("");
+    exchangeDialog.showModal();
+  });
+  $("#exchangeClose").addEventListener("click", () => exchangeDialog.close());
+  $("#copyPrompt").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText($("#promptText").value);
+      exchangeStatus("依頼文をコピーしました。対話ツールへ貼り付け、作りたい動きを書いてください。");
+    } catch {
+      $("#promptText").closest("details").open = true;
+      $("#promptText").focus(); $("#promptText").select();
+      exchangeStatus("自動コピーが許可されませんでした。選択した依頼文を手動でコピーしてください。", true);
+    }
+  });
+  function replaceFromExchange(data, restoring = false) {
+    if (isBusy || controllerActive) throw new Error("実行・操作を停止してから取り込んでください。");
+    const previous = {board: selectedBoard, workspace: Blockly.serialization.workspaces.save(workspace)};
+    const scratch = new Blockly.Workspace();
+    let replaced = false;
+    Blockly.Events.disable();
+    try {
+      selectedBoard = data.board;
+      Blockly.serialization.workspaces.load(data.workspace, scratch);
+      // Reject Blockly's silent disconnection/repair before touching the user's work.
+      if (!restoring && (scratch.getTopBlocks(false).length !== 1 || scratch.getAllBlocks(false).length !== data.count)) throw new Error("ブロックの接続を読み込めません。JSONのinputsとnextを確認してください。");
+      replaced = true;
+      Blockly.serialization.workspaces.load(data.workspace, workspace);
+      normalizeWorkspace();
+      if (!restoring) validateProgram({throwOnError: true});
+      const code = generatePython();
+      if (!restoring) localStorage.setItem(backupKey, JSON.stringify(previous));
+      localStorage.setItem("picoblocks-workspace-v1", JSON.stringify(Blockly.serialization.workspaces.save(workspace)));
+      localStorage.setItem("picoblocks-board-v1", selectedBoard);
+      elements.pythonCode.textContent = code;
+    } catch (error) {
+      selectedBoard = previous.board;
+      if (replaced) {
+        Blockly.serialization.workspaces.load(previous.workspace, workspace);
+        normalizeWorkspace();
+      }
+      throw error;
+    } finally {
+      scratch.dispose(); Blockly.Events.enable();
+      workspace.updateToolbox(buildToolbox());
+      updateBoardUi(); updateControllerUi();
+      elements.pythonCode.textContent = generatePython();
+      $("#restoreImport").disabled = !localStorage.getItem(backupKey);
+      Blockly.svgResize(workspace);
+    }
+  }
+  $("#importBlocks").addEventListener("click", () => {
+    try {
+      const data = BlockExchange.parse($("#importText").value, BOARD_PROFILES, boardCatalog);
+      replaceFromExchange(data);
+      refreshExchangePrompt();
+      exchangeStatus(`${BOARD_PROFILES[data.board].name}に${data.count}個のブロックを取り込みました。閉じて配線・位置範囲・生成コードを確認してから実行してください。`);
+    } catch (error) { exchangeStatus(error.message, true); }
+  });
+  $("#restoreImport").addEventListener("click", () => {
+    try {
+      const previous = JSON.parse(localStorage.getItem(backupKey));
+      if (!previous || !BOARD_PROFILES[previous.board]) throw new Error("取り込み前の保存がありません。");
+      replaceFromExchange(previous, true);
+      refreshExchangePrompt();
+      exchangeStatus("取り込み前のブロックとボード選択に戻しました。");
+    } catch (error) { exchangeStatus(error.message, true); }
+  });
   elements.controllerMenuItem.addEventListener("click", openController);
   elements.controllerClose.addEventListener("click", closeController);
   elements.controllerConnect.addEventListener("click", connectController);
@@ -1337,6 +1434,7 @@ class SCS009PIO:
   document.addEventListener("click", () => setMenuOpen(false));
   let lastJogKey = 0;
   document.addEventListener("keydown", (event) => {
+    if (exchangeDialog.open) return;
     if (elements.controllerDrawer.getAttribute("aria-hidden") !== "false") return;
     if (event.target.closest("input, select, textarea, [contenteditable=true]") || event.ctrlKey || event.metaKey || event.altKey) return;
     const commands = PicoJog.keys;
