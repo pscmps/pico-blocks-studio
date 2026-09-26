@@ -1,5 +1,10 @@
 /* English translations. Japanese source strings are stable lookup keys. */
 const PicoEnglish = {
+"必要時に追加 · 1/8 W以上": "Optional · 1/8 W or higher",
+"プルアップ：2.2 kΩ（試験値）": "Pull-up: 2.2 kΩ (trial value)",
+"DATAと本体拡張端子の3V3の間に2.2 kΩ・1/8 W以上を1本。サーボ1台ごとではなく、通信バスごとに追加します。": "Add one 2.2 kΩ resistor rated 1/8 W or higher between DATA and the board's expansion 3V3 pin, per bus rather than per servo.",
+"Grove：黄＝G26、白＝G32、黒＝GND、赤＝5 V。Groveには3.3 V端子がないので本体側から取り出します。赤線・サーボV+へプルアップしないでください。": "Grove: yellow = G26, white = G32, black = GND, red = 5 V. Grove has no 3.3 V pin; use the board's expansion 3V3 pin. Never pull up to the red wire or servo V+.",
+"2.2 kΩは短い配線での試験開始値で、1 Mbpsの動作保証値ではありません。波形・応答を確認し、必要なら1〜2.2 kΩで調整（相手側の電流仕様も確認）。既存のプルアップとの並列合成に注意。DATA自体が5 Vなら抵抗だけでは保護できません。実機未確認。": "2.2 kΩ is a starting value for short wiring, not a guarantee at 1 Mbps. Check waveforms and replies; if necessary, try 1–2.2 kΩ within both devices' sink-current ratings. Account for existing pull-ups in parallel. A resistor alone cannot protect against a 5 V DATA line. Hardware untested.",
 "M5Stack ATOM Lite（開発中・動作未確認）": "M5Stack ATOM Lite (in development / untested)",
 "USBでPCへ接続し、公式ページのesptool手順で書き込みます。正面ボタンは初期ファーム用のBOOTボタンではありません。": "Connect to your PC over USB and follow the official esptool instructions. The front button is not the firmware bootloader button.",
 "ATOM Lite：開発中・動作未確認。シリアルサーボは同じGPIOのTX/RXとオープンドレインUARTを使います。半二重変換ICを使わない試作です。DATAのHighが3.3 V対応であることを確認し、5 V信号は直結しないでください。通信が不安定なら3.3 Vへの外付けプルアップが必要になる場合があります。サーボは外部給電、GND共通。線色は識別用です。": "ATOM Lite: in development, hardware untested. Serial servos share TX/RX on one GPIO using open-drain UART, without a half-duplex converter IC. DATA must use 3.3 V-compatible logic; never connect 5 V signals directly. An external pull-up to 3.3 V may be needed for reliable communication. Power servos externally and share GND. Diagram colors are identifiers only.",

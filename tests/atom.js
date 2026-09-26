@@ -25,6 +25,13 @@ assert.equal(profile.platform,'esp32'); assert.equal(profile.wifi,true);
 assert.match(profile.name,/開発中.*動作未確認/);
 assert.equal(profile.firmwareUrl,'https://micropython.org/download/ESP32_GENERIC/');
 assert.deepEqual(Array.from(profile.pins),[19,21,22,23,25,26,32,33]);
+assert.equal(profile.pinoutUrl,'https://docs.m5stack.com/ja/core/ATOM%20Lite');
+for(const pin of [26,32]) {
+  assert.equal(profile.pinLabels[pin],`G${pin} (Grove)`);
+  assert.ok(vm.runInContext('pinOptions()',context).some(option=>option[1]===String(pin)&&option[0].includes('Grove')));
+  generate([block('scs009_setup',{PIN:pin,BAUD:1000000})]);
+  generate([block('pwm_setup',{PIN:pin,CHANNEL:1,MIN_US:1000,MAX_US:2000})]);
+}
 assert.deepEqual(Array.from(vm.runInContext('adcOptions()',context),p=>p[1]),['32','33']);
 const setup=model=>block(model+'_setup',{PIN:26,BAUD:1000000});
 for(const model of ['scs009','xl330','sts3215','sts3235']) {

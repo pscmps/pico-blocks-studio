@@ -153,6 +153,9 @@ html[lang="en"] .run-actions .button { white-space:normal; }
 .wire-power { background: #e5484d; }
 .wire-ground { background: #64748b; }
 .wiring-note { margin: 0 0 10px; color: var(--faint); font-size: 0.69rem; line-height: 1.55; }
+.wiring-pullup { margin: 0 0 12px; padding: 10px; border: 1px solid var(--line, #e1e5eb); border-radius: 10px; font-size: 0.7rem; line-height: 1.6; background: #fff; }
+.wiring-pullup summary { cursor: pointer; font-weight: 600; }
+.wiring-pullup p { margin: 8px 0 0; }
 .pinout-link { color: var(--teal); font-size: 0.71rem; text-underline-offset: 3px; }
 .app-shell.wiring-collapsed .wiring-panel { grid-template-columns: 44px 0; }
 .app-shell.wiring-collapsed .wiring-content { visibility: hidden; }

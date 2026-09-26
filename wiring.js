@@ -58,8 +58,21 @@ const ServoWiring = (() => {
       ? `H3 V284 H${width - 3}` : `H${width - 3} V284`;
     wires += path(`M${groundX} ${drawing.groundPoint.y} ${groundEscape}`, ground);
     for (const group of groups) {
-      const pwm = group.model === "pwm", start = cursor + 80;
-      const supplyY = cursor + 15;
+      const pwm = group.model === "pwm";
+      const pullup = drawing.layout === "atom" && !pwm;
+      const extra = pullup ? 64 : 0, start = cursor + 80 + extra;
+      const supplyY = cursor + 15 + extra;
+      if (pullup) {
+        // Optional component, once per bus (not once per servo ID). 3V3 is
+        // the board expansion pin, never the Grove 5V or servo V+ supply.
+        const p = drawing.logicPowerPoint, y = cursor + 30, colour = group.devices[0].colour;
+        wires += path(`M${p.x + shift} ${p.y} H65 V${y} H108`, "#0f766e", `data-pullup-source="${group.model}"`);
+        wires += path(`M140 ${y} H310 V${start - 10} H190`, colour, `data-pullup-data="${group.model}"`);
+        highlights += `<circle cx="190" cy="${start - 10}" r="3.5" fill="${colour}"/><circle cx="${p.x + shift}" cy="${p.y}" r="4" fill="#0f766e"/>`;
+        connectors += `<g data-pullup="${group.model}" data-pin="${group.pin}"><rect x="108" y="${y - 6}" width="32" height="12" fill="white" stroke="#0f766e" stroke-width="2"/>`;
+        connectors += text(70, y - 14, "3V3", "terminal-label") + text(111, y - 14, "2.2 kΩ", "terminal-label");
+        connectors += text(106, y + 22, t("必要時に追加 · 1/8 W以上"), "caption") + text(198, y - 14, `${group.name} DATA`, "caption") + "</g>";
+      }
       backgrounds += `<rect x="102" y="${supplyY}" width="198" height="48" rx="9" class="device-box"/>`;
       supplies += `<g data-supply="${group.model}">`;
       supplies += text(111, supplyY + 15, t`${group.name}用 外部電源`, "board-title") + terminal(125, supplyY + 34, power) + text(135, supplyY + 37, "V+") + terminal(210, supplyY + 34, ground) + text(220, supplyY + 37, "GND") + "</g>";

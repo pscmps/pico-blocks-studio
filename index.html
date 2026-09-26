@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css?v=atom1" />
+    <link rel="stylesheet" href="./styles.css?v=atom2" />
   </head>
   <body>
     <header class="topbar">
@@ -77,6 +77,12 @@
           <p id="wiringSummary" class="wiring-summary"></p>
           <select id="wiringDevice" aria-label="配線を表示するサーボ" hidden></select>
           <div id="signalLegend" class="wiring-legend" aria-label="サーボ別の信号線色"></div>
+          <details id="atomPullupGuide" class="wiring-pullup" hidden>
+            <summary>プルアップ：2.2 kΩ（試験値）</summary>
+            <p>DATAと本体拡張端子の3V3の間に2.2 kΩ・1/8 W以上を1本。サーボ1台ごとではなく、通信バスごとに追加します。</p>
+            <p>Grove：黄＝G26、白＝G32、黒＝GND、赤＝5 V。Groveには3.3 V端子がないので本体側から取り出します。赤線・サーボV+へプルアップしないでください。</p>
+            <p>2.2 kΩは短い配線での試験開始値で、1 Mbpsの動作保証値ではありません。波形・応答を確認し、必要なら1〜2.2 kΩで調整（相手側の電流仕様も確認）。既存のプルアップとの並列合成に注意。DATA自体が5 Vなら抵抗だけでは保護できません。実機未確認。</p>
+          </details>
           <div id="wiringDiagram" class="wiring-diagram" role="img" aria-label="選択したボードの端子・配線図"></div>
           <div id="scsWiringDetails" class="scs-wiring-details" hidden>
             <div class="wiring-legend" aria-label="配線色の説明">
@@ -321,7 +327,7 @@
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
-    <script src="./i18n.en.js?v=atom1"></script>
+    <script src="./i18n.en.js?v=atom2"></script>
     <script src="./i18n.js?v=i18n1"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
     <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
@@ -330,11 +336,11 @@
     <script src="./servo.js?v=atom1"></script>
     <script src="./jog.js?v=i18n1"></script>
     <script src="./basic.js?v=atom1"></script>
-    <script src="./wiring.js?v=i18n1"></script>
+    <script src="./wiring.js?v=atom2"></script>
     <script src="./exchange.js?v=atom1"></script>
     <script src="./boot.js?v=atom1"></script>
     <script src="./wifi.js?v=atom1"></script>
     <script src="./display.js?v=i18n1"></script>
-    <script src="./app.js?v=atom1"></script>
+    <script src="./app.js?v=atom2"></script>
   </body>
 </html>

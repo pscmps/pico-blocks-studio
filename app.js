@@ -71,11 +71,11 @@
   BOARD_PROFILES.atom_lite = {
     name: t("M5Stack ATOM Lite（開発中・動作未確認）"),
     platform: "esp32", pins: [19, 21, 22, 23, 25, 26, 32, 33], adcPins: [32, 33],
-    pinLabels: Object.fromEntries([19, 21, 22, 23, 25, 26, 32, 33].map(pin => [pin, `G${pin}`])),
+    pinLabels: Object.fromEntries([19, 21, 22, 23, 25, 26, 32, 33].map(pin => [pin, `G${pin}${pin === 26 || pin === 32 ? " (Grove)" : ""}`])),
     layout: "atom", ledPin: "27", wifi: true, experimental: true,
     firmwareUrl: "https://micropython.org/download/ESP32_GENERIC/",
     firmwareLabel: "ESP32_GENERIC MicroPython", firmwareIsZip: false,
-    pinoutUrl: "https://docs.m5stack.com/en/core/atom_lite",
+    pinoutUrl: `https://docs.m5stack.com/${globalThis.PicoI18n?.language === "en" ? "en" : "ja"}/core/ATOM%20Lite`,
     boot: t("USBでPCへ接続し、公式ページのesptool手順で書き込みます。正面ボタンは初期ファーム用のBOOTボタンではありません。"),
   };
   for (const chip of ["rp2040", "rp2350"]) {
@@ -745,7 +745,7 @@ class SCS009PIO:
       return `<g class="pin-hit"><title>${group.name}: ${name}</title><circle cx="${x}" cy="${y}" r="4" class="board-pin ${active ? "active" : name === "GND" ? "ground" : name.endsWith("V") || name === "3V3" ? "power" : ""}"/><text x="${x === 50 ? 59 : 201}" y="${y + 3}" text-anchor="${x === 50 ? "start" : "end"}" class="pin-label">${name}</text></g>`;
     }).join("")).join("");
     const board = `<rect x="50" y="22" width="160" height="238" rx="16" class="board-body"/><rect x="105" y="14" width="50" height="22" rx="5" class="usb"/><text x="130" y="49" text-anchor="middle" class="board-title">ATOM Lite</text><text x="70" y="58" class="connector-title">EXPANSION</text><text x="170" y="58" class="connector-title">GROVE</text><circle cx="130" cy="126" r="21" class="button-mark"/><text x="130" y="128" text-anchor="middle" class="tiny-label">BUTTON G39</text><text x="130" y="162" text-anchor="middle" class="board-subtitle">RGB G27</text><text x="130" y="245" text-anchor="middle" class="caption">DEVELOPMENT / UNTESTED</text>${connectors}`;
-    return {board, dataPoint, groundPoint: {x: 50, y: 226}};
+    return {board, dataPoint, groundPoint: {x: 50, y: 226}, logicPowerPoint: {x: 50, y: 186}};
   }
 
   function renderWiringDiagram() {
@@ -756,6 +756,7 @@ class SCS009PIO:
     const group = groups.find(g => g.key === deviceSelect.value);
     const visibleGroups = group ? [group] : groups;
     const primary = visibleGroups[0];
+    $("#atomPullupGuide").hidden = !(profile.platform === "esp32" && visibleGroups.some(g => g.model !== "pwm"));
     const setup = primary ? {type: primary.model + "_setup"} : null;
     const servoName = primary?.name || "";
     const allOption = document.createElement("option"); allOption.value = "all"; allOption.textContent = t("すべてのサーボ");

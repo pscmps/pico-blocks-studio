@@ -9,7 +9,10 @@ RP2040 / RP2350 + MicroPython向けの、ブラウザーだけで使えるブロ
 M5Stack **ATOM Lite / ESP32-PICO-D4**を試験追加しました。AtomS3等は対象外です。USB書き込み・USB JOG・Wi-Fi書き込み・Wi-Fi JOG、SCS009 / XL330 / STS3215 / STS3235・PWM・基本ブロックに対応する実装です。LCDはGEEK専用のままです。**実機・通信波形・電源断耐性は未確認**です。
 
 - 初回は[標準ESP32_GENERIC MicroPython](https://micropython.org/download/ESP32_GENERIC/)の安定版1.29以降を使用（通常版・LittleFS。UIFlow、S3/C3、UF2、カスタムFAT版は不可）。既存ファイルをバックアップ後、公式のesptool手順で`erase-flash`、`.bin`を`write-flash 0x1000`で書き込みます。**消去で既存UIFlow・設定・ファイルは失われます**。正面ボタンは初期ファーム用BOOTボタンではありません。
-- 再起動後、このサイトで「ボードを接続」からFTDIのUSBシリアルポートを選択（115200 bps）。表示されなければ[M5Stack公式のFTDIドライバ案内](https://docs.m5stack.com/en/core/atom_lite)を確認します。
+- 再起動後、このサイトで「ボードを接続」からFTDIのUSBシリアルポートを選択（115200 bps）。表示されなければ[M5Stack公式のFTDIドライバ案内](https://docs.m5stack.com/ja/core/ATOM%20Lite)を確認します。
+- Groveの黄線G26・白線G32は接続ブロックで`G26 (Grove)` / `G32 (Grove)`として選べます。黒はGND、赤は5 V。G32はADCにも使用可能です（G26のADC2はWi-Fi競合を避けるためADC候補から除外）。
+- 左の配線図には、シリアルバスごとに必要時のプルアップとして**本体拡張端子3V3 → 2.2 kΩ（1/8 W以上）→ DATA**を表示します。PWMには付けません。Groveには3.3 Vがないため本体から引き出し、赤の5 V・サーボV+にはつなぎません。DATAが5 Vの場合はこの抵抗では保護できません。
+- 2.2 kΩは短配線の試験開始値です。Low時の電流は約1.5 mA、抵抗の最大消費は約5 mW（3.3 Vの場合）。1 kΩなら約3.3 mA・11 mW。抵抗の定格だけでなく相手側のシンク電流と既存抵抗との並列合成を確認します。立ち上がりは配線容量に依存し、例えば100 pFで0→75%は2.2 kΩで約0.30 µs（理想RC計算）。1 Mbpsを保証する値ではないので、波形・応答を見て必要なら1〜2.2 kΩで調整してください。実機未確認です。[Espressifの単線UART配線例](https://github.com/espressif/arduino-esp32/blob/master/libraries/ESP32/examples/Serial/OneWire_UART_Two_Boards/OneWire_UART_Two_Boards.ino)を参考にした設計上の目安で、M5Stackの指定抵抗値ではありません。
 - 保存後は起動から3秒後に自動実行。書き込み待機にするには、電源を入れ直して3秒以内に**正面ボタン（GPIO39）**を押します。一般説明のBOOTはATOM Liteではこのボタンです。USB接続中は画面の「書き込み待機」も使えます。
 - Wi-FiはPico Wと同じメニュー・手順です。初回のみPC＋USBで受信機能と現在のプログラムを保存し、以後は同じLANのPC／Android Chromeからこのサイトで直接保存します。Wi-Fi JOGは別のAP動作です。実機ではいずれも未確認です。
 - シリアルサーボは**同一GPIOのTX/RX＋オープンドレインUART**を使用。USB用UART0を残しUART1/2を自動割当て（合計2種類まで）。ブロックはGPIOと通信速度だけです。送信エコーを除去してから応答を解析し、異常時はUARTを停止してピンを入力へ戻します。再試行にはプログラムの再起動が必要です。

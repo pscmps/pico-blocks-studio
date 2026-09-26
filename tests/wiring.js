@@ -89,3 +89,26 @@ for (const [key, profile] of Object.entries(profiles)) {
   assert.equal($('#wiringDiagram').querySelectorAll('[data-servo]').length,0);
 }
 console.log('PASS: app wiring renderer for 9 boards, multi-PWM, serial chains, removal');
+vm.runInContext("selectedBoard='atom_lite'",context);
+for(const pin of [19,26,32]) {
+  context.workspace={getAllBlocks:()=>[block('scs009_setup',{PIN:pin}),block('scs009_move',{ID:1}),block('scs009_move',{ID:2})]};
+  vm.runInContext('renderWiringDiagram()',context);
+  assert.equal($('#wiringDiagram').querySelectorAll('[data-pullup]').length,1,'One resistor per bus, not per ID');
+  assert.equal($('#wiringDiagram').querySelector('[data-pullup]').getAttribute('data-pin'),String(pin));
+  assert.match($('#wiringDiagram').querySelector('[data-pullup-source]').getAttribute('d'),/^M90 186 /,'Starts at expansion 3V3, not Grove 5V');
+  assert.match($('#wiringDiagram').querySelector('[data-pullup-data]').getAttribute('d'),/H310 V\d+ H190$/,'Routes around the external supply card');
+  assert.equal($('#atomPullupGuide').hidden,false);
+  assert.ok($('#wiringDiagram').textContent.includes('2.2 kΩ'));
+}
+context.workspace={getAllBlocks:()=>[block('scs009_setup',{PIN:26}),block('sts3215_setup',{PIN:32})]};
+vm.runInContext('renderWiringDiagram()',context);
+assert.equal($('#wiringDiagram').querySelectorAll('[data-pullup]').length,2);
+for(const key of ['atom_lite','pico']) {
+  context.key=key;vm.runInContext('selectedBoard=key',context);
+  for(const blocks of [[],[block('pwm_setup',{PIN:26,CHANNEL:1})],...(key==='pico'?[[block('scs009_setup',{PIN:26})]]:[])]) {
+    context.workspace={getAllBlocks:()=>blocks};vm.runInContext('renderWiringDiagram()',context);
+    assert.equal($('#wiringDiagram').querySelectorAll('[data-pullup]').length,0);
+    assert.equal($('#atomPullupGuide').hidden,true);
+  }
+}
+console.log('PASS: Grove 26/32 and expansion signal wiring, per-bus optional pull-up to 3V3, no PWM/RP/empty pull-ups');
