@@ -66,6 +66,16 @@
             <h2>ボードで動かす</h2>
             <p>MicroPythonを書き込んだRP2040 / RP2350をUSBで接続します。</p>
           </div>
+          <label class="board-field" for="boardSelect">
+            <span>使用するボード</span>
+            <select id="boardSelect">
+              <option value="pico">Raspberry Pi Pico</option>
+              <option value="pico2w">Raspberry Pi Pico 2 W</option>
+              <option value="rp2350_geek">Waveshare RP2350-GEEK</option>
+              <option value="rp2040_geek">Waveshare RP2040-GEEK</option>
+            </select>
+          </label>
+          <p id="boardPinHint" class="board-pin-hint"></p>
           <div class="run-actions">
             <button id="runButton" class="button button-primary" type="button" disabled>
               <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6V6Z"/></svg>
@@ -98,13 +108,11 @@
           </div>
         </section>
 
-        <details class="help-card">
-          <summary>最初の接続について</summary>
-          <ol>
-            <li>RPボードへMicroPythonのUF2を一度だけ入れます。</li>
-            <li>ChromeまたはEdgeでこのページを開きます。</li>
-            <li>接続時に「USB Serial」を選びます。</li>
-          </ol>
+        <details class="help-card" open>
+          <summary>初期ファームを書き込む</summary>
+          <ol id="firmwareSteps"></ol>
+          <p><a id="firmwareLink" class="firmware-link" target="_blank" rel="noopener noreferrer">選択したボードのダウンロードページを開く</a></p>
+          <p>データ通信対応のUSBケーブルを使ってください。UF2のコピー後はドライブが自動で閉じて再起動します。その後、ChromeまたはEdgeで「RPボードを接続」を押し、MicroPythonのシリアルポートを選びます。</p>
           <p>「今すぐ実行」は一時実行、「main.pyに保存」は電源を入れ直しても自動実行します。</p>
         </details>
         <details class="help-card">

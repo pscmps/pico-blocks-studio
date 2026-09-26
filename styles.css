@@ -33,7 +33,8 @@ body {
 button { font: inherit; }
 
 button:focus-visible,
-summary:focus-visible {
+summary:focus-visible,
+select:focus-visible {
   outline: 3px solid rgba(94, 234, 212, 0.65);
   outline-offset: 2px;
 }
@@ -125,6 +126,9 @@ h2 { font-size: 1.05rem; }
 .side-panel { min-height: 0; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 2px; }
 .run-card { padding: 18px; }
 .run-copy p { margin: 8px 0 16px; color: var(--muted); font-size: 0.85rem; line-height: 1.65; }
+.board-field { display: grid; gap: 7px; margin: 0 0 6px; color: var(--muted); font-size: 0.72rem; font-weight: 750; }
+.board-field select { width: 100%; min-height: 42px; padding: 0 34px 0 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface-2); font: inherit; cursor: pointer; }
+.board-pin-hint { margin: 7px 2px 14px; color: var(--faint); font-size: 0.72rem; line-height: 1.5; }
 .run-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .run-actions .button-primary { grid-column: 1 / -1; }
 
@@ -171,6 +175,7 @@ h2 { font-size: 1.05rem; }
 .help-card summary { padding: 14px 0; color: var(--ink); font-size: 0.82rem; font-weight: 750; cursor: pointer; }
 .help-card ol { margin: 0 0 10px; padding-left: 20px; font-size: 0.78rem; line-height: 1.7; }
 .help-card p { margin: 0 0 15px; font-size: 0.75rem; line-height: 1.65; }
+.firmware-link { color: var(--teal); text-underline-offset: 3px; }
 
 .toast-region { position: fixed; right: 20px; bottom: 20px; z-index: 10000; display: grid; gap: 8px; }
 .toast { max-width: 360px; padding: 12px 15px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-2); color: var(--ink); box-shadow: var(--shadow); font-size: 0.82rem; animation: toast-in 180ms ease-out; }

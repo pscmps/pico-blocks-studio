@@ -11,17 +11,42 @@ RP2040 / RP2350 + MicroPython向けの、ブラウザーだけで使えるブロ
 - `main.py`として保存し、ボード起動時に自動実行する
 - ブロックをブラウザー内へ自動保存する
 - RP2040 / RP2350のPIOでSCS009 / SCS0009へ1線式半二重コマンドを送る
+- 基板を選ぶと、SCS009のDATA端子候補をその基板で外部に出ているGPIOへ絞る
 
 ## 使い方
 
-1. RP2040 / RP2350ボードへ公式MicroPythonファームウェアを書き込みます。
-2. PC版のChromeまたはEdgeで公開ページを開きます。
-3. USBでボードを接続し、「RPボードを接続」を押します。
-4. ブロックを組み、「今すぐ実行」または「main.pyに保存」を押します。
+1. 画面右側で使用するボードを選びます。
+2. 「初期ファームを書き込む」を開き、機種別の手順でMicroPythonを書き込みます。
+3. PC版のChromeまたはEdgeで公開ページを開きます。
+4. USBでボードを接続し、「RPボードを接続」を押します。
+5. ブロックを組み、「今すぐ実行」または「main.pyに保存」を押します。
 
-左側の「基本」「SCS009」は開閉できるツリーです。「SCS009」内にはPIO通信の準備、トルクON/OFF、位置移動ブロックがあります。
+左側の「基本」「SCS009」は開閉できるツリーです。「SCS009」内にはPIO通信の準備、トルクON/OFF、位置移動ブロックがあります。「プログラム開始」はワークスペースに最初から1個だけ固定され、ツリーから追加したり削除したりできません。LCDは機種ごとに処理が異なるため、表示カテゴリは設けていません。
 
 Web SerialはHTTPSまたはlocalhostでのみ利用できます。Safari / Firefoxでは利用できません。
+
+## 対応基板とPIO端子
+
+PIOは特定のGPIOだけに固定されているわけではなく、RP2040 / RP2350ではGPIOへ柔軟に割り当てられます。このエディターでは誤配線を減らすため、SCS009接続ブロックの候補を各基板で外部コネクターに出ている端子へ限定します。
+
+| 選択する基板 | SCS009 DATAで選べるGPIO | 本体LEDブロック |
+| --- | --- | --- |
+| Raspberry Pi Pico | GP0〜GP22、GP26〜GP28 | 対応（GP25） |
+| Raspberry Pi Pico 2 W | GP0〜GP22、GP26〜GP28 | 対応（`LED`） |
+| Waveshare RP2350-GEEK | GP2、GP3、GP4、GP5、GP28、GP29 | 非表示 |
+| Waveshare RP2040-GEEK | GP2、GP3、GP4、GP5、GP28、GP29 | 非表示 |
+
+GEEK基板のLCDやmicroSDに内部接続された端子は候補に含めていません。
+
+## MicroPythonの初回書き込み
+
+画面で基板を選ぶと、該当するダウンロード先とボタン操作が表示されます。
+
+- Raspberry Pi Pico / Pico 2 W: USBを外し、`BOOTSEL`を押したままUSB接続します。`RPI-RP2`または`RP2350`ドライブが見えたら、機種に合う公式UF2をコピーします。
+- RP2040-GEEK / RP2350-GEEK: USB接続後に`BOOT`と`RESET`を同時押しし、`RESET`、`BOOT`の順で離します。表示されたドライブへ、Waveshareの機種別案内にあるMicroPython UF2をコピーします。
+- UF2コピー後はボードが自動再起動します。データ通信対応USBケーブルで接続し直し、Chrome / Edgeの「RPボードを接続」からMicroPythonのシリアルポートを選びます。
+
+ダウンロード先: [Raspberry Pi Pico](https://micropython.org/download/RPI_PICO/) / [Raspberry Pi Pico 2 W](https://micropython.org/download/RPI_PICO2_W/) / [RP2040-GEEK](https://www.waveshare.com/wiki/RP2040-GEEK) / [RP2350-GEEK](https://www.waveshare.com/wiki/RP2350-GEEK)
 
 ## SCS009 / SCS0009
 

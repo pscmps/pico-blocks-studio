@@ -5,6 +5,45 @@
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
+  const PICO_PINS = [...Array.from({ length: 23 }, (_, pin) => pin), 26, 27, 28];
+  const GEEK_PINS = [2, 3, 4, 5, 28, 29];
+  const BOARD_PROFILES = {
+    pico: {
+      name: "Raspberry Pi Pico",
+      pins: PICO_PINS,
+      ledPin: "25",
+      firmwareUrl: "https://micropython.org/download/RPI_PICO/",
+      driveName: "RPI-RP2",
+      boot: "USBを外し、BOOTSELボタンを押したままUSBでPCへ接続してから、ボタンを離します。",
+    },
+    pico2w: {
+      name: "Raspberry Pi Pico 2 W",
+      pins: PICO_PINS,
+      ledPin: "\"LED\"",
+      firmwareUrl: "https://micropython.org/download/RPI_PICO2_W/",
+      driveName: "RP2350",
+      boot: "USBを外し、BOOTSELボタンを押したままUSBでPCへ接続してから、ボタンを離します。",
+    },
+    rp2350_geek: {
+      name: "Waveshare RP2350-GEEK",
+      pins: GEEK_PINS,
+      ledPin: null,
+      firmwareUrl: "https://www.waveshare.com/wiki/RP2350-GEEK",
+      driveName: "RP2350",
+      boot: "USBでPCへ接続し、BOOTとRESETを同時に押します。RESETを先に離し、次にBOOTを離します。",
+    },
+    rp2040_geek: {
+      name: "Waveshare RP2040-GEEK",
+      pins: GEEK_PINS,
+      ledPin: null,
+      firmwareUrl: "https://www.waveshare.com/wiki/RP2040-GEEK",
+      driveName: "RPI-RP2",
+      boot: "USBでPCへ接続し、BOOTとRESETを同時に押します。RESETを先に離し、次にBOOTを離します。",
+    },
+  };
+  let selectedBoard = localStorage.getItem("picoblocks-board-v1");
+  if (!BOARD_PROFILES[selectedBoard]) selectedBoard = "pico";
+
   const elements = {
     connect: $("#connectButton"),
     run: $("#runButton"),
@@ -24,6 +63,10 @@
     connectionLabel: $("#connectionLabel"),
     actionHint: $("#actionHint"),
     toastRegion: $("#toastRegion"),
+    boardSelect: $("#boardSelect"),
+    boardPinHint: $("#boardPinHint"),
+    firmwareSteps: $("#firmwareSteps"),
+    firmwareLink: $("#firmwareLink"),
   };
 
   let port = null;
@@ -118,26 +161,6 @@
       colour: 39,
     },
     {
-      type: "scs009_setup",
-      message0: "SCS009を接続",
-      message1: "DATA GP %1",
-      args1: [
-        { type: "field_number", name: "PIN", value: 2, min: 0, max: 29, precision: 1 },
-      ],
-      message2: "通信速度 %1",
-      args2: [
-        {
-          type: "field_dropdown",
-          name: "BAUD",
-          options: [["1 Mbps", "1000000"], ["500 kbps", "500000"], ["38400 bps", "38400"]],
-        },
-      ],
-      previousStatement: null,
-      nextStatement: null,
-      colour: 14,
-      tooltip: "SCS009 / SCS0009のDATA線を指定GPIOへ接続します。PIOが送受信方向を切り替えます。",
-    },
-    {
       type: "scs009_torque",
       message0: "SCS009 ID %1 のトルクを %2",
       args0: [
@@ -168,7 +191,28 @@
     },
   ]);
 
-  const toolbox = {
+  Blockly.Blocks.scs009_setup = {
+    init() {
+      const pinOptions = () => BOARD_PROFILES[selectedBoard].pins.map((pin) => [`GP${pin}`, String(pin)]);
+      this.appendDummyInput().appendField("SCS009を接続");
+      this.appendDummyInput().appendField("DATA").appendField(new Blockly.FieldDropdown(pinOptions), "PIN");
+      this.appendDummyInput()
+        .appendField("通信速度")
+        .appendField(new Blockly.FieldDropdown([["1 Mbps", "1000000"], ["500 kbps", "500000"], ["38400 bps", "38400"]]), "BAUD");
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(14);
+      this.setTooltip("SCS009 / SCS0009のDATA線を、選択中の基板で外部に出ているGPIOへ直接接続します。");
+    },
+  };
+
+  function buildToolbox() {
+    const motionBlocks = [
+      ...(BOARD_PROFILES[selectedBoard].ledPin === null ? [] : [{ kind: "block", type: "pico_led" }]),
+      { kind: "block", type: "gpio_write" },
+      { kind: "block", type: "wait_ms" },
+    ];
+    return {
     kind: "categoryToolbox",
     contents: [
       {
@@ -179,19 +223,9 @@
         contents: [
           {
             kind: "category",
-            name: "はじめる",
-            colour: "#27b7a7",
-            contents: [{ kind: "block", type: "program_start" }],
-          },
-          {
-            kind: "category",
             name: "うごき",
             colour: "#f0a65a",
-            contents: [
-              { kind: "block", type: "pico_led" },
-              { kind: "block", type: "gpio_write" },
-              { kind: "block", type: "wait_ms" },
-            ],
+            contents: motionBlocks,
           },
           {
             kind: "category",
@@ -201,12 +235,6 @@
               { kind: "block", type: "repeat_times" },
               { kind: "block", type: "forever_loop" },
             ],
-          },
-          {
-            kind: "category",
-            name: "表示",
-            colour: "#a36ce0",
-            contents: [{ kind: "block", type: "print_text" }],
           },
         ],
       },
@@ -237,10 +265,11 @@
         ],
       },
     ],
-  };
+    };
+  }
 
   const workspace = Blockly.inject("blocklyDiv", {
-    toolbox,
+    toolbox: buildToolbox(),
     theme,
     renderer: "zelos",
     trashcan: true,
@@ -257,34 +286,6 @@
           type: "program_start",
           x: 54,
           y: 54,
-          next: {
-            block: {
-              type: "repeat_times",
-              fields: { TIMES: 3 },
-              inputs: {
-                DO: {
-                  block: {
-                    type: "pico_led",
-                    fields: { STATE: "1" },
-                    next: {
-                      block: {
-                        type: "wait_ms",
-                        fields: { MS: 400 },
-                        next: {
-                          block: {
-                            type: "pico_led",
-                            fields: { STATE: "0" },
-                            next: { block: { type: "wait_ms", fields: { MS: 400 } } },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-              next: { block: { type: "print_text", fields: { TEXT: "できました！" } } },
-            },
-          },
         },
       ],
     },
@@ -298,6 +299,23 @@
       console.warn("Saved workspace could not be loaded", error);
       Blockly.serialization.workspaces.load(starterState, workspace);
     }
+    normalizeWorkspace();
+  }
+
+  function normalizeWorkspace() {
+    for (const block of workspace.getAllBlocks(false).filter((item) => item.type === "print_text")) {
+      block.dispose(true);
+    }
+    const starts = workspace.getAllBlocks(false).filter((block) => block.type === "program_start");
+    let start = starts.shift();
+    for (const extra of starts) extra.dispose(true);
+    if (!start) {
+      start = workspace.newBlock("program_start");
+      start.initSvg();
+      start.render();
+      start.moveBy(54, 54);
+    }
+    start.setDeletable(false);
   }
 
   function pyString(value) {
@@ -391,7 +409,11 @@ class SCS009PIO:
           break;
         case "pico_led": {
           const state = current.getFieldValue("STATE");
-          piece = state === "TOGGLE" ? "led.toggle()\n" : `led.value(${state})\n`;
+          if (BOARD_PROFILES[selectedBoard].ledPin === null) {
+            piece = "# 選択中の基板では本体LEDブロックを使用しません\n";
+          } else {
+            piece = state === "TOGGLE" ? "led.toggle()\n" : `led.value(${state})\n`;
+          }
           break;
         }
         case "wait_ms":
@@ -435,7 +457,9 @@ class SCS009PIO:
   function generatePython() {
     const roots = workspace.getTopBlocks(true);
     const allBlocks = workspace.getAllBlocks(false);
+    const profile = BOARD_PROFILES[selectedBoard];
     const usesSCS009 = allBlocks.some((block) => block.type.startsWith("scs009_"));
+    const usesLed = allBlocks.some((block) => block.type === "pico_led");
     const setup = allBlocks.find((block) => block.type === "scs009_setup");
     const scsConfig = {
       pin: setup ? Number(setup.getFieldValue("PIN")) : 2,
@@ -447,7 +471,45 @@ class SCS009PIO:
     const scsCode = usesSCS009
       ? `\n${SCS009_DRIVER}\nscs009 = SCS009PIO(data_pin=${scsConfig.pin}, baud=${scsConfig.baud})\n`
       : "";
-    return `# PicoBlocks Studio が生成しました\nfrom machine import Pin\nimport time\n${scsCode}\ntry:\n    led = Pin(\"LED\", Pin.OUT)\nexcept:\n    led = Pin(25, Pin.OUT)\n\n${body}`;
+    const ledCode = usesLed && profile.ledPin !== null ? `\nled = Pin(${profile.ledPin}, Pin.OUT)\n` : "";
+    return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time\n${scsCode}${ledCode}\n${body}`;
+  }
+
+  function updateBoardUi() {
+    const profile = BOARD_PROFILES[selectedBoard];
+    elements.boardSelect.value = selectedBoard;
+    elements.boardPinHint.textContent = `SCS009 DATAで選べる端子: ${profile.pins.map((pin) => `GP${pin}`).join(" / ")}`;
+    elements.firmwareLink.href = profile.firmwareUrl;
+    elements.firmwareLink.textContent = `${profile.name}のファームウェア案内を開く`;
+    elements.firmwareSteps.replaceChildren();
+    const steps = [
+      `${profile.name}用のMicroPython UF2をリンク先からダウンロードします。別機種用のUF2は使わないでください。`,
+      profile.boot,
+      `PCに「${profile.driveName}」というUSBドライブが表示されたことを確認します。`,
+      "ダウンロードしたUF2ファイルを、そのUSBドライブへドラッグ＆ドロップします。コピーが終わるとボードが自動で再起動します。",
+    ];
+    for (const text of steps) {
+      const item = document.createElement("li");
+      item.textContent = text;
+      elements.firmwareSteps.appendChild(item);
+    }
+  }
+
+  function validateSCS009Pins() {
+    const allowed = BOARD_PROFILES[selectedBoard].pins.map(String);
+    for (const block of workspace.getAllBlocks(false).filter((item) => item.type === "scs009_setup")) {
+      if (!allowed.includes(block.getFieldValue("PIN"))) block.setFieldValue(allowed[0], "PIN");
+    }
+  }
+
+  function selectBoard(boardId) {
+    if (!BOARD_PROFILES[boardId]) return;
+    selectedBoard = boardId;
+    localStorage.setItem("picoblocks-board-v1", selectedBoard);
+    workspace.updateToolbox(buildToolbox());
+    validateSCS009Pins();
+    updateBoardUi();
+    elements.pythonCode.textContent = generatePython();
   }
 
   let saveTimer = null;
@@ -682,6 +744,7 @@ class SCS009PIO:
   elements.run.addEventListener("click", runProgram);
   elements.save.addEventListener("click", saveProgram);
   elements.stop.addEventListener("click", stopProgram);
+  elements.boardSelect.addEventListener("change", () => selectBoard(elements.boardSelect.value));
   elements.undo.addEventListener("click", () => workspace.undo(false));
   elements.redo.addEventListener("click", () => workspace.undo(true));
   elements.codeTab.addEventListener("click", () => showTab("code"));
@@ -705,6 +768,8 @@ class SCS009PIO:
   });
 
   loadWorkspace();
+  validateSCS009Pins();
+  updateBoardUi();
   elements.pythonCode.textContent = generatePython();
   setConnection("offline", "未接続");
 })();
