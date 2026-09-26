@@ -13,6 +13,10 @@
       pins: PICO_PINS,
       ledPin: "25",
       firmwareUrl: "https://micropython.org/download/RPI_PICO/",
+      firmwareLabel: "Raspberry Pi Pico用MicroPython",
+      firmwareIsZip: false,
+      pinoutUrl: "https://datasheets.raspberrypi.com/pico/Pico-2-Pinout.pdf",
+      layout: "pico",
       driveName: "RPI-RP2",
       boot: "USBを外し、BOOTSELボタンを押したままUSBでPCへ接続してから、ボタンを離します。",
     },
@@ -21,6 +25,10 @@
       pins: PICO_PINS,
       ledPin: "\"LED\"",
       firmwareUrl: "https://micropython.org/download/RPI_PICO2_W/",
+      firmwareLabel: "Raspberry Pi Pico 2 W用MicroPython",
+      firmwareIsZip: false,
+      pinoutUrl: "https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html",
+      layout: "pico",
       driveName: "RP2350",
       boot: "USBを外し、BOOTSELボタンを押したままUSBでPCへ接続してから、ボタンを離します。",
     },
@@ -28,7 +36,11 @@
       name: "Waveshare RP2350-GEEK",
       pins: GEEK_PINS,
       ledPin: null,
-      firmwareUrl: "https://www.waveshare.com/wiki/RP2350-GEEK",
+      firmwareUrl: "https://files.waveshare.com/wiki/RP2350-Plus/WAVESHARE-RP2350A-Board.zip",
+      firmwareLabel: "Waveshare RP2350A用MicroPython ZIP",
+      firmwareIsZip: true,
+      pinoutUrl: "https://files.waveshare.com/wiki/RP2350-GEEK/RP2350-GEEK.pdf",
+      layout: "geek",
       driveName: "RP2350",
       boot: "USBでPCへ接続し、BOOTとRESETを同時に押します。RESETを先に離し、次にBOOTを離します。",
     },
@@ -36,7 +48,11 @@
       name: "Waveshare RP2040-GEEK",
       pins: GEEK_PINS,
       ledPin: null,
-      firmwareUrl: "https://www.waveshare.com/wiki/RP2040-GEEK",
+      firmwareUrl: "https://files.waveshare.com/wiki/RP2350-Plus/WAVESHARE-RP2040-Board.zip",
+      firmwareLabel: "Waveshare RP2040用MicroPython ZIP",
+      firmwareIsZip: true,
+      pinoutUrl: "https://files.waveshare.com/wiki/RP2040-GEEK/RP2040-GEEK-Schematic.pdf",
+      layout: "geek",
       driveName: "RPI-RP2",
       boot: "USBでPCへ接続し、BOOTとRESETを同時に押します。RESETを先に離し、次にBOOTを離します。",
     },
@@ -67,6 +83,12 @@
     boardPinHint: $("#boardPinHint"),
     firmwareSteps: $("#firmwareSteps"),
     firmwareLink: $("#firmwareLink"),
+    appShell: $("#appShell"),
+    wiringToggle: $("#wiringToggle"),
+    wiringContent: $("#wiringContent"),
+    wiringSummary: $("#wiringSummary"),
+    wiringDiagram: $("#wiringDiagram"),
+    pinoutLink: $("#pinoutLink"),
   };
 
   let port = null;
@@ -475,15 +497,101 @@ class SCS009PIO:
     return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time\n${scsCode}${ledCode}\n${body}`;
   }
 
+  const PICO_LEFT_PINS = ["GP0", "GP1", "GND", "GP2", "GP3", "GP4", "GP5", "GND", "GP6", "GP7", "GP8", "GP9", "GND", "GP10", "GP11", "GP12", "GP13", "GND", "GP14", "GP15"];
+  const PICO_RIGHT_PINS = ["VBUS", "VSYS", "GND", "3V3_EN", "3V3", "ADC_VREF", "GP28", "GND", "GP27", "GP26", "RUN", "GP22", "GND", "GP21", "GP20", "GP19", "GP18", "GND", "GP17", "GP16"];
+
+  function picoBoardDrawing(profile, selectedPin) {
+    const selected = `GP${selectedPin}`;
+    let dataPoint = { x: 50, y: 82 };
+    const groundPoint = { x: 50, y: 64 };
+    const makeSide = (pins, x, side) => pins.map((name, index) => {
+      const y = 42 + index * 10.5;
+      const active = name === selected;
+      if (active) dataPoint = { x, y };
+      const labelX = side === "left" ? x + 9 : x - 9;
+      const anchor = side === "left" ? "start" : "end";
+      const label = active || name === "GND" ? `<text x="${labelX}" y="${y + 2.5}" text-anchor="${anchor}" class="pin-label ${active ? "active" : ""}">${name}</text>` : "";
+      return `<circle cx="${x}" cy="${y}" r="3.2" class="board-pin ${active ? "active" : ""}"/>${label}`;
+    }).join("");
+    const board = `
+      <rect x="50" y="22" width="160" height="238" rx="16" class="board-body"/>
+      <rect x="104" y="14" width="52" height="22" rx="5" class="usb"/>
+      <circle cx="130" cy="62" r="8" class="button-mark"/>
+      <text x="130" y="65" text-anchor="middle" class="tiny-label">BOOT</text>
+      <rect x="100" y="94" width="60" height="70" rx="7" class="chip"/>
+      <text x="130" y="124" text-anchor="middle" class="board-title">${profile.name.includes("2") ? "PICO 2 W" : "PICO"}</text>
+      <text x="130" y="139" text-anchor="middle" class="board-subtitle">RP GPIO / PIO</text>
+      ${makeSide(PICO_LEFT_PINS, 50, "left")}${makeSide(PICO_RIGHT_PINS, 210, "right")}`;
+    return { board, dataPoint, groundPoint };
+  }
+
+  function geekBoardDrawing(profile, selectedPin) {
+    const positions = {
+      2: { x: 72, y: 225 }, 3: { x: 88, y: 225 },
+      4: { x: 115, y: 225 }, 5: { x: 131, y: 225 },
+      28: { x: 158, y: 225 }, 29: { x: 174, y: 225 },
+    };
+    const dataPoint = positions[selectedPin] || positions[2];
+    const pins = Object.entries(positions).map(([pin, point]) => {
+      const active = Number(pin) === selectedPin;
+      return `<circle cx="${point.x}" cy="${point.y}" r="5" class="board-pin ${active ? "active" : ""}"/><text x="${point.x}" y="242" text-anchor="middle" class="pin-label ${active ? "active" : ""}">${pin}</text>`;
+    }).join("");
+    const board = `
+      <rect x="42" y="24" width="176" height="238" rx="18" class="board-body"/>
+      <path d="M79 24h102v20H79z" class="usb"/>
+      <rect x="63" y="61" width="134" height="76" rx="8" class="lcd"/>
+      <text x="130" y="91" text-anchor="middle" class="board-title">${profile.name.replace("Waveshare ", "")}</text>
+      <text x="130" y="108" text-anchor="middle" class="board-subtitle">LCDはこの図では未使用</text>
+      <rect x="88" y="154" width="84" height="43" rx="7" class="chip"/>
+      <text x="130" y="179" text-anchor="middle" class="board-subtitle">GPIO CONNECTORS</text>
+      ${pins}<circle cx="194" cy="225" r="5" class="board-pin ground"/><text x="194" y="242" text-anchor="middle" class="pin-label">GND</text>`;
+    return { board, dataPoint, groundPoint: { x: 194, y: 225 } };
+  }
+
+  function renderWiringDiagram() {
+    const profile = BOARD_PROFILES[selectedBoard];
+    const setup = workspace.getAllBlocks(false).find((block) => block.type === "scs009_setup");
+    const selectedPin = setup ? Number(setup.getFieldValue("PIN")) : profile.pins[0];
+    const drawing = profile.layout === "pico" ? picoBoardDrawing(profile, selectedPin) : geekBoardDrawing(profile, selectedPin);
+    const example = setup ? "接続ブロックの設定を表示中" : "接続ブロック未配置のため候補例を表示中";
+    elements.wiringSummary.textContent = `${example}: GP${selectedPin}をSCS009のDATAへ接続します。`;
+    elements.pinoutLink.href = profile.pinoutUrl;
+    elements.pinoutLink.textContent = `${profile.name}の公式ピン情報`;
+    elements.wiringDiagram.innerHTML = `
+      <svg viewBox="0 0 260 460" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <style>
+          .board-body{fill:#163955;stroke:#4a6d88;stroke-width:2}.usb{fill:#9aa8b8;stroke:#d8e1eb}.chip{fill:#0a101b;stroke:#52637a}.lcd{fill:#13283a;stroke:#5eead4;stroke-width:1.5}.button-mark{fill:#253c52;stroke:#6f839b}.board-pin{fill:#94a3b8;stroke:#dbe5f4;stroke-width:1}.board-pin.active{fill:#ffd166;stroke:#fff2b7;stroke-width:2}.board-pin.ground{fill:#a8b3c5}.pin-label{fill:#8190a6;font:7px Inter,sans-serif}.pin-label.active{fill:#ffd166;font-weight:800}.board-title{fill:#f5f8ff;font:700 10px Inter,sans-serif}.board-subtitle,.tiny-label{fill:#9aabc0;font:6.5px Inter,sans-serif}.device-box{fill:#152238;stroke:#41516c;stroke-width:1.5}.terminal{fill:#25364d;stroke:#728199}.terminal-label{fill:#dbe5f4;font:700 8px Inter,sans-serif}.caption{fill:#9aabc0;font:7px Inter,sans-serif}.data-wire{fill:none;stroke:#ffd166;stroke-width:3}.power-wire{fill:none;stroke:#ff7185;stroke-width:3}.ground-wire{fill:none;stroke:#a8b3c5;stroke-width:3}
+        </style>
+        <title>${profile.name}とSCS009の簡易配線図</title>
+        <path d="M${drawing.dataPoint.x} ${drawing.dataPoint.y} C235 ${drawing.dataPoint.y},70 330,112 330" class="data-wire"/>
+        <path d="M${drawing.groundPoint.x} ${drawing.groundPoint.y} C238 ${drawing.groundPoint.y},75 372,112 372" class="ground-wire"/>
+        <path d="M118 416 C150 416,82 351,112 351" class="power-wire"/>
+        <path d="M118 434 C165 434,78 372,112 372" class="ground-wire"/>
+        ${drawing.board}
+        <text x="130" y="282" text-anchor="middle" class="caption">黄色で選択中: GP${selectedPin}</text>
+        <rect x="112" y="306" width="136" height="82" rx="11" class="device-box"/>
+        <text x="180" y="320" text-anchor="middle" class="board-title">SCS009 コネクタ</text>
+        <circle cx="122" cy="330" r="6" class="terminal"/><text x="135" y="333" class="terminal-label">DATA</text>
+        <circle cx="122" cy="351" r="6" class="terminal"/><text x="135" y="354" class="terminal-label">V+（外部電源）</text>
+        <circle cx="122" cy="372" r="6" class="terminal"/><text x="135" y="375" class="terminal-label">GND（共通）</text>
+        <rect x="12" y="398" width="106" height="52" rx="10" class="device-box"/>
+        <text x="65" y="412" text-anchor="middle" class="board-title">サーボ用外部電源</text>
+        <circle cx="108" cy="416" r="5" class="terminal"/><text x="101" y="419" text-anchor="end" class="terminal-label">＋</text>
+        <circle cx="108" cy="434" r="5" class="terminal"/><text x="101" y="437" text-anchor="end" class="terminal-label">GND</text>
+      </svg>`;
+  }
+
   function updateBoardUi() {
     const profile = BOARD_PROFILES[selectedBoard];
     elements.boardSelect.value = selectedBoard;
     elements.boardPinHint.textContent = `SCS009 DATAで選べる端子: ${profile.pins.map((pin) => `GP${pin}`).join(" / ")}`;
     elements.firmwareLink.href = profile.firmwareUrl;
-    elements.firmwareLink.textContent = `${profile.name}のファームウェア案内を開く`;
+    elements.firmwareLink.textContent = `${profile.firmwareLabel}のダウンロード先を開く`;
     elements.firmwareSteps.replaceChildren();
     const steps = [
-      `${profile.name}用のMicroPython UF2をリンク先からダウンロードします。別機種用のUF2は使わないでください。`,
+      profile.firmwareIsZip
+        ? `${profile.name}用のMicroPython ZIPをリンク先からダウンロードして展開し、中のUF2ファイルを用意します。別機種用は使わないでください。`
+        : `${profile.name}用のMicroPythonページを開き、最新の安定版UF2をダウンロードします。別機種用は使わないでください。`,
       profile.boot,
       `PCに「${profile.driveName}」というUSBドライブが表示されたことを確認します。`,
       "ダウンロードしたUF2ファイルを、そのUSBドライブへドラッグ＆ドロップします。コピーが終わるとボードが自動で再起動します。",
@@ -493,6 +601,7 @@ class SCS009PIO:
       item.textContent = text;
       elements.firmwareSteps.appendChild(item);
     }
+    renderWiringDiagram();
   }
 
   function validateSCS009Pins() {
@@ -512,11 +621,20 @@ class SCS009PIO:
     elements.pythonCode.textContent = generatePython();
   }
 
+  function setWiringCollapsed(collapsed) {
+    elements.appShell.classList.toggle("wiring-collapsed", collapsed);
+    elements.wiringToggle.setAttribute("aria-expanded", String(!collapsed));
+    elements.wiringToggle.title = collapsed ? "配線ガイドを開く" : "配線ガイドを閉じる";
+    localStorage.setItem("picoblocks-wiring-collapsed-v1", collapsed ? "1" : "0");
+    requestAnimationFrame(() => Blockly.svgResize(workspace));
+  }
+
   let saveTimer = null;
   workspace.addChangeListener((event) => {
     if (event.isUiEvent) return;
     const code = generatePython();
     elements.pythonCode.textContent = code;
+    renderWiringDiagram();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       localStorage.setItem("picoblocks-workspace-v1", JSON.stringify(Blockly.serialization.workspaces.save(workspace)));
@@ -745,6 +863,7 @@ class SCS009PIO:
   elements.save.addEventListener("click", saveProgram);
   elements.stop.addEventListener("click", stopProgram);
   elements.boardSelect.addEventListener("change", () => selectBoard(elements.boardSelect.value));
+  elements.wiringToggle.addEventListener("click", () => setWiringCollapsed(!elements.appShell.classList.contains("wiring-collapsed")));
   elements.undo.addEventListener("click", () => workspace.undo(false));
   elements.redo.addEventListener("click", () => workspace.undo(true));
   elements.codeTab.addEventListener("click", () => showTab("code"));
@@ -768,6 +887,7 @@ class SCS009PIO:
   });
 
   loadWorkspace();
+  setWiringCollapsed(localStorage.getItem("picoblocks-wiring-collapsed-v1") === "1");
   validateSCS009Pins();
   updateBoardUi();
   elements.pythonCode.textContent = generatePython();

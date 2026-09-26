@@ -96,11 +96,15 @@ select:focus-visible {
 .app-shell {
   height: calc(100vh - 72px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 390px;
+  grid-template-columns: 300px minmax(0, 1fr) 390px;
   gap: 16px;
   padding: 16px;
+  transition: grid-template-columns 180ms ease;
 }
 
+.app-shell.wiring-collapsed { grid-template-columns: 44px minmax(0, 1fr) 390px; }
+
+.wiring-panel,
 .workspace-panel,
 .side-panel > section,
 .help-card {
@@ -109,6 +113,32 @@ select:focus-visible {
   border-radius: 16px;
   box-shadow: var(--shadow);
 }
+
+.wiring-panel { min-width: 0; overflow: hidden; display: grid; grid-template-columns: 0 1fr; position: relative; }
+.wiring-rail { position: absolute; z-index: 2; right: 8px; top: 10px; }
+.wiring-toggle { min-width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 8px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); background: var(--surface-2); font: inherit; font-size: 0.72rem; font-weight: 800; cursor: pointer; }
+.wiring-toggle:hover { color: var(--ink); }
+.wiring-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.wiring-content { min-width: 300px; padding: 17px 15px 16px; overflow-y: auto; }
+.wiring-heading { min-height: 41px; display: flex; align-items: flex-start; justify-content: space-between; padding-right: 78px; }
+.original-diagram { color: var(--faint); font-size: 0.66rem; border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px; white-space: nowrap; }
+.wiring-summary { min-height: 38px; margin: 10px 0 12px; color: var(--muted); font-size: 0.76rem; line-height: 1.55; }
+.wiring-diagram { width: 100%; aspect-ratio: 260 / 460; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #0b1424; }
+.wiring-diagram svg { display: block; width: 100%; height: 100%; }
+.wiring-legend { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 12px 0 9px; color: var(--muted); font-size: 0.68rem; }
+.wiring-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.wiring-legend i { width: 16px; height: 3px; border-radius: 2px; }
+.wire-data { background: #ffd166; }
+.wire-power { background: #ff7185; }
+.wire-ground { background: #a8b3c5; }
+.wiring-note { margin: 0 0 10px; color: var(--faint); font-size: 0.69rem; line-height: 1.55; }
+.pinout-link { color: var(--teal); font-size: 0.71rem; text-underline-offset: 3px; }
+.app-shell.wiring-collapsed .wiring-panel { grid-template-columns: 44px 0; }
+.app-shell.wiring-collapsed .wiring-content { visibility: hidden; }
+.app-shell.wiring-collapsed .wiring-rail { inset: 7px auto auto 5px; }
+.app-shell.wiring-collapsed .wiring-toggle { width: 34px; height: auto; min-height: 108px; padding: 9px 4px; flex-direction: column; }
+.app-shell.wiring-collapsed .wiring-toggle svg { transform: rotate(180deg); }
+.app-shell.wiring-collapsed .wiring-toggle span { writing-mode: vertical-rl; letter-spacing: 0.18em; }
 
 .workspace-panel { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
 .panel-heading { height: 76px; display: flex; align-items: center; justify-content: space-between; padding: 13px 18px 12px; border-bottom: 1px solid var(--line); }
@@ -196,12 +226,23 @@ h2 { font-size: 1.05rem; }
 @keyframes pulse { to { opacity: 0.35; } }
 @keyframes toast-in { from { transform: translateY(8px); opacity: 0; } }
 
+@media (max-width: 1180px) {
+  .app-shell { grid-template-columns: 260px minmax(0, 1fr) 350px; }
+  .wiring-content { min-width: 260px; }
+  .app-shell.wiring-collapsed { grid-template-columns: 44px minmax(0, 1fr) 350px; }
+}
+
 @media (max-width: 900px) {
   body { overflow: auto; }
   .topbar { position: sticky; top: 0; z-index: 20; padding: 0 14px; }
   .connection-state { display: none; }
   .button-secondary { padding: 0 11px; }
-  .app-shell { height: auto; min-height: calc(100vh - 72px); grid-template-columns: 1fr; padding: 10px; }
+  .app-shell, .app-shell.wiring-collapsed { height: auto; min-height: calc(100vh - 72px); grid-template-columns: 1fr; padding: 10px; }
+  .wiring-panel { min-height: 420px; }
+  .wiring-content { min-width: 0; }
+  .app-shell.wiring-collapsed .wiring-panel { min-height: 44px; grid-template-columns: 44px 0; }
+  .app-shell.wiring-collapsed .wiring-toggle { min-height: 34px; width: auto; flex-direction: row; }
+  .app-shell.wiring-collapsed .wiring-toggle span { writing-mode: horizontal-tb; letter-spacing: normal; }
   .workspace-panel { height: 64vh; min-height: 470px; }
   .side-panel { overflow: visible; }
   .code-card { min-height: 300px; }

@@ -40,7 +40,34 @@
       </div>
     </header>
 
-    <main class="app-shell">
+    <main id="appShell" class="app-shell">
+      <aside id="wiringPanel" class="wiring-panel" aria-label="配線ガイド">
+        <div class="wiring-rail">
+          <button id="wiringToggle" class="wiring-toggle" type="button" aria-expanded="true" aria-controls="wiringContent" title="配線ガイドを閉じる">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m14 7-5 5 5 5"/></svg>
+            <span>配線</span>
+          </button>
+        </div>
+        <div id="wiringContent" class="wiring-content">
+          <div class="wiring-heading">
+            <div>
+              <span class="eyebrow">WIRING</span>
+              <h2>配線ガイド</h2>
+            </div>
+            <span class="original-diagram">簡略図</span>
+          </div>
+          <p id="wiringSummary" class="wiring-summary"></p>
+          <div id="wiringDiagram" class="wiring-diagram" role="img" aria-label="選択したボードとSCS009の配線図"></div>
+          <div class="wiring-legend" aria-label="配線色の説明">
+            <span><i class="wire-data"></i>DATA</span>
+            <span><i class="wire-power"></i>外部電源＋</span>
+            <span><i class="wire-ground"></i>共通GND</span>
+          </div>
+          <p class="wiring-note">サーボのV+はRPボードへ接続しません。コネクタは色や向きではなく、必ず端子名を確認してください。</p>
+          <a id="pinoutLink" class="pinout-link" target="_blank" rel="noopener noreferrer">公式ピン配置を確認</a>
+        </div>
+      </aside>
+
       <section class="workspace-panel" aria-label="ブロックエディター">
         <div class="panel-heading">
           <div>
