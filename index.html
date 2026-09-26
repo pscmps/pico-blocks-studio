@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css?v=boot1" />
+    <link rel="stylesheet" href="./styles.css?v=help1" />
   </head>
   <body>
     <header class="topbar">
@@ -50,6 +50,7 @@
               <span>対話AIとプログラムを作る</span>
               <small>依頼テンプレート・JSON貼り付け</small>
             </button>
+            <button id="helpMenuItem" type="button"><span>HELP</span><small>操作・JOG・困ったとき</small></button>
           </div>
         </div>
       </div>
@@ -102,6 +103,12 @@
           </div>
         </div>
         <div id="blocklyDiv" class="blockly-host"></div>
+        <section id="firstRunGuide" class="first-run-guide" aria-labelledby="firstRunTitle" hidden>
+          <div class="first-run-heading"><h2 id="firstRunTitle">はじめて使うとき</h2><button id="dismissFirstRun" class="icon-button" type="button" aria-label="初回案内を閉じる">×</button></div>
+          <ol><li>右で使うボードを選ぶ</li><li>初期ファームをボードへ入れる</li><li>USB接続して「保存して実行」</li></ol>
+          <button id="showFirmwareSteps" class="button button-secondary" type="button">初期ファームの手順を見る</button>
+          <label class="first-run-preference"><input id="hideFirstRun" type="checkbox">次回から表示しない</label>
+        </section>
       </section>
 
       <aside class="side-panel" aria-label="実行とコード">
@@ -109,7 +116,6 @@
           <div class="run-copy">
             <span class="eyebrow">DEVICE</span>
             <h2>ボードで動かす</h2>
-            <p>MicroPythonを書き込んだRP2040 / RP2350をUSBで接続します。</p>
           </div>
           <label class="board-field" for="boardSelect">
             <span>使用するボード</span>
@@ -124,7 +130,6 @@
               <option value="xiao_rp2350">Seeed Studio XIAO RP2350</option>
             </select>
           </label>
-          <p id="boardPinHint" class="board-pin-hint"></p>
           <div class="run-actions">
             <button id="runButton" class="button button-primary" type="button" disabled>
               <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6V6Z"/></svg>
@@ -143,6 +148,24 @@
           <p id="actionHint" class="action-hint">先に「RPボードを接続」を押してください。</p>
         </section>
 
+        <details class="help-card" id="firmwareHelp">
+          <summary>① 初回だけ：初期ファームを入れる</summary>
+          <ol id="firmwareSteps"></ol>
+          <p><a id="firmwareLink" class="firmware-link" target="_blank" rel="noopener noreferrer">初期ファームをダウンロード</a></p>
+          <p>再起動したら「RPボードを接続」→ ブロックを作る →「保存して実行」。</p>
+        </details>
+        <section class="help-card quick-write-guide" aria-labelledby="writeGuideTitle">
+          <h3 id="writeGuideTitle">② 次回から：プログラムを書き込む</h3>
+          <p>USB接続 →「書き込み待機」→ 編集 →「保存して実行」。初期ファームは入れ直しません。</p>
+          <details><summary>ボタンで書き込み待機にするには</summary><p>再起動してから3秒以内にBOOTを押します。押したまま再起動すると初期ファーム用のモードになるので注意。</p><p id="resetHint"></p></details>
+          <p><strong>保存しないと：</strong>次回の電源ONでは前のプログラムのまま。まだ一度も保存していなければ、自動では動きません。「今すぐ実行」は試運転だけです。</p>
+        </section>
+        <section class="help-card power-guide" aria-labelledby="powerGuideTitle">
+          <h3 id="powerGuideTitle">電源の注意</h3>
+          <p>USBを抜いて使うにはボードへの外部給電が必要です。サーボは仕様に合う外部電源を使い、GNDを共通にしてください。</p>
+          <p>「停止」「書き込み待機」でもサーボの保持力が残る場合があります。</p>
+        </section>
+
         <section class="code-card">
           <div class="card-tabs" role="tablist" aria-label="出力表示">
             <button id="codeTab" class="tab is-active" role="tab" aria-selected="true" aria-controls="codePanel" type="button">Python</button>
@@ -158,44 +181,6 @@
           </div>
         </section>
 
-        <details class="help-card" id="modeHelp" open>
-          <summary>実行・書き込みモードの使い方</summary>
-          <p>初回は下の手順でMicroPythonを入れます。その後、一度「保存して実行」を押すと、電源ON／RSTから保存プログラムが自動起動します。</p>
-          <ul>
-            <li><strong>通常起動：</strong>最初の3秒間は実行を待ち、その後に保存した処理を開始。</li>
-            <li><strong>BOOTで待機：</strong>電源ON／RSTを離した後、3秒以内にBOOT（BOOTSEL）を押すと、その起動だけ書き込み待機。ボタンを離してUSB接続し、編集・転送できます。</li>
-            <li><strong>PCから待機：</strong>「書き込み待機」で処理を中断し、PWM・PIO等をリセット。保存プログラムは消しません。再開は「保存して実行」またはRST／電源入れ直し。</li>
-            <li><strong>今すぐ実行：</strong>一時的な試運転。保存内容は変わらず、次回起動では最後に保存したプログラムへ戻ります。</li>
-          </ul>
-          <p id="resetHint"></p>
-          <p>BOOT待機は、この版で「保存して実行」したプログラムから有効です。BOOT判定に対応しないファームでは自動実行せず待機するため、機種別の新しいMicroPythonへ更新してください。</p>
-          <p><strong>BOOTを押したまま電源ON／RSTするとUF2用の初期ファーム書き込みモードです。</strong>上のPython書き込み待機とは別です。誤って入ったらBOOTを離して再起動してください。</p>
-          <p>USBを抜いた後も、ボードとサーボに適切な外部電源があれば実行・Wi-Fi JOGを継続できます。電源も切れた場合は、次回給電時に保存プログラムが起動します。</p>
-          <p>書き込み待機・停止は緊急停止ではありません。バスサーボの保持トルクが残る場合があります。必要に応じてトルクOFFと物理的な電源遮断を用意してください。</p>
-        </details>
-        <details class="help-card" id="jogHelp">
-          <summary>USBとWi-FiのJOG割り当て</summary>
-          <p>PWM・SCS009・XL330・STS3215のJOG割り当ては、USB（UART）とWi-Fiで共通です。Wi-Fi JOGだけでも使えます。UART開始ブロックは不要です。</p>
-          <p>両方ある場合は同じ指令位置を共有し、ボードが処理した順に増減します。USB／Wi-Fiの優先権や排他ロックはありません。同時操作では指令が加算されるので、操作者を決めてください。</p>
-          <p>↑↓＝Y、←→＝X、W/S＝Z、A/D＝R、Space＝中央復帰。同じ軸の割り当ては1個だけにします。表示は実測位置ではなく指令位置です。</p>
-        </details>
-        <details class="help-card">
-          <summary>初期ファームを書き込む</summary>
-          <ol id="firmwareSteps"></ol>
-          <p><a id="firmwareLink" class="firmware-link" target="_blank" rel="noopener noreferrer">選択したボードのダウンロードページを開く</a></p>
-          <p>データ通信対応のUSBケーブルを使ってください。UF2のコピー後はドライブが自動で閉じて再起動します。その後、ChromeまたはEdgeで「RPボードを接続」を押し、MicroPythonのシリアルポートを選びます。</p>
-          <p>「今すぐ実行」は一時実行、「保存して実行」はmain.pyに保存して次回起動時にも動きます。BOOTで待機する機能は、この版で保存したプログラムにだけ追加されます。</p>
-        </details>
-        <details id="scsHelp" class="help-card" hidden>
-          <summary>SCS009を接続する前に</summary>
-          <p>SCS009の電源はRPボードから取らず、サーボ用の外部電源を使ってGNDを共通にしてください。DATA線は接続ブロックで指定したGPIOへ直接つなぎます。PIOが送信時だけ出力、送信後は入力へ切り替えるため、半二重変換回路は不要です。</p>
-        </details>
-        <details id="wifiHelp" class="help-card" hidden open>
-          <summary>スマホでWi-Fi JOG</summary>
-          <p>「Wi-Fi JOGサーバを開始」を置き、Wi-Fi名とパスワードを設定して「保存して実行」を押します。UART開始ブロックなしでも各サーボのJOG割り当てを使用できます。</p>
-          <p>スマホのWi-Fi設定で指定した名前に接続し、ブラウザで <a id="wifiJogAddress" href="http://192.168.4.1/" target="_blank" rel="noopener">http://192.168.4.1/</a> を開きます。起動時に実際のアドレスがシリアル欄に表示されます。</p>
-          <p>このWi-Fiはインターネット接続なしで使います。操作ページはPicoが配信します。</p>
-        </details>
       </aside>
     </main>
 
@@ -254,6 +239,18 @@
       </div>
     </aside>
 
+    <dialog id="helpDialog" class="exchange-dialog help-dialog" aria-labelledby="helpTitle">
+      <div class="exchange-heading"><h2 id="helpTitle">HELP</h2><button id="helpClose" type="button" aria-label="HELPを閉じる">×</button></div>
+      <p>知りたい項目だけ開いてください。</p>
+      <button id="showFirstRun" class="button button-secondary" type="button">初回案内をもう一度表示</button>
+      <details class="help-card"><summary>ブロックの操作・対話AIとの受け渡し</summary><p>左のツリーからブロックを置き、「プログラム開始」につなぎます。ブロック本体をダブルクリックすると複製できます。</p><p>メニューの「対話AIとプログラムを作る」で依頼文をコピーし、返答のJSONを取り込めます。取り込みは現在のブロックを置き換えますが、直前の状態に戻せます。</p></details>
+      <details class="help-card" id="jogHelp"><summary>USBとWi-FiのJOG割り当て</summary><p>PWM・SCS009・XL330・STS3215の割り当てはUSB／Wi-Fi共通。Wi-Fi JOGだけならUART開始ブロックは不要です。</p><p>両方から操作すると、同じ指令位置を処理順に増減します。優先権・排他ロックはないため、操作者を決めてください。同じ軸への割り当ては1個だけです。</p><p>↑↓＝Y、←→＝X、W/S＝Z、A/D＝R、Space＝中央復帰。表示は実測位置ではなく指令位置です。</p></details>
+      <details id="wifiHelp" class="help-card" hidden><summary>スマホでWi-Fi JOG</summary><p>Wi-Fi JOGの開始ブロックでWi-Fi名とパスワードを設定し、「保存して実行」を押します。</p><p>スマホをそのWi-Fiへ接続し、<a id="wifiJogAddress" href="http://192.168.4.1/" target="_blank" rel="noopener">http://192.168.4.1/</a> を開きます。実際のアドレスは起動時にシリアル欄へ表示されます。</p><p>Pico W / Pico 2 W用。インターネット接続は不要です。</p></details>
+      <details id="scsHelp" class="help-card" hidden><summary>サーボを接続する前に</summary><p></p></details>
+      <details class="help-card"><summary>配線図・ADC・サーボ設定</summary><p>左の図は端子名の模式図です。実物の向きや線色ではなく、公式ピン配置と端子名で確認してください。XIAOはD番号とGPIO番号を併記しています。</p><p id="boardPinHint" class="board-pin-hint"></p><p>ADC入力は0〜3.3 Vのみ。GPIOへ5 Vを入れないでください。サーボは種類ごとに接続ブロックを置き、位置や速度の範囲を実機に合わせます。</p></details>
+      <details class="help-card"><summary>接続できない・起動しないとき</summary><p>データ通信対応USBケーブルとPC版Chrome／Edgeを使います。ほかのアプリが同じシリアルポートを使っていないか確認してください。</p><p>通常起動では3秒後に保存プログラムが動きます。BOOTで待機する機能は、この版で「保存して実行」したプログラムにだけ追加されます。</p><p>BOOTを押したまま再起動するとUF2用モードです。誤って入ったらBOOTを離して再起動してください。BOOT判定が使えないファームでは自動実行せず待機するため、機種に合う新しいMicroPythonへ更新してください。</p><p>「書き込み待機」はプログラムを中断し、PWM・PIO・ネットワーク等をリセットします。保存ファイルは消しません。再接続直後の「モード未確認」は、状態をまだ受信していない表示です。</p></details>
+    </dialog>
+
     <dialog id="exchangeDialog" class="exchange-dialog" aria-labelledby="exchangeTitle">
       <div class="exchange-heading"><div><small>CHAT → BLOCKS</small><h2 id="exchangeTitle">対話AIとプログラムを作る</h2></div><button id="exchangeClose" type="button" aria-label="閉じる">×</button></div>
       <p>ChatGPTなどに依頼して、返ってきたJSONをブロックへ。取り込み後も、いつもどおり編集できます。</p>
@@ -282,6 +279,6 @@
     <script src="./basic.js?v=basics1"></script>
     <script src="./exchange.js?v=basics1"></script>
     <script src="./boot.js?v=boot1"></script>
-    <script src="./app.js?v=boot1"></script>
+    <script src="./app.js?v=help1"></script>
   </body>
 </html>

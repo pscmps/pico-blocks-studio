@@ -795,17 +795,14 @@ class SCS009PIO:
     $("#wifiHelp").hidden = !profile.wifi;
     elements.boardPinHint.textContent = `接続で選べる端子: ${profile.pins.map(pinLabel).join(" · ")}${profile.layout === "xiao" ? "。今回は両側のD0〜D10端子に対応（背面パッドは対象外）。" : ""}`;
     elements.firmwareLink.href = profile.firmwareUrl;
-    elements.firmwareLink.textContent = `${profile.firmwareLabel}のダウンロード先を開く`;
+    elements.firmwareLink.textContent = `${profile.name}用ファームを入手 ↗`;
     elements.firmwareSteps.replaceChildren();
     const steps = [
       profile.firmwareIsZip
-        ? `${profile.name}用のMicroPython ZIPをリンク先からダウンロードして展開し、中のUF2ファイルを用意します。別機種用は使わないでください。`
-        : `${profile.name}用のMicroPythonページを開き、最新の安定版UF2をダウンロードします。別機種用は使わないでください。`,
+        ? "下のリンクからZIPを入手し、展開してUF2を用意。"
+        : `下のリンクから安定版UF2を入手${profile.wifi ? "（1.29以降）" : ""}${selectedBoard.includes("2350") || selectedBoard.startsWith("pico2") ? "。Arm版を選択" : ""}。`,
       profile.boot,
-      `PCに「${profile.driveName}」というUSBドライブが表示されたことを確認します。`,
-      "ダウンロードしたUF2ファイルを、そのUSBドライブへドラッグ＆ドロップします。コピーが終わるとボードが自動で再起動します。",
-      ...(profile.layout === "xiao" ? ["XIAO専用のファームを使ってください。RP2350は通常のArm版を選びます。RP2040 / RP2350のこの2機種にはWi-Fi機能はありません。"] : []),
-      ...(profile.wifi ? ["Wi-Fi JOGには、この機種用のMicroPython 1.29以降を選んでください。Pico 2 Wは通常のArm版を使用します。"] : []),
+      `表示された「${profile.driveName}」ドライブへUF2をコピー。自動で再起動します。`,
     ];
     for (const text of steps) {
       const item = document.createElement("li");
@@ -1067,7 +1064,7 @@ class SCS009PIO:
     elements.stop.disabled = !connected || isBusy;
     elements.connect.disabled = isBusy;
     elements.actionHint.textContent = connected
-      ? "試運転は一時実行。「保存して実行」で単独動作とBOOTの待機切り替えが使えます。"
+      ? "接続済み。ブロックを作って実行できます。"
       : "先に「RPボードを接続」を押してください。";
   }
 
@@ -1394,6 +1391,37 @@ class SCS009PIO:
     setMenuOpen(elements.appMenu.hidden);
   });
   elements.appMenu.addEventListener("click", (event) => event.stopPropagation());
+  const helpDialog = $("#helpDialog");
+  const firstRunGuide = $("#firstRunGuide");
+  const firstRunKey = "picoblocks-hide-first-run-v1";
+  function hideFirstRun(remember = false) {
+    if (remember) localStorage.setItem(firstRunKey, "1");
+    firstRunGuide.hidden = true;
+    $("#undoButton").focus();
+  }
+  $("#helpMenuItem").addEventListener("click", () => {
+    setMenuOpen(false);
+    helpDialog.showModal();
+  });
+  $("#helpClose").addEventListener("click", () => helpDialog.close());
+  $("#dismissFirstRun").addEventListener("click", () => hideFirstRun());
+  $("#hideFirstRun").addEventListener("change", event => {
+    if (event.target.checked) hideFirstRun(true);
+  });
+  $("#showFirmwareSteps").addEventListener("click", () => {
+    hideFirstRun();
+    $("#firmwareHelp").open = true;
+    $("#firmwareHelp summary").focus();
+    $("#firmwareHelp").scrollIntoView({block:"nearest"});
+  });
+  $("#showFirstRun").addEventListener("click", () => {
+    localStorage.setItem(firstRunKey, "0");
+    $("#hideFirstRun").checked = false;
+    helpDialog.close();
+    firstRunGuide.hidden = false;
+    $("#showFirmwareSteps").focus();
+  });
+  firstRunGuide.hidden = localStorage.getItem(firstRunKey) === "1";
   const exchangeDialog = $("#exchangeDialog");
   const backupKey = "picoblocks-import-backup-v1";
   const exchangeStatus = (message, error = false) => {
@@ -1494,7 +1522,7 @@ class SCS009PIO:
   document.addEventListener("click", () => setMenuOpen(false));
   let lastJogKey = 0;
   document.addEventListener("keydown", (event) => {
-    if (exchangeDialog.open) return;
+    if (exchangeDialog.open || helpDialog.open || !firstRunGuide.hidden) return;
     if (elements.controllerDrawer.getAttribute("aria-hidden") !== "false") return;
     if (event.target.closest("input, select, textarea, [contenteditable=true]") || event.ctrlKey || event.metaKey || event.altKey) return;
     const commands = PicoJog.keys;
