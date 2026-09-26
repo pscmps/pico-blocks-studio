@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="RP2040 / RP2350のMicroPythonを、ブロックで組んでWeb Serialから実行できる試作エディター。"
+    />
+    <meta name="theme-color" content="#101a2d" />
+    <title>PicoBlocks Studio</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand" aria-label="PicoBlocks Studio">
+        <div class="brand-mark" aria-hidden="true">
+          <span></span><i></i>
+        </div>
+        <div>
+          <strong>PicoBlocks</strong>
+          <small>MicroPython Studio</small>
+        </div>
+      </div>
+
+      <div class="device-strip">
+        <div id="connectionState" class="connection-state" data-state="offline">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="connectionLabel">未接続</span>
+        </div>
+        <button id="connectButton" class="button button-secondary" type="button">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 12h8m-4-4v8M7 4v3m10-3v3M5 9h14v4a7 7 0 0 1-14 0V9Z"/></svg>
+          RPボードを接続
+        </button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="workspace-panel" aria-label="ブロックエディター">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">PROGRAM</span>
+            <h1>ブロックで動きをつくる</h1>
+          </div>
+          <div class="history-actions" aria-label="編集操作">
+            <button id="undoButton" class="icon-button" type="button" title="元に戻す" aria-label="元に戻す">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 7-5 5 5 5M5 12h8a6 6 0 0 1 6 6"/></svg>
+            </button>
+            <button id="redoButton" class="icon-button" type="button" title="やり直す" aria-label="やり直す">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 7 5 5-5 5m4-5h-8a6 6 0 0 0-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="blocklyDiv" class="blockly-host"></div>
+      </section>
+
+      <aside class="side-panel" aria-label="実行とコード">
+        <section class="run-card">
+          <div class="run-copy">
+            <span class="eyebrow">DEVICE</span>
+            <h2>ボードで動かす</h2>
+            <p>MicroPythonを書き込んだRP2040 / RP2350をUSBで接続します。</p>
+          </div>
+          <div class="run-actions">
+            <button id="runButton" class="button button-primary" type="button" disabled>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6V6Z"/></svg>
+              今すぐ実行
+            </button>
+            <button id="saveButton" class="button button-save" type="button" disabled>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5V4Zm4 0v6h6V4m-7 9h8v7H8v-7Z"/></svg>
+              main.pyに保存
+            </button>
+            <button id="stopButton" class="button button-danger" type="button" disabled>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 8h8v8H8z"/></svg>
+              停止
+            </button>
+          </div>
+          <p id="actionHint" class="action-hint">先に「RPボードを接続」を押してください。</p>
+        </section>
+
+        <section class="code-card">
+          <div class="card-tabs" role="tablist" aria-label="出力表示">
+            <button id="codeTab" class="tab is-active" role="tab" aria-selected="true" aria-controls="codePanel" type="button">Python</button>
+            <button id="consoleTab" class="tab" role="tab" aria-selected="false" aria-controls="consolePanel" type="button">シリアル</button>
+            <button id="copyButton" class="copy-button" type="button">コピー</button>
+            <button id="clearConsoleButton" class="copy-button is-hidden" type="button">消去</button>
+          </div>
+          <div id="codePanel" class="tab-panel" role="tabpanel" aria-labelledby="codeTab">
+            <pre><code id="pythonCode"></code></pre>
+          </div>
+          <div id="consolePanel" class="tab-panel is-hidden" role="tabpanel" aria-labelledby="consoleTab">
+            <pre id="serialConsole" aria-live="polite">接続すると、ボードからの出力がここに表示されます。</pre>
+          </div>
+        </section>
+
+        <details class="help-card">
+          <summary>最初の接続について</summary>
+          <ol>
+            <li>RPボードへMicroPythonのUF2を一度だけ入れます。</li>
+            <li>ChromeまたはEdgeでこのページを開きます。</li>
+            <li>接続時に「USB Serial」を選びます。</li>
+          </ol>
+          <p>「今すぐ実行」は一時実行、「main.pyに保存」は電源を入れ直しても自動実行します。</p>
+        </details>
+      </aside>
+    </main>
+
+    <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
+    <script src="https://unpkg.com/blockly@11.2.2/msg/ja.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
