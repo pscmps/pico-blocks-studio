@@ -714,28 +714,39 @@ class SCS009PIO:
     const blocks = workspace.getAllBlocks(false);
     const groups = ServoWiring.groups(blocks, getUartControllerBlock() ? getJogAxes() : {});
     const deviceSelect = $("#wiringDevice");
-    const group = groups.find(g => g.key === deviceSelect.value) || groups[0];
-    const setup = group ? {type: group.model + "_setup"} : null;
-    const servoName = group?.name || "";
-    deviceSelect.replaceChildren(...groups.map(g => {
+    const group = groups.find(g => g.key === deviceSelect.value);
+    const visibleGroups = group ? [group] : groups;
+    const primary = visibleGroups[0];
+    const setup = primary ? {type: primary.model + "_setup"} : null;
+    const servoName = primary?.name || "";
+    const allOption = document.createElement("option"); allOption.value = "all"; allOption.textContent = "すべてのサーボ";
+    deviceSelect.replaceChildren(allOption, ...groups.map(g => {
       const option = document.createElement("option"); option.value = g.key;
       option.textContent = `${g.name} · ${g.model === "pwm" ? g.devices.length + "台" : pinLabel(g.pin)}`;
       return option;
     }));
-    if (group) deviceSelect.value = group.key;
+    deviceSelect.value = group?.key || "all";
     deviceSelect.hidden = groups.length < 2;
-    const drawPin = pin => profile.layout === "pico" ? picoBoardDrawing(profile, pin) : profile.layout === "xiao" ? xiaoBoardDrawing(profile, pin) : geekBoardDrawing(profile, pin);
+    const drawPin = pin => ({layout: profile.layout, ...(profile.layout === "pico" ? picoBoardDrawing(profile, pin) : profile.layout === "xiao" ? xiaoBoardDrawing(profile, pin) : geekBoardDrawing(profile, pin))});
     const drawing = drawPin(null);
     elements.pinoutLink.href = profile.pinoutUrl;
     elements.pinoutLink.textContent = `${profile.name}の公式ピン情報`;
     elements.wiringDiagram.classList.toggle("is-board-only", !setup);
     elements.scsWiringDetails.hidden = !setup;
     elements.scsHelp.hidden = !setup;
-    elements.scsHelp.querySelector("summary").textContent = `${servoName}を接続する前に`;
-    elements.scsHelp.querySelector("p").textContent = setup?.type === "pwm_setup"
+    elements.scsHelp.querySelector("summary").textContent = visibleGroups.length > 1 ? "複数種類のサーボを接続する前に" : `${servoName}を接続する前に`;
+    elements.scsHelp.querySelector("p").textContent = visibleGroups.length > 1
+      ? "PWMは番号ごと、シリアル系は種類ごとの信号線です。異なる種類には別GPIOを使い、V+は各機種の定格に合う外部電源へ、GNDはボードと共通にします。種類の異なるV+同士は図でも接続していません。GPIOへの5 V入力は禁止です。図の線色は識別用で、実物の線色・端子順ではありません。"
+      : setup?.type === "pwm_setup"
       ? "信号線を選択したGPIOへつなぎ、電源はサーボ仕様に合う外部電源、GNDはボードと共通にします。50 Hzで出力します。初期値は1000〜2000 µsです。可動範囲は機種に合わせて調整してください。"
       : `${servoName}の電源は専用の外部電源から供給し、GNDをボードと共通にします。DATAはGPIOへ接続し、PIOで方向を切り替えます。半二重変換回路は不要です。${setup?.type === "xl330_setup" ? "XL330は3.7〜6.0 V（初回5 V）。DATAに220 Ωの直列保護抵抗を推奨します。" : "電源電圧は機種・仕様を確認してください。"} GPIOへの5 V入力は禁止です。まず無負荷でPing・位置読取りを確認してください。`;
     elements.boardPinHint.hidden = !setup;
+    $("#signalLegend").replaceChildren(...visibleGroups.flatMap(g => (g.model === "pwm" ? g.devices : [g.devices[0]]).map(d => {
+      const item = document.createElement("span"), swatch = document.createElement("i");
+      swatch.style.background = d.colour;
+      item.append(swatch, `${g.model === "pwm" ? "PWM " + d.id : g.name} · ${pinLabel(g.model === "pwm" ? d.pin : g.pin)}`);
+      return item;
+    })));
     const diagramStyle = `
       .board-body{fill:#edf4f7;stroke:#78909c;stroke-width:2}.usb{fill:#c7ced6;stroke:#87929e}.chip{fill:#334155;stroke:#172033}.lcd{fill:#e7f6f4;stroke:#0f766e;stroke-width:1.5}.button-mark{fill:#fff;stroke:#8796a8}.board-pin{fill:#fff;stroke:#64748b;stroke-width:1}.board-pin.active{fill:#fbbf24;stroke:#b45309;stroke-width:2}.board-pin.ground{fill:#cbd5e1}.board-pin.power{fill:#fda4af}.pin-label{fill:#475467;font:6.5px Inter,sans-serif}.pin-label.active{fill:#9a3412;font-weight:800}.pin-number{fill:#667085;font:6.2px Inter,sans-serif}.board-title{fill:#172033;font:700 10px Inter,sans-serif}.board-subtitle,.tiny-label{fill:#667085;font:6.5px Inter,sans-serif}.connector-group{fill:#fff;stroke:#cbd5e1}.connector-title{fill:#344054;font:700 6px Inter,sans-serif}.device-box{fill:#fff;stroke:#b8c2cf;stroke-width:1.5}.terminal{fill:#f8fafc;stroke:#667085}.terminal-label{fill:#344054;font:700 8px Inter,sans-serif}.caption{fill:#667085;font:7px Inter,sans-serif}.data-wire{fill:none;stroke:#d69e00;stroke-width:3}.power-wire{fill:none;stroke:#e5484d;stroke-width:3}.ground-wire{fill:none;stroke:#64748b;stroke-width:3}.pin-hit{cursor:help}`;
     if (!setup) {
@@ -749,11 +760,13 @@ class SCS009PIO:
         </svg>`;
       return;
     }
-    elements.wiringSummary.textContent = group.model === "pwm"
-      ? `PWM ${group.devices.length}台：番号ごとにコネクタと信号線を色分け。電源・GNDは共通です。`
-      : `${pinLabel(group.pin)} → ${servoName}。ブロック・JOGで使用するIDをデイジーチェーン表示します。`;
-    const diagram = ServoWiring.render(group, drawPin, pinLabel);
-    elements.wiringDiagram.innerHTML = `<svg viewBox="0 0 260 ${diagram.height}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><style>${diagramStyle}</style><title>${profile.name}と${servoName}の簡易配線図</title>${diagram.content}</svg>`;
+    elements.wiringSummary.textContent = visibleGroups.length > 1
+      ? "全種類の配線を表示中。PWMは番号別、シリアル系は種類別の色です。V+は種類ごとに分け、GNDを共通にします。"
+      : primary.model === "pwm"
+        ? `PWM ${primary.devices.length}台：番号ごとにコネクタと信号線を色分け。電源・GNDは共通です。`
+        : `${pinLabel(primary.pin)} → ${servoName}。同じ種類のIDは同色のDATA線でデイジーチェーン接続します。`;
+    const diagram = ServoWiring.render(visibleGroups, drawPin, pinLabel);
+    elements.wiringDiagram.innerHTML = `<svg viewBox="0 0 ${diagram.width} ${diagram.height}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><style>${diagramStyle}</style><title>${profile.name}のサーボ配線図</title>${diagram.content}</svg>`;
   }
 
   function updateBoardUi() {

@@ -13,7 +13,7 @@ assert.equal(new Set(groups[0].devices.map(d=>d.colour)).size,2);
 let dom = svg(groups[0]);
 assert.equal(dom.querySelectorAll('[data-servo="pwm"]').length,2);
 assert.equal(dom.querySelectorAll('[data-signal]').length,2);
-assert.notEqual(dom.querySelector('[data-signal="1"]').getAttribute('stroke'),dom.querySelector('[data-signal="2"]').getAttribute('stroke'));
+assert.notEqual(dom.querySelector('[data-signal="pwm-1"]').getAttribute('stroke'),dom.querySelector('[data-signal="pwm-2"]').getAttribute('stroke'));
 assert.ok(dom.body.textContent.includes('PWM 1 · GP2') && dom.body.textContent.includes('PWM 2 · GP3'));
 for (const model of ['scs009','xl330','sts3215','sts3235']) {
   const setup = block(model+'_setup',{PIN:2});
@@ -22,7 +22,7 @@ for (const model of ['scs009','xl330','sts3215','sts3235']) {
   dom=svg(groups[0]);
   assert.equal(dom.querySelectorAll('[data-servo]').length,2);
   assert.equal(dom.querySelectorAll('[data-chain]').length,3); // DATA + V+ + GND
-  assert.ok(!dom.querySelector('[data-signal]'));
+  assert.equal(dom.querySelectorAll('[data-signal]').length,1);
   assert.equal(W.groups([setup])[0].devices[0].id,null);
   assert.deepEqual(W.groups([setup,block(model+'_move',{ID:0})])[0].devices.map(d=>d.id),[0]);
 }
@@ -37,6 +37,18 @@ assert.deepEqual(groups[1].devices.map(d=>d.id),[5]);
 // Adding/removing another channel must not change the first channel's colour.
 assert.equal(W.groups([block('pwm_setup',{CHANNEL:2,PIN:3})])[0].devices[0].colour, W.groups([block('pwm_setup',{CHANNEL:1,PIN:2}),block('pwm_setup',{CHANNEL:2,PIN:3})])[0].devices[1].colour);
 console.log('PASS: PWM group/colour stability, serial ID deduplication/chain, ID0, JOG defaults, all servo models');
+
+const mixedBlocks=[...Array.from({length:16},(_,i)=>block('pwm_setup',{CHANNEL:i+1,PIN:i})), ...['scs009','xl330','sts3215','sts3235'].map((m,i)=>block(m+'_setup',{PIN:20+i}))];
+const mixed=W.groups(mixedBlocks);
+assert.equal(new Set(mixed.flatMap(g=>g.devices.map(d=>d.colour))).size,20);
+dom=svg(mixed);
+assert.equal(dom.querySelectorAll('[data-signal]').length,20);
+assert.equal(dom.querySelectorAll('[data-servo]').length,20);
+assert.equal(dom.querySelectorAll('[data-supply]').length,5);
+for (const g of mixed) {
+  const alone=W.groups(mixedBlocks.filter(b=>b.type===g.model+'_setup'))[0];
+  assert.deepEqual(g.devices.map(d=>d.colour),alone.devices.map(d=>d.colour));
+}
 
 // Exercise the real board geometry + app renderer for every supported board.
 const fs=require('node:fs'), vm=require('node:vm');
@@ -59,6 +71,20 @@ for (const [key, profile] of Object.entries(profiles)) {
   context.workspace={getAllBlocks:()=>[block('sts3235_setup',{PIN:profile.pins[0]}),block('sts3235_move',{ID:1}),block('sts3235_move',{ID:2})]};
   vm.runInContext('renderWiringDiagram()',context);
   assert.equal($('#wiringDiagram').querySelectorAll('[data-chain]').length,3);
+  const mixedSetups=[block('pwm_setup',{CHANNEL:1,PIN:profile.pins[0]}),block('pwm_setup',{CHANNEL:2,PIN:profile.pins.at(-1)}),block('scs009_setup',{PIN:profile.pins[1]}),block('sts3235_setup',{PIN:profile.pins[2]})];
+  context.workspace={getAllBlocks:()=>mixedSetups}; $('#wiringDevice').value='all';
+  vm.runInContext('renderWiringDiagram()',context);
+  assert.equal($('#wiringDiagram').querySelectorAll('[data-signal]').length,4);
+  assert.equal($('#signalLegend').children.length,4);
+  assert.equal(new Set([...$('#wiringDiagram').querySelectorAll('[data-signal]')].map(p=>p.getAttribute('stroke'))).size,4);
+  const lastPin=Number(profile.pins.at(-1));
+  const route=$('#wiringDiagram').querySelector(`[data-pin="${lastPin}"]`).getAttribute('d');
+  // Right-edge pins must exit right, not cut across the board under its body.
+  if (profile.layout==='pico' || profile.layout==='xiao') assert.match(route,/^M\d+(?:\.\d+)? \d+(?:\.\d+)? H3\d\d /);
+  if (profile.layout==='geek') assert.match(route,/^M\d+ 218 V27/);
+  $('#wiringDevice').value='sts3235_setup'; vm.runInContext('renderWiringDiagram()',context);
+  assert.equal($('#wiringDiagram').querySelectorAll('[data-signal]').length,1);
+  assert.equal($('#signalLegend').children.length,1);
   context.workspace={getAllBlocks:()=>[]}; vm.runInContext('renderWiringDiagram()',context);
   assert.equal($('#wiringDiagram').querySelectorAll('[data-servo]').length,0);
 }
