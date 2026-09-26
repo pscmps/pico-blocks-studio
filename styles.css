@@ -1,18 +1,18 @@
 :root {
-  color-scheme: dark;
-  --ink: #f5f8ff;
-  --muted: #99a7bd;
-  --faint: #68768d;
-  --canvas: #0a1120;
-  --surface: #101a2d;
-  --surface-2: #16233a;
-  --surface-3: #1c2b45;
-  --line: #283854;
-  --teal: #5eead4;
-  --teal-deep: #19bda9;
-  --orange: #ffb86b;
-  --red: #ff7185;
-  --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  color-scheme: light;
+  --ink: #172033;
+  --muted: #667085;
+  --faint: #98a2b3;
+  --canvas: #f7f8fa;
+  --surface: #ffffff;
+  --surface-2: #f7f9fb;
+  --surface-3: #eef2f6;
+  --line: #dce2e9;
+  --teal: #0f766e;
+  --teal-deep: #0b5f59;
+  --orange: #e87924;
+  --red: #d92d20;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   font-family: Inter, "Noto Sans JP", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
 }
 
@@ -25,9 +25,7 @@ body {
   min-width: 320px;
   overflow: hidden;
   color: var(--ink);
-  background:
-    radial-gradient(circle at 18% -20%, rgba(94, 234, 212, 0.09), transparent 34rem),
-    var(--canvas);
+  background: var(--canvas);
 }
 
 button { font: inherit; }
@@ -45,7 +43,7 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background: rgba(10, 17, 32, 0.88);
+  background: rgba(255, 255, 255, 0.94);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(16px);
 }
@@ -60,7 +58,7 @@ select:focus-visible {
   width: 38px;
   height: 38px;
   border-radius: 11px;
-  background: var(--surface-2);
+  background: #e7f6f4;
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
@@ -70,7 +68,7 @@ select:focus-visible {
   height: 18px;
   left: 8px;
   top: 8px;
-  border: 6px solid var(--teal);
+  border: 6px solid #0f766e;
   border-right-width: 3px;
   border-radius: 4px;
 }
@@ -82,14 +80,14 @@ select:focus-visible {
   right: 6px;
   bottom: 6px;
   border-radius: 50%;
-  background: var(--orange);
+  background: #f59e0b;
 }
 
 .device-strip { gap: 14px; }
 .connection-state { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.88rem; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); box-shadow: 0 0 0 4px rgba(104, 118, 141, 0.12); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); box-shadow: 0 0 0 4px rgba(152, 162, 179, 0.14); }
 .connection-state[data-state="online"] { color: var(--teal); }
-.connection-state[data-state="online"] .status-dot { background: var(--teal); box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.13), 0 0 14px rgba(94, 234, 212, 0.55); }
+.connection-state[data-state="online"] .status-dot { background: var(--teal); box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12); }
 .connection-state[data-state="busy"] { color: var(--orange); }
 .connection-state[data-state="busy"] .status-dot { background: var(--orange); animation: pulse 1s infinite alternate; }
 
@@ -97,22 +95,23 @@ select:focus-visible {
   height: calc(100vh - 72px);
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr) 390px;
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
   transition: grid-template-columns 180ms ease;
 }
 
 .app-shell.wiring-collapsed { grid-template-columns: 44px minmax(0, 1fr) 390px; }
 
 .wiring-panel,
-.workspace-panel,
-.side-panel > section,
-.help-card {
+.workspace-panel {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   box-shadow: var(--shadow);
 }
+
+.side-panel > section,
+.help-card { background: var(--surface); border: 0; border-radius: 12px; box-shadow: none; }
 
 .wiring-panel { min-width: 0; overflow: hidden; display: grid; grid-template-columns: 0 1fr; position: relative; }
 .wiring-rail { position: absolute; z-index: 2; right: 8px; top: 10px; }
@@ -120,17 +119,18 @@ select:focus-visible {
 .wiring-toggle:hover { color: var(--ink); }
 .wiring-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .wiring-content { min-width: 300px; padding: 17px 15px 16px; overflow-y: auto; }
-.wiring-heading { min-height: 41px; display: flex; align-items: flex-start; justify-content: space-between; padding-right: 78px; }
+.wiring-heading { min-height: 34px; display: flex; align-items: flex-start; justify-content: space-between; padding-right: 78px; }
 .original-diagram { color: var(--faint); font-size: 0.66rem; border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px; white-space: nowrap; }
 .wiring-summary { min-height: 38px; margin: 10px 0 12px; color: var(--muted); font-size: 0.76rem; line-height: 1.55; }
-.wiring-diagram { width: 100%; aspect-ratio: 260 / 460; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #0b1424; }
+.wiring-diagram { width: 100%; aspect-ratio: 260 / 460; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #f8fafc; }
+.wiring-diagram.is-board-only { aspect-ratio: 260 / 300; }
 .wiring-diagram svg { display: block; width: 100%; height: 100%; }
 .wiring-legend { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 12px 0 9px; color: var(--muted); font-size: 0.68rem; }
 .wiring-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .wiring-legend i { width: 16px; height: 3px; border-radius: 2px; }
-.wire-data { background: #ffd166; }
-.wire-power { background: #ff7185; }
-.wire-ground { background: #a8b3c5; }
+.wire-data { background: #d69e00; }
+.wire-power { background: #e5484d; }
+.wire-ground { background: #64748b; }
 .wiring-note { margin: 0 0 10px; color: var(--faint); font-size: 0.69rem; line-height: 1.55; }
 .pinout-link { color: var(--teal); font-size: 0.71rem; text-underline-offset: 3px; }
 .app-shell.wiring-collapsed .wiring-panel { grid-template-columns: 44px 0; }
@@ -142,8 +142,8 @@ select:focus-visible {
 
 .workspace-panel { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
 .panel-heading { height: 76px; display: flex; align-items: center; justify-content: space-between; padding: 13px 18px 12px; border-bottom: 1px solid var(--line); }
-.eyebrow { color: var(--teal); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.18em; }
-h1, h2 { margin: 3px 0 0; line-height: 1.25; }
+.eyebrow { display: none; }
+h1, h2 { margin: 0; line-height: 1.25; }
 h1 { font-size: 1.1rem; }
 h2 { font-size: 1.05rem; }
 .history-actions { display: flex; gap: 6px; }
@@ -153,7 +153,7 @@ h2 { font-size: 1.05rem; }
 
 .blockly-host { flex: 1; min-height: 0; }
 
-.side-panel { min-height: 0; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 2px; }
+.side-panel { min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-right: 2px; }
 .run-card { padding: 18px; }
 .run-copy p { margin: 8px 0 16px; color: var(--muted); font-size: 0.85rem; line-height: 1.65; }
 .board-field { display: grid; gap: 7px; margin: 0 0 6px; color: var(--muted); font-size: 0.72rem; font-weight: 750; }
@@ -180,12 +180,12 @@ h2 { font-size: 1.05rem; }
 
 .button:not(:disabled):active { transform: translateY(1px); }
 .button:disabled { cursor: not-allowed; opacity: 0.42; }
-.button-primary { background: var(--teal); color: #062822; }
-.button-primary:not(:disabled):hover { background: #83f5e3; }
+.button-primary { background: var(--teal); color: #ffffff; }
+.button-primary:not(:disabled):hover { background: var(--teal-deep); }
 .button-secondary { background: var(--surface-2); border-color: var(--line); }
 .button-secondary:hover { background: var(--surface-3); }
-.button-save { background: rgba(94, 234, 212, 0.09); border-color: rgba(94, 234, 212, 0.3); color: var(--teal); }
-.button-danger { background: rgba(255, 113, 133, 0.08); border-color: rgba(255, 113, 133, 0.28); color: var(--red); }
+.button-save { background: #f0fdfa; border-color: #99d5ce; color: var(--teal); }
+.button-danger { background: #fff5f5; border-color: #f2b8b5; color: var(--red); }
 .action-hint { margin: 12px 2px 0; color: var(--faint); font-size: 0.75rem; line-height: 1.5; }
 
 .code-card { min-height: 240px; overflow: hidden; display: flex; flex-direction: column; flex: 1; }
@@ -196,9 +196,9 @@ h2 { font-size: 1.05rem; }
 .tab.is-active::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--teal); border-radius: 2px 2px 0 0; }
 .copy-button { margin-left: auto; padding: 0 10px; font-size: 0.75rem; }
 .copy-button:hover { color: var(--teal); }
-.tab-panel { min-height: 0; flex: 1; overflow: auto; background: #0b1424; }
-.tab-panel pre { margin: 0; padding: 16px; min-height: 100%; color: #d7e2f3; font: 0.79rem/1.65 "Cascadia Code", "SFMono-Regular", Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
-#serialConsole { color: #b8c6d9; }
+.tab-panel { min-height: 0; flex: 1; overflow: auto; background: #f8fafc; }
+.tab-panel pre { margin: 0; padding: 16px; min-height: 100%; color: #344054; font: 0.79rem/1.65 "Cascadia Code", "SFMono-Regular", Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+#serialConsole { color: #475467; }
 .is-hidden { display: none !important; }
 
 .help-card { padding: 0 16px; color: var(--muted); }
@@ -213,14 +213,14 @@ h2 { font-size: 1.05rem; }
 .toast[data-kind="success"] { border-color: rgba(94, 234, 212, 0.45); }
 
 /* Blockly is intentionally restyled to feel like one application. */
-.blocklySvg { background: #0d1728 !important; }
+.blocklySvg { background: #f8fafc !important; }
 .blocklyMainBackground { stroke: none !important; }
-.blocklyToolboxDiv { background: #111d30 !important; border-right: 1px solid var(--line); padding: 8px 5px; }
+.blocklyToolboxDiv { background: #ffffff !important; border-right: 1px solid var(--line); padding: 8px 5px; }
 .blocklyTreeRow { height: 38px !important; margin: 3px 4px !important; border-radius: 8px; padding: 0 10px !important; }
-.blocklyTreeLabel { color: #bdc9da !important; font: 700 13px/38px Inter, "Noto Sans JP", sans-serif !important; }
-.blocklyTreeSelected .blocklyTreeLabel { color: white !important; }
-.blocklyFlyoutBackground { fill: #162238 !important; fill-opacity: 0.98 !important; }
-.blocklyScrollbarHandle { fill: #41516c !important; }
+.blocklyTreeLabel { color: #475467 !important; font: 700 13px/38px Inter, "Noto Sans JP", sans-serif !important; }
+.blocklyTreeSelected .blocklyTreeLabel { color: #172033 !important; }
+.blocklyFlyoutBackground { fill: #eef2f6 !important; fill-opacity: 0.98 !important; }
+.blocklyScrollbarHandle { fill: #c5ced8 !important; }
 .blocklyTrash { opacity: 0.78; }
 
 @keyframes pulse { to { opacity: 0.35; } }

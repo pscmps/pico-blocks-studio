@@ -57,13 +57,15 @@
             <span class="original-diagram">簡略図</span>
           </div>
           <p id="wiringSummary" class="wiring-summary"></p>
-          <div id="wiringDiagram" class="wiring-diagram" role="img" aria-label="選択したボードとSCS009の配線図"></div>
-          <div class="wiring-legend" aria-label="配線色の説明">
-            <span><i class="wire-data"></i>DATA</span>
-            <span><i class="wire-power"></i>外部電源＋</span>
-            <span><i class="wire-ground"></i>共通GND</span>
+          <div id="wiringDiagram" class="wiring-diagram" role="img" aria-label="選択したボードの端子・配線図"></div>
+          <div id="scsWiringDetails" class="scs-wiring-details" hidden>
+            <div class="wiring-legend" aria-label="配線色の説明">
+              <span><i class="wire-data"></i>DATA</span>
+              <span><i class="wire-power"></i>外部電源＋</span>
+              <span><i class="wire-ground"></i>共通GND</span>
+            </div>
+            <p class="wiring-note">サーボのV+はRPボードへ接続しません。コネクタは色や向きではなく、必ず端子名を確認してください。</p>
           </div>
-          <p class="wiring-note">サーボのV+はRPボードへ接続しません。コネクタは色や向きではなく、必ず端子名を確認してください。</p>
           <a id="pinoutLink" class="pinout-link" target="_blank" rel="noopener noreferrer">公式ピン配置を確認</a>
         </div>
       </aside>
@@ -142,7 +144,7 @@
           <p>データ通信対応のUSBケーブルを使ってください。UF2のコピー後はドライブが自動で閉じて再起動します。その後、ChromeまたはEdgeで「RPボードを接続」を押し、MicroPythonのシリアルポートを選びます。</p>
           <p>「今すぐ実行」は一時実行、「main.pyに保存」は電源を入れ直しても自動実行します。</p>
         </details>
-        <details class="help-card">
+        <details id="scsHelp" class="help-card" hidden>
           <summary>SCS009を接続する前に</summary>
           <p>SCS009の電源はRPボードから取らず、サーボ用の外部電源を使ってGNDを共通にしてください。DATA線は接続ブロックで指定したGPIOへ直接つなぎます。PIOが送信時だけ出力、送信後は入力へ切り替えるため、半二重変換回路は不要です。</p>
         </details>

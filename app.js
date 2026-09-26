@@ -88,6 +88,8 @@
     wiringContent: $("#wiringContent"),
     wiringSummary: $("#wiringSummary"),
     wiringDiagram: $("#wiringDiagram"),
+    scsWiringDetails: $("#scsWiringDetails"),
+    scsHelp: $("#scsHelp"),
     pinoutLink: $("#pinoutLink"),
   };
 
@@ -103,17 +105,17 @@
   const theme = Blockly.Theme.defineTheme("picoBlocks", {
     base: Blockly.Themes.Zelos,
     componentStyles: {
-      workspaceBackgroundColour: "#0d1728",
-      toolboxBackgroundColour: "#111d30",
-      toolboxForegroundColour: "#bdc9da",
-      flyoutBackgroundColour: "#162238",
-      flyoutForegroundColour: "#dbe5f4",
+      workspaceBackgroundColour: "#f8fafc",
+      toolboxBackgroundColour: "#ffffff",
+      toolboxForegroundColour: "#475467",
+      flyoutBackgroundColour: "#eef2f6",
+      flyoutForegroundColour: "#172033",
       flyoutOpacity: 1,
-      scrollbarColour: "#41516c",
+      scrollbarColour: "#c5ced8",
       scrollbarOpacity: 0.55,
-      insertionMarkerColour: "#5eead4",
+      insertionMarkerColour: "#0f766e",
       insertionMarkerOpacity: 0.35,
-      cursorColour: "#ffb86b",
+      cursorColour: "#e87924",
     },
     fontStyle: { family: "Inter, Noto Sans JP, sans-serif", weight: "600", size: 12 },
     startHats: true,
@@ -297,7 +299,7 @@
     trashcan: true,
     move: { scrollbars: true, drag: true, wheel: true },
     zoom: { controls: true, wheel: true, startScale: 0.92, maxScale: 1.4, minScale: 0.5, scaleSpeed: 1.1 },
-    grid: { spacing: 24, length: 2, colour: "#24344f", snap: true },
+    grid: { spacing: 24, length: 2, colour: "#d9e0e8", snap: true },
   });
 
   const starterState = {
@@ -501,17 +503,19 @@ class SCS009PIO:
   const PICO_RIGHT_PINS = ["VBUS", "VSYS", "GND", "3V3_EN", "3V3", "ADC_VREF", "GP28", "GND", "GP27", "GP26", "RUN", "GP22", "GND", "GP21", "GP20", "GP19", "GP18", "GND", "GP17", "GP16"];
 
   function picoBoardDrawing(profile, selectedPin) {
-    const selected = `GP${selectedPin}`;
-    let dataPoint = { x: 50, y: 82 };
+    const selected = selectedPin === null ? null : `GP${selectedPin}`;
+    let dataPoint = null;
     const groundPoint = { x: 50, y: 64 };
     const makeSide = (pins, x, side) => pins.map((name, index) => {
       const y = 42 + index * 10.5;
       const active = name === selected;
       if (active) dataPoint = { x, y };
-      const labelX = side === "left" ? x + 9 : x - 9;
+      const physical = side === "left" ? index + 1 : 40 - index;
+      const labelX = side === "left" ? x + 8 : x - 8;
+      const numberX = side === "left" ? x - 7 : x + 7;
       const anchor = side === "left" ? "start" : "end";
-      const label = active || name === "GND" ? `<text x="${labelX}" y="${y + 2.5}" text-anchor="${anchor}" class="pin-label ${active ? "active" : ""}">${name}</text>` : "";
-      return `<circle cx="${x}" cy="${y}" r="3.2" class="board-pin ${active ? "active" : ""}"/>${label}`;
+      const numberAnchor = side === "left" ? "end" : "start";
+      return `<g class="pin-hit"><title>物理ピン ${physical}: ${name}</title><circle cx="${x}" cy="${y}" r="3.2" class="board-pin ${active ? "active" : ""}"/><text x="${labelX}" y="${y + 2.2}" text-anchor="${anchor}" class="pin-label ${active ? "active" : ""}">${name}</text><text x="${numberX}" y="${y + 2.2}" text-anchor="${numberAnchor}" class="pin-number">${physical}</text></g>`;
     }).join("");
     const board = `
       <rect x="50" y="22" width="160" height="238" rx="16" class="board-body"/>
@@ -526,42 +530,69 @@ class SCS009PIO:
   }
 
   function geekBoardDrawing(profile, selectedPin) {
-    const positions = {
-      2: { x: 72, y: 225 }, 3: { x: 88, y: 225 },
-      4: { x: 115, y: 225 }, 5: { x: 131, y: 225 },
-      28: { x: 158, y: 225 }, 29: { x: 174, y: 225 },
-    };
-    const dataPoint = positions[selectedPin] || positions[2];
-    const pins = Object.entries(positions).map(([pin, point]) => {
-      const active = Number(pin) === selectedPin;
-      return `<circle cx="${point.x}" cy="${point.y}" r="5" class="board-pin ${active ? "active" : ""}"/><text x="${point.x}" y="242" text-anchor="middle" class="pin-label ${active ? "active" : ""}">${pin}</text>`;
+    const groups = [
+      { name: "H1 · 3PIN", x: 37, pins: ["GP2", "GND", "GP3"] },
+      { name: "H2 · 3PIN", x: 101, pins: ["GP4", "GND", "GP5"] },
+      { name: "H3 · 4PIN", x: 165, pins: ["3V3", "GP28", "GP29", "GND"] },
+    ];
+    const points = {};
+    const grounds = {};
+    const connectors = groups.map((group, groupIndex) => {
+      const width = group.pins.length === 4 ? 61 : 57;
+      const pins = group.pins.map((name, index) => {
+        const x = group.x + 8 + index * 14;
+        const y = 218;
+        const pinNumber = name.startsWith("GP") ? Number(name.slice(2)) : null;
+        const active = pinNumber === selectedPin;
+        if (pinNumber !== null) points[pinNumber] = { x, y };
+        if (name === "GND") grounds[groupIndex] = { x, y };
+        return `<g class="pin-hit"><title>${group.name} / ${index + 1}番: ${name}</title><circle cx="${x}" cy="${y}" r="4.5" class="board-pin ${active ? "active" : name === "GND" ? "ground" : name === "3V3" ? "power" : ""}"/><text x="${x}" y="236" text-anchor="middle" class="pin-label ${active ? "active" : ""}">${name}</text><text x="${x}" y="247" text-anchor="middle" class="pin-number">${index + 1}</text></g>`;
+      }).join("");
+      return `<rect x="${group.x}" y="196" width="${width}" height="58" rx="7" class="connector-group"/><text x="${group.x + width / 2}" y="208" text-anchor="middle" class="connector-title">${group.name}</text>${pins}`;
     }).join("");
+    const selectedGroup = selectedPin === 2 || selectedPin === 3 ? 0 : selectedPin === 4 || selectedPin === 5 ? 1 : 2;
+    const dataPoint = selectedPin === null ? null : points[selectedPin];
+    const groundPoint = grounds[selectedGroup];
     const board = `
-      <rect x="42" y="24" width="176" height="238" rx="18" class="board-body"/>
+      <rect x="27" y="24" width="206" height="242" rx="18" class="board-body"/>
       <path d="M79 24h102v20H79z" class="usb"/>
       <rect x="63" y="61" width="134" height="76" rx="8" class="lcd"/>
       <text x="130" y="91" text-anchor="middle" class="board-title">${profile.name.replace("Waveshare ", "")}</text>
       <text x="130" y="108" text-anchor="middle" class="board-subtitle">LCDはこの図では未使用</text>
-      <rect x="88" y="154" width="84" height="43" rx="7" class="chip"/>
-      <text x="130" y="179" text-anchor="middle" class="board-subtitle">GPIO CONNECTORS</text>
-      ${pins}<circle cx="194" cy="225" r="5" class="board-pin ground"/><text x="194" y="242" text-anchor="middle" class="pin-label">GND</text>`;
-    return { board, dataPoint, groundPoint: { x: 194, y: 225 } };
+      <rect x="88" y="149" width="84" height="32" rx="7" class="chip"/>
+      <text x="130" y="168" text-anchor="middle" class="board-subtitle">EXTERNAL CONNECTORS</text>
+      ${connectors}`;
+    return { board, dataPoint, groundPoint };
   }
 
   function renderWiringDiagram() {
     const profile = BOARD_PROFILES[selectedBoard];
     const setup = workspace.getAllBlocks(false).find((block) => block.type === "scs009_setup");
-    const selectedPin = setup ? Number(setup.getFieldValue("PIN")) : profile.pins[0];
+    const selectedPin = setup ? Number(setup.getFieldValue("PIN")) : null;
     const drawing = profile.layout === "pico" ? picoBoardDrawing(profile, selectedPin) : geekBoardDrawing(profile, selectedPin);
-    const example = setup ? "接続ブロックの設定を表示中" : "接続ブロック未配置のため候補例を表示中";
-    elements.wiringSummary.textContent = `${example}: GP${selectedPin}をSCS009のDATAへ接続します。`;
     elements.pinoutLink.href = profile.pinoutUrl;
     elements.pinoutLink.textContent = `${profile.name}の公式ピン情報`;
+    elements.wiringDiagram.classList.toggle("is-board-only", !setup);
+    elements.scsWiringDetails.hidden = !setup;
+    elements.scsHelp.hidden = !setup;
+    elements.boardPinHint.hidden = !setup;
+    const diagramStyle = `
+      .board-body{fill:#edf4f7;stroke:#78909c;stroke-width:2}.usb{fill:#c7ced6;stroke:#87929e}.chip{fill:#334155;stroke:#172033}.lcd{fill:#e7f6f4;stroke:#0f766e;stroke-width:1.5}.button-mark{fill:#fff;stroke:#8796a8}.board-pin{fill:#fff;stroke:#64748b;stroke-width:1}.board-pin.active{fill:#fbbf24;stroke:#b45309;stroke-width:2}.board-pin.ground{fill:#cbd5e1}.board-pin.power{fill:#fda4af}.pin-label{fill:#475467;font:6.5px Inter,sans-serif}.pin-label.active{fill:#9a3412;font-weight:800}.pin-number{fill:#667085;font:6.2px Inter,sans-serif}.board-title{fill:#172033;font:700 10px Inter,sans-serif}.board-subtitle,.tiny-label{fill:#667085;font:6.5px Inter,sans-serif}.connector-group{fill:#fff;stroke:#cbd5e1}.connector-title{fill:#344054;font:700 6px Inter,sans-serif}.device-box{fill:#fff;stroke:#b8c2cf;stroke-width:1.5}.terminal{fill:#f8fafc;stroke:#667085}.terminal-label{fill:#344054;font:700 8px Inter,sans-serif}.caption{fill:#667085;font:7px Inter,sans-serif}.data-wire{fill:none;stroke:#d69e00;stroke-width:3}.power-wire{fill:none;stroke:#e5484d;stroke-width:3}.ground-wire{fill:none;stroke:#64748b;stroke-width:3}.pin-hit{cursor:help}`;
+    if (!setup) {
+      elements.wiringSummary.textContent = `${profile.name}の端子配置です。各端子へカーソルを合わせると番号を確認できます。`;
+      elements.wiringDiagram.innerHTML = `
+        <svg viewBox="0 0 260 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <style>${diagramStyle}</style>
+          <title>${profile.name}の簡易ピン配置</title>
+          ${drawing.board}
+          <text x="130" y="286" text-anchor="middle" class="caption">端子へカーソルを合わせると端子番号を確認できます</text>
+        </svg>`;
+      return;
+    }
+    elements.wiringSummary.textContent = `接続ブロックの設定: GP${selectedPin}をSCS009のDATAへ接続します。`;
     elements.wiringDiagram.innerHTML = `
       <svg viewBox="0 0 260 460" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <style>
-          .board-body{fill:#163955;stroke:#4a6d88;stroke-width:2}.usb{fill:#9aa8b8;stroke:#d8e1eb}.chip{fill:#0a101b;stroke:#52637a}.lcd{fill:#13283a;stroke:#5eead4;stroke-width:1.5}.button-mark{fill:#253c52;stroke:#6f839b}.board-pin{fill:#94a3b8;stroke:#dbe5f4;stroke-width:1}.board-pin.active{fill:#ffd166;stroke:#fff2b7;stroke-width:2}.board-pin.ground{fill:#a8b3c5}.pin-label{fill:#8190a6;font:7px Inter,sans-serif}.pin-label.active{fill:#ffd166;font-weight:800}.board-title{fill:#f5f8ff;font:700 10px Inter,sans-serif}.board-subtitle,.tiny-label{fill:#9aabc0;font:6.5px Inter,sans-serif}.device-box{fill:#152238;stroke:#41516c;stroke-width:1.5}.terminal{fill:#25364d;stroke:#728199}.terminal-label{fill:#dbe5f4;font:700 8px Inter,sans-serif}.caption{fill:#9aabc0;font:7px Inter,sans-serif}.data-wire{fill:none;stroke:#ffd166;stroke-width:3}.power-wire{fill:none;stroke:#ff7185;stroke-width:3}.ground-wire{fill:none;stroke:#a8b3c5;stroke-width:3}
-        </style>
+        <style>${diagramStyle}</style>
         <title>${profile.name}とSCS009の簡易配線図</title>
         <path d="M${drawing.dataPoint.x} ${drawing.dataPoint.y} C235 ${drawing.dataPoint.y},70 330,112 330" class="data-wire"/>
         <path d="M${drawing.groundPoint.x} ${drawing.groundPoint.y} C238 ${drawing.groundPoint.y},75 372,112 372" class="ground-wire"/>
