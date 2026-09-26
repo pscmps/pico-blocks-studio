@@ -57,6 +57,15 @@
       boot: "USBでPCへ接続し、BOOTとRESETを同時に押します。RESETを先に離し、次にBOOTを離します。",
     },
   };
+  BOARD_PROFILES.picow = {
+    ...BOARD_PROFILES.pico, name: "Raspberry Pi Pico W", wifi: true, ledPin: '"LED"',
+    firmwareUrl: "https://micropython.org/download/RPI_PICO_W/", firmwareLabel: "Raspberry Pi Pico W用MicroPython",
+  };
+  BOARD_PROFILES.pico2 = {
+    ...BOARD_PROFILES.pico2w, name: "Raspberry Pi Pico 2", ledPin: "25",
+    firmwareUrl: "https://micropython.org/download/RPI_PICO2/", firmwareLabel: "Raspberry Pi Pico 2用MicroPython",
+  };
+  BOARD_PROFILES.pico2w.wifi = true;
   let selectedBoard = localStorage.getItem("picoblocks-board-v1");
   if (!BOARD_PROFILES[selectedBoard]) selectedBoard = "pico";
 
@@ -100,7 +109,6 @@
     controllerConnectionLabel: $("#controllerConnectionLabel"),
     controllerPortSummary: $("#controllerPortSummary"),
     jogCenter: $("#jogCenterButton"),
-    jogZInline: $("#jogZInline"),
   };
 
   let port = null;
@@ -113,8 +121,8 @@
   const waiters = new Set();
   let controllerActive = false;
   let controllerConfigSignature = "";
-  const controllerValues = { X: 511, Y: 511, Z: 511 };
-  const controllerAxes = { X: { center: 511, step: 10 }, Y: { center: 511, step: 10 }, Z: { center: 511, step: 10 } };
+  const controllerValues = { X: 511, Y: 511, Z: 511, R: 511 };
+  const controllerAxes = PicoJog.defaults(false);
 
   const theme = Blockly.Theme.defineTheme("picoBlocks", {
     base: Blockly.Themes.Zelos,
@@ -251,16 +259,23 @@
       this.setPreviousStatement(true);
       this.setNextStatement(true);
       this.setColour(262);
-      this.setTooltip("書き込みに使うWeb Serial接続から、X・Y・ZのJOG値を受信します。");
+      this.setTooltip("書き込みに使うWeb Serial接続から、4軸のJOG値を受信します。");
     },
   };
 
   Blockly.defineBlocksWithJsonArray([
     {
+      type: "wifi_jog_setup", message0: "Wi-Fi JOGサーバを開始",
+      message1: "Wi-Fi名 %1", args1: [{ type: "field_input", name: "SSID", text: "PicoBlocks-JOG" }],
+      message2: "パスワード %1", args2: [{ type: "field_input", name: "PASSWORD", text: "picoblocks" }],
+      previousStatement: null, nextStatement: null, colour: 190,
+      tooltip: "Pico W / Pico 2 WがWi-Fi親機になります。スマホでこのWi-Fiへ接続して操作します。パスワードは8〜63文字。",
+    },
+    {
       type: "uart_scs_bind",
-      message0: "UARTの %1 軸を SCS009 ID %2 に割り当て",
+      message0: "JOGの %1 を SCS009 ID %2 に割り当て",
       args0: [
-        { type: "field_dropdown", name: "AXIS", options: [["X", "X"], ["Y", "Y"], ["Z", "Z"]] },
+        { type: "field_dropdown", name: "AXIS", options: [["↑ ↓", "Y"], ["← →", "X"], ["W S", "Z"], ["A D", "R"]] },
         { type: "field_number", name: "ID", value: 1, min: 0, max: 253, precision: 1 },
       ],
       message1: "中央 %1  増減幅 %2  速度 %3",
@@ -285,6 +300,10 @@
     return {
     kind: "categoryToolbox",
     contents: [
+      ...(BOARD_PROFILES[selectedBoard].wifi ? [{
+        kind: "category", name: "Wi-Fi JOG", colour: "#31a8b0",
+        contents: [{ kind: "block", type: "wifi_jog_setup" }, { kind: "block", type: "uart_scs_bind" }],
+      }] : []),
       {
         kind: "category",
         name: "基本",
@@ -366,6 +385,23 @@
     move: { scrollbars: true, drag: true, wheel: true },
     zoom: { controls: true, wheel: true, startScale: 0.92, maxScale: 1.4, minScale: 0.5, scaleSpeed: 1.1 },
     grid: { spacing: 24, length: 2, colour: "#d9e0e8", snap: true },
+  });
+
+  $("#blocklyDiv").addEventListener("dblclick", (event) => {
+    if (event.target.closest(".blocklyEditableText, input, textarea")) return;
+    const block = workspace.getAllBlocks(false).find((item) => item.getSvgRoot() === event.target.closest(".blocklyDraggable"));
+    if (!block || block.type === "program_start" || !block.isDeletable() || !block.isMovable()) return;
+    Blockly.Events.setGroup(true);
+    try {
+      const state = Blockly.serialization.blocks.save(block, { addCoordinates: true, doFullSerialization: true });
+      delete state.next;
+      delete state.id;
+      state.x += 32;
+      state.y += 32;
+      Blockly.serialization.blocks.append(state, workspace, { recordUndo: true }).select();
+    } finally {
+      Blockly.Events.setGroup(false);
+    }
   });
 
   const starterState = {
@@ -516,13 +552,14 @@ class SCS009PIO:
           piece = `Pin(${Number(current.getFieldValue("PIN"))}, Pin.OUT).value(${current.getFieldValue("VALUE")})\n`;
           break;
         case "scs009_setup":
-          piece = `# SCS009はプログラム先頭で接続済みです\n`;
+          piece = `pass  # SCS009はプログラム先頭で接続済みです\n`;
           break;
         case "uart_controller_setup":
-          piece = `# UARTコントローラはプログラム先頭で接続済みです\n`;
+        case "wifi_jog_setup":
+          piece = `pass  # JOGコントローラはプログラム先頭で接続済みです\n`;
           break;
         case "uart_scs_bind":
-          piece = `# ${current.getFieldValue("AXIS")}軸をSCS009 ID ${Number(current.getFieldValue("ID"))}へ割り当て済みです\n`;
+          piece = `pass  # ${current.getFieldValue("AXIS")}軸をSCS009 ID ${Number(current.getFieldValue("ID"))}へ割り当て済みです\n`;
           break;
         case "scs009_torque":
           piece = `scs009.torque(${Number(current.getFieldValue("ID"))}, ${current.getFieldValue("STATE") === "1" ? "True" : "False"})\n`;
@@ -538,7 +575,7 @@ class SCS009PIO:
         }
         case "forever_loop": {
           const body = chainToPython(current.getInputTargetBlock("DO"), level + 1);
-          piece = `while True:\n${body ? indent(body) : "    pass\n"}`;
+          piece = `while True:\n${getUartControllerBlock() ? "    _controller_poll()\n    time.sleep_ms(5)\n" : ""}${body ? indent(body) : "    pass\n"}`;
           break;
         }
         default:
@@ -554,8 +591,8 @@ class SCS009PIO:
     const roots = workspace.getTopBlocks(true);
     const allBlocks = workspace.getAllBlocks(false);
     const profile = BOARD_PROFILES[selectedBoard];
-    const uartSetup = allBlocks.find((block) => block.type === "uart_controller_setup");
-    const bindings = allBlocks.filter((block) => block.type === "uart_scs_bind");
+    const uartSetup = getUartControllerBlock();
+    const wifiSetup = profile.wifi && allBlocks.find((block) => block.type === "wifi_jog_setup");
     const usesSCS009 = allBlocks.some((block) => block.type.startsWith("scs009_"));
     const usesLed = allBlocks.some((block) => block.type === "pico_led");
     const setup = allBlocks.find((block) => block.type === "scs009_setup");
@@ -572,34 +609,14 @@ class SCS009PIO:
     const ledCode = usesLed && profile.ledPin !== null ? `\nled = Pin(${profile.ledPin}, Pin.OUT)\n` : "";
     let uartCode = "";
     if (uartSetup) {
-      const mappingLines = (setup ? bindings : []).map((block, index) => {
-        const axis = block.getFieldValue("AXIS");
-        const servoId = Number(block.getFieldValue("ID"));
-        const speed = Number(block.getFieldValue("SPEED"));
-        return `${index === 0 ? "if" : "elif"} axis == ${pyString(axis)}:\n        scs009.move(${servoId}, value, 0, ${speed})`;
-      }).join("\n    ");
-      uartCode = `
-controller_values = {"X": 511, "Y": 511, "Z": 511}
-_controller_input = select.poll()
-_controller_input.register(sys.stdin, select.POLLIN)
-
-def _apply_controller_value(axis, value):
-    value = max(0, min(1023, int(value)))
-    controller_values[axis] = value
-    ${mappingLines || "# SCS009などへの割り当ては、ここへ追加できます\n    pass"}
-
-def _controller_poll():
-    if _controller_input.poll(0):
-        parts = sys.stdin.readline().strip().split()
-        if len(parts) == 3 and parts[0] == "JOG" and parts[1] in controller_values:
-            try:
-                _apply_controller_value(parts[1], parts[2])
-            except ValueError:
-                pass
-`;
+      uartCode = PicoJog.runtime(getJogAxes(), wifiSetup ? {
+        ssid: wifiSetup.getFieldValue("SSID"), password: wifiSetup.getFieldValue("PASSWORD"),
+      } : null);
+      body = body.replace(/time\.sleep_ms\((\d+)\)/g, "_controller_wait($1)");
+      body = 'print("PICOBLOCKS_READY")\n' + body;
       body += `\n# PCからのJOG指令を待ちます\nwhile True:\n    _controller_poll()\n    time.sleep_ms(5)\n`;
     }
-    const serialImports = uartSetup ? "\nimport sys\nimport select" : "";
+    const serialImports = uartSetup ? "\nimport sys\nimport select\nimport json" : "";
     return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ledCode}${uartCode}\n${body}`;
   }
 
@@ -627,7 +644,7 @@ def _controller_poll():
       <circle cx="130" cy="62" r="8" class="button-mark"/>
       <text x="130" y="65" text-anchor="middle" class="tiny-label">BOOT</text>
       <rect x="100" y="94" width="60" height="70" rx="7" class="chip"/>
-      <text x="130" y="124" text-anchor="middle" class="board-title">${profile.name.includes("2") ? "PICO 2 W" : "PICO"}</text>
+      <text x="130" y="124" text-anchor="middle" class="board-title">${profile.name.replace("Raspberry Pi ", "").toUpperCase()}</text>
       <text x="130" y="139" text-anchor="middle" class="board-subtitle">RP GPIO / PIO</text>
       ${makeSide(PICO_LEFT_PINS, 50, "left")}${makeSide(PICO_RIGHT_PINS, 210, "right")}`;
     return { board, dataPoint, groundPoint };
@@ -719,6 +736,7 @@ def _controller_poll():
   function updateBoardUi() {
     const profile = BOARD_PROFILES[selectedBoard];
     elements.boardSelect.value = selectedBoard;
+    $("#wifiHelp").hidden = !profile.wifi;
     elements.boardPinHint.textContent = `SCS009 DATAで選べる端子: ${profile.pins.map((pin) => `GP${pin}`).join(" / ")}`;
     elements.firmwareLink.href = profile.firmwareUrl;
     elements.firmwareLink.textContent = `${profile.firmwareLabel}のダウンロード先を開く`;
@@ -730,6 +748,7 @@ def _controller_poll():
       profile.boot,
       `PCに「${profile.driveName}」というUSBドライブが表示されたことを確認します。`,
       "ダウンロードしたUF2ファイルを、そのUSBドライブへドラッグ＆ドロップします。コピーが終わるとボードが自動で再起動します。",
+      ...(profile.wifi ? ["Wi-Fi JOGには、この機種用のMicroPython 1.29以降を選んでください。Pico 2 Wは通常のArm版を使用します。"] : []),
     ];
     for (const text of steps) {
       const item = document.createElement("li");
@@ -788,7 +807,35 @@ def _controller_poll():
   }
 
   function getUartControllerBlock() {
-    return workspace.getAllBlocks(false).find((block) => block.type === "uart_controller_setup") || null;
+    return workspace.getAllBlocks(false).find((block) => block.type === "uart_controller_setup" ||
+      (BOARD_PROFILES[selectedBoard].wifi && block.type === "wifi_jog_setup")) || null;
+  }
+
+  function getJogAxes() {
+    const blocks = workspace.getAllBlocks(false);
+    const hasScs = blocks.some(block => block.type === "scs009_setup");
+    const config = PicoJog.defaults(hasScs);
+    for (const block of blocks.filter(block => block.type === "uart_scs_bind")) {
+      config[block.getFieldValue("AXIS")] = {
+        id: hasScs ? Number(block.getFieldValue("ID")) : null,
+        center: Number(block.getFieldValue("CENTER")), step: Number(block.getFieldValue("STEP")), speed: Number(block.getFieldValue("SPEED")),
+      };
+    }
+    return config;
+  }
+
+  function validateProgram() {
+    const blocks = workspace.getAllBlocks(false);
+    const wifi = blocks.filter(block => block.type === "wifi_jog_setup");
+    let error = "";
+    if (wifi.length && !BOARD_PROFILES[selectedBoard].wifi) error = "Wi-Fi JOGはPico W / Pico 2 Wで使えます。ボードを選び直すかWi-Fiブロックを外してください。";
+    if (wifi.length > 1) error = "Wi-Fiサーバの開始ブロックは1個にしてください。";
+    if (wifi.length) {
+      const ssid = wifi[0].getFieldValue("SSID"), password = wifi[0].getFieldValue("PASSWORD");
+      if (!ssid || encoder.encode(ssid).length > 32 || !/^[\x20-\x7e]{8,63}$/.test(password)) error = "Wi-Fi名は1〜32バイト、パスワードは半角8〜63文字で指定してください。";
+    }
+    if (error) showToast(error, "error");
+    return !error;
   }
 
   function getUartControllerConfig() {
@@ -802,27 +849,17 @@ def _controller_poll():
     const hasController = Boolean(config);
     elements.controllerMenuItem.disabled = !hasController;
     elements.run.lastChild.textContent = hasController ? (controllerActive ? " 操作中" : " コントローラを開始") : " 今すぐ実行";
-    if (controllerActive) elements.run.disabled = true;
+    elements.run.disabled = !port || isBusy || controllerActive;
     const menuHelp = elements.controllerMenuItem.querySelector("small");
-    menuHelp.textContent = hasController ? "X・Y・Zを有線で操作" : "UARTブロックを置くと使えます";
+    menuHelp.textContent = hasController ? "矢印・WASDで4軸を操作" : "UART / Wi-Fi JOGブロックで有効";
 
     if (!hasController && elements.controllerDrawer.getAttribute("aria-hidden") === "false") closeController();
     if (!config) return;
 
-    const nextAxes = { X: { center: 511, step: 10, label: "未割り当て" }, Y: { center: 511, step: 10, label: "未割り当て" }, Z: { center: 511, step: 10, label: "未割り当て" } };
-    const hasScsSetup = workspace.getAllBlocks(false).some((block) => block.type === "scs009_setup");
-    const bindings = workspace.getAllBlocks(false).filter((block) => block.type === "uart_scs_bind");
-    for (const block of bindings) {
-      const axis = block.getFieldValue("AXIS");
-      nextAxes[axis] = {
-        center: Number(block.getFieldValue("CENTER")),
-        step: Number(block.getFieldValue("STEP")),
-        label: `SCS009 ID ${Number(block.getFieldValue("ID"))}${hasScsSetup ? "" : "（接続未設定）"}`,
-      };
-    }
+    const nextAxes = getJogAxes();
     const signature = JSON.stringify(nextAxes);
     if (signature !== controllerConfigSignature) {
-      for (const axis of ["X", "Y", "Z"]) {
+      for (const axis of PicoJog.axes) {
         controllerAxes[axis] = nextAxes[axis];
         controllerValues[axis] = nextAxes[axis].center;
       }
@@ -831,11 +868,10 @@ def _controller_poll():
     elements.controllerPortSummary.textContent = port
       ? "RPボードへのWeb Serial接続を共用します"
       : "上部の「RPボードを接続」と同じ接続を使います";
-    for (const axis of ["X", "Y", "Z"]) {
+    for (const axis of PicoJog.axes) {
       $(`#jogValue${axis}`).textContent = controllerValues[axis];
-      $(`#jogBinding${axis}`).textContent = nextAxes[axis].label;
+      $(`#jogBinding${axis}`).textContent = nextAxes[axis].id === null ? "汎用値" : `SCS009 ID ${nextAxes[axis].id}`;
     }
-    elements.jogZInline.textContent = controllerValues.Z;
   }
 
   function setMenuOpen(open) {
@@ -862,13 +898,16 @@ def _controller_poll():
       ? "コントローラを停止"
       : port ? "コントローラを開始" : "RPボードを接続";
     elements.controllerConnect.classList.toggle("is-connected", controllerActive);
-    const enabled = controllerActive;
+    const enabled = controllerActive && !isBusy;
+    elements.controllerConnect.disabled = isBusy;
     for (const button of document.querySelectorAll("[data-jog-axis]")) button.disabled = !enabled;
     elements.jogCenter.disabled = !enabled;
     updateControllerUi();
   }
 
   async function connectController() {
+    if (isBusy) return;
+    if (!validateProgram()) return;
     if (!port) {
       await connect();
       return;
@@ -884,9 +923,10 @@ def _controller_poll():
       showTab("console");
       await enterRawRepl();
       serialBuffer = "";
-      await writeBytes(generatePython());
+      await writeSource(generatePython());
       await writeControl(0x04);
       await waitFor("OK", 3000);
+      await waitFor("PICOBLOCKS_READY", 15000);
       controllerActive = true;
       showToast("同じUSB接続でコントローラを開始しました。", "success");
     } catch (error) {
@@ -898,23 +938,21 @@ def _controller_poll():
     }
   }
 
-  async function sendControllerValue(axis, value) {
-    controllerValues[axis] = Math.max(0, Math.min(1023, Math.round(value)));
-    updateControllerUi();
-    if (!controllerActive || !port) return;
-    try {
-      await writeBytes(`JOG ${axis} ${controllerValues[axis]}\n`);
-    } catch (error) {
-      showToast(`UARTへ送信できませんでした: ${error.message}`, "error");
-    }
-  }
-
   function jogAxis(axis, direction) {
-    sendControllerValue(axis, controllerValues[axis] + controllerAxes[axis].step * direction);
+    sendJogCommand(`DELTA ${axis} ${direction}\n`);
   }
 
   async function centerJog() {
-    for (const axis of ["X", "Y", "Z"]) await sendControllerValue(axis, controllerAxes[axis].center);
+    await sendJogCommand("CENTER\n");
+  }
+
+  let jogSending = false;
+  async function sendJogCommand(command) {
+    if (!controllerActive || !port || isBusy || jogSending) return;
+    jogSending = true;
+    try { await writeBytes(command); }
+    catch (error) { controllerActive = false; updateControllerConnection(); showToast(error.message, "error"); }
+    finally { jogSending = false; }
   }
 
   function setConnection(state, label) {
@@ -932,9 +970,35 @@ def _controller_poll():
   function setBusy(busy, label = "処理中…") {
     isBusy = busy;
     setConnection(busy ? "busy" : port ? "online" : "offline", busy ? label : port ? "接続済み" : "未接続");
+    updateControllerConnection();
   }
 
+  let controllerOutput = "";
   function appendConsole(text) {
+    controllerOutput = (controllerOutput + text).slice(-12000);
+    let lineEnd;
+    while ((lineEnd = controllerOutput.indexOf("\n")) !== -1) {
+      const line = controllerOutput.slice(0, lineEnd).trim();
+      controllerOutput = controllerOutput.slice(lineEnd + 1);
+      if (line.startsWith("PICOBLOCKS_STATE ")) {
+        try {
+          const values = JSON.parse(line.slice(17));
+          for (const axis of PicoJog.axes) if (Number.isFinite(values[axis])) controllerValues[axis] = values[axis];
+          updateControllerUi();
+        } catch (_) { /* Ignore incomplete output. */ }
+      }
+      if (line.startsWith("PICOBLOCKS_WIFI ")) {
+        const url = line.slice(16);
+        if (/^http:\/\/(\d{1,3}\.){3}\d{1,3}\/$/.test(url)) {
+          $("#wifiJogAddress").textContent = url;
+          $("#wifiJogAddress").href = url;
+        }
+      }
+      if (controllerActive && line.includes("Traceback (most recent call last)")) {
+        controllerActive = false;
+        updateControllerConnection();
+      }
+    }
     if (!consoleStarted) {
       elements.serialConsole.textContent = "";
       consoleStarted = true;
@@ -1002,6 +1066,14 @@ def _controller_poll():
     await writeBytes(new Uint8Array(codes));
   }
 
+  async function writeSource(source) {
+    const bytes = encoder.encode(source);
+    for (let offset = 0; offset < bytes.length; offset += 256) {
+      await writeBytes(bytes.slice(offset, offset + 256));
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+  }
+
   async function enterRawRepl() {
     serialBuffer = "";
     await writeControl(0x03, 0x03);
@@ -1014,7 +1086,7 @@ def _controller_poll():
   async function executeRaw(code, timeout = 9000) {
     await enterRawRepl();
     serialBuffer = "";
-    await writeBytes(code);
+    await writeSource(code);
     await writeControl(0x04);
     await waitFor("OK", 3000);
     await waitFor("\u0004>", timeout);
@@ -1078,6 +1150,7 @@ def _controller_poll():
   }
 
   async function runProgram() {
+    if (!validateProgram()) return;
     if (getUartControllerBlock()) {
       if (controllerActive) {
         showToast("コントローラはすでに動作中です。");
@@ -1100,6 +1173,7 @@ def _controller_poll():
   }
 
   async function saveProgram() {
+    if (!validateProgram()) return;
     controllerActive = false;
     updateControllerConnection();
     setBusy(true, "保存中…");
@@ -1172,19 +1246,20 @@ def _controller_poll():
     button.addEventListener("click", () => jogAxis(button.dataset.jogAxis, Number(button.dataset.jogDirection)));
   }
   document.addEventListener("click", () => setMenuOpen(false));
+  let lastJogKey = 0;
   document.addEventListener("keydown", (event) => {
     if (elements.controllerDrawer.getAttribute("aria-hidden") !== "false") return;
-    if (event.target.closest("input, select, textarea, button")) return;
-    const commands = {
-      ArrowLeft: ["X", -1], ArrowRight: ["X", 1], ArrowUp: ["Y", 1], ArrowDown: ["Y", -1],
-      "[": ["Z", -1], "]": ["Z", 1],
-    };
+    if (event.target.closest("input, select, textarea, [contenteditable=true]") || event.ctrlKey || event.metaKey || event.altKey) return;
+    const commands = PicoJog.keys;
+    if (!commands[event.code] && event.code !== "Space") return;
+    event.preventDefault();
+    if (!controllerActive || isBusy || document.hidden) return;
+    if (event.repeat && Date.now() - lastJogKey < 100) return;
+    lastJogKey = Date.now();
     if (event.code === "Space") {
-      event.preventDefault();
-      centerJog();
-    } else if (commands[event.key]) {
-      event.preventDefault();
-      jogAxis(...commands[event.key]);
+      if (!event.repeat) centerJog();
+    } else if (commands[event.code]) {
+      jogAxis(...commands[event.code]);
     }
   });
 

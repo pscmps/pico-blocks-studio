@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=wifi4" />
   </head>
   <body>
     <header class="topbar">
@@ -110,6 +110,8 @@
             <span>使用するボード</span>
             <select id="boardSelect">
               <option value="pico">Raspberry Pi Pico</option>
+              <option value="picow">Raspberry Pi Pico W</option>
+              <option value="pico2">Raspberry Pi Pico 2</option>
               <option value="pico2w">Raspberry Pi Pico 2 W</option>
               <option value="rp2350_geek">Waveshare RP2350-GEEK</option>
               <option value="rp2040_geek">Waveshare RP2040-GEEK</option>
@@ -159,6 +161,12 @@
           <summary>SCS009を接続する前に</summary>
           <p>SCS009の電源はRPボードから取らず、サーボ用の外部電源を使ってGNDを共通にしてください。DATA線は接続ブロックで指定したGPIOへ直接つなぎます。PIOが送信時だけ出力、送信後は入力へ切り替えるため、半二重変換回路は不要です。</p>
         </details>
+        <details id="wifiHelp" class="help-card" hidden open>
+          <summary>スマホでWi-Fi JOG</summary>
+          <p>「Wi-Fi JOGサーバを開始」を置き、Wi-Fi名とパスワードを設定してUSBから実行、またはmain.pyに保存します。</p>
+          <p>スマホのWi-Fi設定で指定した名前に接続し、ブラウザで <a id="wifiJogAddress" href="http://192.168.4.1/" target="_blank" rel="noopener">http://192.168.4.1/</a> を開きます。起動時に実際のアドレスがシリアル欄に表示されます。</p>
+          <p>このWi-Fiはインターネット接続なしで使います。操作ページはPicoが配信します。</p>
+        </details>
       </aside>
     </main>
 
@@ -166,14 +174,14 @@
       <div class="controller-heading">
         <div>
           <span class="controller-kicker">UART JOG</span>
-          <h2>3軸コントローラ</h2>
+          <h2>4軸コントローラ</h2>
         </div>
         <button id="controllerCloseButton" class="icon-button" type="button" aria-label="コントローラを閉じる">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></svg>
         </button>
       </div>
 
-      <p class="controller-lead">PCからX・Y・Zの値をUARTへ送ります。SCS009への割り当てはブロック側で決めます。</p>
+      <p class="controller-lead">↑↓でID1、←→でID2、W/SでID3、A/DでID4。SCS接続ブロックで標準割り当てが有効になり、割り当てブロックで変更できます。表示は指令位置です。</p>
 
       <div class="controller-connection">
         <div>
@@ -184,11 +192,13 @@
       </div>
 
       <div class="axis-readout" aria-label="送信する軸の値">
-        <div><span>X</span><strong id="jogValueX">511</strong><small id="jogBindingX">未割り当て</small></div>
-        <div><span>Y</span><strong id="jogValueY">511</strong><small id="jogBindingY">未割り当て</small></div>
-        <div><span>Z</span><strong id="jogValueZ">511</strong><small id="jogBindingZ">未割り当て</small></div>
+        <div><span>↑ ↓</span><strong id="jogValueY">511</strong><small id="jogBindingY">汎用値</small></div>
+        <div><span>← →</span><strong id="jogValueX">511</strong><small id="jogBindingX">汎用値</small></div>
+        <div><span>W S</span><strong id="jogValueZ">511</strong><small id="jogBindingZ">汎用値</small></div>
+        <div><span>A D</span><strong id="jogValueR">511</strong><small id="jogBindingR">汎用値</small></div>
       </div>
 
+      <div class="jog-controls">
       <div class="jog-pad" aria-label="X・Y軸操作">
         <button type="button" data-jog-axis="Y" data-jog-direction="1" aria-label="Yを増やす">↑</button>
         <button type="button" data-jog-axis="X" data-jog-direction="-1" aria-label="Xを減らす">←</button>
@@ -197,11 +207,13 @@
         <button type="button" data-jog-axis="Y" data-jog-direction="-1" aria-label="Yを減らす">↓</button>
       </div>
 
-      <div class="z-jog" aria-label="Z軸操作">
-        <span>Z</span>
-        <button type="button" data-jog-axis="Z" data-jog-direction="-1">−</button>
-        <strong id="jogZInline">511</strong>
-        <button type="button" data-jog-axis="Z" data-jog-direction="1">＋</button>
+      <div class="jog-pad" aria-label="WASD操作">
+        <button type="button" data-jog-axis="Z" data-jog-direction="1" aria-label="WでID3を増やす">W</button>
+        <button type="button" data-jog-axis="R" data-jog-direction="-1" aria-label="AでID4を減らす">A</button>
+        <span>WASD</span>
+        <button type="button" data-jog-axis="R" data-jog-direction="1" aria-label="DでID4を増やす">D</button>
+        <button type="button" data-jog-axis="Z" data-jog-direction="-1" aria-label="SでID3を減らす">S</button>
+      </div>
       </div>
 
       <button id="jogCenterButton" class="center-button" type="button">中央へ戻す <kbd>Space</kbd></button>
@@ -209,7 +221,7 @@
       <div class="controller-note">
         <strong>接続は1本だけ</strong>
         <p>MicroPythonの書き込みに使うUSBケーブルを、そのままコントローラ通信にも使います。USB-UARTアダプタや追加配線は不要です。</p>
-        <p>送信形式: <code>JOG X 520</code> のような1行です。</p>
+        <p>増減は <code>DELTA X 1</code>、中央復帰は <code>CENTER</code> を送ります。</p>
       </div>
     </aside>
 
@@ -217,6 +229,7 @@
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/ja.js"></script>
-    <script src="./app.js"></script>
+    <script src="./jog.js?v=wifi4"></script>
+    <script src="./app.js?v=wifi4"></script>
   </body>
 </html>

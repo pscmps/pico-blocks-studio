@@ -232,16 +232,19 @@ h2 { font-size: 1.05rem; }
 .controller-connection small { color: var(--muted); font-size: 0.7rem; }
 .controller-connection .button { width: 100%; }
 .controller-connection .button.is-connected { color: var(--teal); border-color: #99d5ce; background: #f0fdfa; }
-.axis-readout { display: grid; grid-template-columns: repeat(3, 1fr); margin: 22px 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.axis-readout { display: grid; grid-template-columns: repeat(4, 1fr); margin: 22px 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .axis-readout div { min-width: 0; display: grid; justify-items: center; gap: 4px; padding: 13px 5px 11px; background: #fff; }
 .axis-readout div + div { border-left: 1px solid var(--line); }
 .axis-readout span { color: #6d5bd0; font-size: 0.68rem; font-weight: 850; }
 .axis-readout strong { font-size: 1.28rem; font-variant-numeric: tabular-nums; }
 .axis-readout small { max-width: 100%; overflow: hidden; color: var(--muted); font-size: 0.61rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .jog-pad { width: 196px; display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 58px); gap: 8px; margin: 4px auto 20px; }
+.jog-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.jog-controls .jog-pad { width: 100%; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 46px); gap: 4px; }
 .jog-pad button, .z-jog button { border: 1px solid var(--line); border-radius: 13px; color: #4537a5; background: #f5f3ff; font-size: 1.35rem; font-weight: 700; cursor: pointer; }
 .jog-pad button:hover, .z-jog button:hover { border-color: #b9afea; background: #eeebff; }
 .jog-pad button:active, .z-jog button:active { transform: translateY(1px); }
+.jog-pad button:disabled, .center-button:disabled { opacity: .4; cursor: not-allowed; }
 .jog-pad button:nth-child(1) { grid-column: 2; grid-row: 1; }
 .jog-pad button:nth-child(2) { grid-column: 1; grid-row: 2; }
 .jog-pad span { grid-column: 2; grid-row: 2; display: grid; place-items: center; color: var(--faint); font-size: 0.68rem; font-weight: 800; }
