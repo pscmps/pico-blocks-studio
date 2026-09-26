@@ -119,11 +119,10 @@
     },
     {
       type: "scs009_setup",
-      message0: "SCS009 PIO通信を準備",
-      message1: "DATA GP %1  PIO SM %2",
+      message0: "SCS009を接続",
+      message1: "DATA GP %1",
       args1: [
         { type: "field_number", name: "PIN", value: 2, min: 0, max: 29, precision: 1 },
-        { type: "field_number", name: "SM", value: 0, min: 0, max: 7, precision: 1 },
       ],
       message2: "通信速度 %1",
       args2: [
@@ -136,7 +135,7 @@
       previousStatement: null,
       nextStatement: null,
       colour: 14,
-      tooltip: "SCS009 / SCS0009の1線式半二重通信をPIOで準備します。外部レベル変換回路が必要です。",
+      tooltip: "SCS009 / SCS0009のDATA線を指定GPIOへ接続します。PIOが送受信方向を切り替えます。",
     },
     {
       type: "scs009_torque",
@@ -335,12 +334,12 @@ class SCS009PIO:
     TORQUE_ENABLE = 0x28
     GOAL_POSITION_L = 0x2A
 
-    def __init__(self, data_pin=2, sm_id=0, baud=1_000_000):
+    def __init__(self, data_pin=2, baud=1_000_000):
         self.pin = Pin(data_pin, Pin.IN, Pin.PULL_UP)
         self.baud = int(baud)
         self.byte_time_us = (12_000_000 + self.baud - 1) // self.baud
         self.sm = rp2.StateMachine(
-            sm_id,
+            0,
             _scs009_uart_tx,
             freq=self.baud * 8,
             out_base=self.pin,
@@ -405,7 +404,7 @@ class SCS009PIO:
           piece = `Pin(${Number(current.getFieldValue("PIN"))}, Pin.OUT).value(${current.getFieldValue("VALUE")})\n`;
           break;
         case "scs009_setup":
-          piece = `# SCS009 PIO通信はプログラム先頭で準備済みです\n`;
+          piece = `# SCS009はプログラム先頭で接続済みです\n`;
           break;
         case "scs009_torque":
           piece = `scs009.torque(${Number(current.getFieldValue("ID"))}, ${current.getFieldValue("STATE") === "1" ? "True" : "False"})\n`;
@@ -440,14 +439,13 @@ class SCS009PIO:
     const setup = allBlocks.find((block) => block.type === "scs009_setup");
     const scsConfig = {
       pin: setup ? Number(setup.getFieldValue("PIN")) : 2,
-      sm: setup ? Number(setup.getFieldValue("SM")) : 0,
       baud: setup ? Number(setup.getFieldValue("BAUD")) : 1000000,
     };
     const start = roots.find((block) => block.type === "program_start");
     const first = start ? start : roots.find((block) => block.previousConnection || block.nextConnection);
     const body = first ? chainToPython(first) : "print(\"ブロックを置いてください\")\n";
     const scsCode = usesSCS009
-      ? `\n${SCS009_DRIVER}\nscs009 = SCS009PIO(data_pin=${scsConfig.pin}, sm_id=${scsConfig.sm}, baud=${scsConfig.baud})\n`
+      ? `\n${SCS009_DRIVER}\nscs009 = SCS009PIO(data_pin=${scsConfig.pin}, baud=${scsConfig.baud})\n`
       : "";
     return `# PicoBlocks Studio が生成しました\nfrom machine import Pin\nimport time\n${scsCode}\ntry:\n    led = Pin(\"LED\", Pin.OUT)\nexcept:\n    led = Pin(25, Pin.OUT)\n\n${body}`;
   }
