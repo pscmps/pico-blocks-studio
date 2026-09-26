@@ -37,7 +37,7 @@ for (const board of Object.keys(profiles)) {
   const schema=catalog(board);
   assert.equal(Boolean(schema.wifi_jog_setup),Boolean(profiles[board].wifi));
   assert.equal(Boolean(schema.lcd_print),profiles[board].layout === 'geek');
-  assert.equal(JSON.stringify(schema.basic_adc.fields.PIN.options),JSON.stringify(profiles[board].pins.filter(p=>p>=26&&p<=29).map(String)));
+  assert.equal(JSON.stringify(schema.basic_adc.fields.PIN.options),JSON.stringify((profiles[board].adcPins || profiles[board].pins.filter(p=>p>=26&&p<=29)).map(String)));
   const categories=vm.runInContext('buildToolbox().contents.map(c=>c.name)',context);
   assert.ok(categories.indexOf('PWMサーボ')<categories.indexOf('SCS009'));
   assert.ok(categories.indexOf('SCS009')<categories.indexOf('XL330'));
@@ -152,4 +152,4 @@ context.controllerActive=true;
 assert.throws(()=>apply(good),/停止/);
 workspace.dispose();
 if(process.argv.includes('--json')) process.stdout.write(JSON.stringify({sources,runtimeScenario}));
-else console.log(`PASS: ${sources.length} generated programs, all basic blocks, 8 board catalogs, ordering, import validation, GPIO conflicts, guide examples`);
+else console.log(`PASS: ${sources.length} generated programs, all basic blocks, 9 board catalogs, ordering, import validation, GPIO conflicts, guide examples`);

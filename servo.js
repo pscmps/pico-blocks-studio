@@ -25,7 +25,7 @@ const ServoBlocks = (() => {
           const baud = [["57600 bps", "57600"], ["115200 bps", "115200"], ["1 Mbps", "1000000"]];
           this.appendDummyInput().appendField(t("通信速度")).appendField(new Blockly.FieldDropdown(baud), "BAUD");
           this.setFieldValue(m.baud, "BAUD");
-          this.setTooltip(t("GPIO 1本でPIO半二重通信。接続だけではトルクを有効にしません。1種類につき接続ブロックは1個です。"));
+          this.setTooltip(t("GPIO 1本で半二重通信（RPはPIO、ATOM LiteはUART・動作未確認）。接続だけではトルクを有効にしません。1種類につき接続ブロックは1個です。"));
         }
         this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(m.colour);
       }};
@@ -68,24 +68,138 @@ const ServoBlocks = (() => {
     if (op === "move") return `${model}.move(${n("ID")}, ${n("POSITION")}, ${n("SPEED")}, ${n("ACCEL")})\n`;
     return null;
   }
-  function runtime(blocks) {
+  function runtime(blocks, profile = {}) {
     const setups = blocks.filter(b => /^(xl330|sts3215|sts3235|pwm)_setup$/.test(b.type));
-    let code = setups.some(b => b.type !== "pwm_setup") ? BUS_DRIVER : "";
+    const esp = profile.platform === "esp32";
+    let code = setups.some(b => b.type !== "pwm_setup") ? (esp ? (blocks.some(b => b.type === "scs009_setup") ? "" : ESP32_BUS_DRIVER) : BUS_DRIVER) : "";
     if (setups.some(b => b.type === "xl330_setup")) code += XL330_DRIVER;
     if (setups.some(b => /^sts(3215|3235)_setup$/.test(b.type))) code += STS_DRIVER;
     if (setups.some(b => b.type === "pwm_setup")) code += PWM_DRIVER + "\npwm_servos = {}\n";
-    let nextSm = blocks.some(b => b.type === "scs009_setup") ? 2 : 0;
+    let nextSm = blocks.some(b => b.type === "scs009_setup") ? 2 : (esp ? 1 : 0);
     for (const b of setups) {
       const n = name => Number(b.getFieldValue(name));
       if (b.type === "pwm_setup") code += `pwm_servos[${n("CHANNEL")}] = PWMServo(${n("PIN")}, ${n("MIN_US")}, ${n("MAX_US")})\n`;
       else {
         const key = b.type.split("_")[0];
         code += `${key} = ${key === "xl330" ? "XL330" : key === "sts3235" ? "STS3235" : "STS3215"}(ServoBus(${n("PIN")}, ${n("BAUD")}, ${nextSm}))\n`;
-        nextSm += 2;
+        nextSm += esp ? 1 : 2;
       }
     }
     return code;
   }
+  // Experimental classic ESP32: configure open drain BEFORE attaching the UART
+  // matrix. Pin.init() afterwards would detach the peripheral. UART0 is the REPL.
+  const ESP32_BUS_DRIVER = String.raw`
+from machine import UART
+
+def _bounded(value, low, high):
+    value = int(value)
+    if not low <= value <= high:
+        raise ValueError('Servo value out of range: ' + str(value))
+    return value
+
+def _le(value, size):
+    return bytes((int(value) >> (8 * i)) & 255 for i in range(size))
+
+class ServoBus:
+    def __init__(self, pin, baud, uart_id):
+        if uart_id not in (1, 2):
+            raise ValueError('Only two servo buses; UART0 is reserved for USB')
+        self.pin = Pin(pin, Pin.OPEN_DRAIN, Pin.PULL_UP, value=1)
+        self.uart = None
+        try:
+            self.uart = UART(uart_id, baudrate=int(baud), bits=8, parity=None,
+                             stop=1, tx=pin, rx=pin, rxbuf=512,
+                             timeout=0, timeout_char=1)
+        except BaseException:
+            self.pin.init(Pin.IN, Pin.PULL_UP)
+            raise
+
+    def exchange(self, packet, protocol, timeout_ms=80):
+        if self.uart is None:
+            raise OSError('Servo bus closed; restart the program')
+        try:
+            # Clear stale replies before transmitting. Receive remains enabled
+            # during TX: exact local echo must be removed before parsing status.
+            self.uart.read(512)
+            if self.uart.write(packet) != len(packet):
+                raise OSError('Incomplete servo write')
+            self.uart.flush()
+            deadline = time.ticks_add(time.ticks_ms(), timeout_ms)
+            echo = bytearray()
+            while len(echo) < len(packet):
+                chunk = self.uart.read(len(packet) - len(echo))
+                if chunk:
+                    echo.extend(chunk)
+                    if echo != packet[:len(echo)]:
+                        raise OSError('Servo echo mismatch: check 3.3V pull-up and bus wiring')
+                if time.ticks_diff(deadline, time.ticks_ms()) <= 0:
+                    raise OSError('Servo echo timeout: check 3.3V pull-up and baud')
+            if protocol == 0:
+                # SCS writes do not require status-return to be enabled. Allow
+                # the servo to finish an optional reply before the next command.
+                time.sleep_ms(20)
+                self.uart.read(512)
+                return None
+            header = b'\xff\xff\xfd\x00' if protocol == 2 else b'\xff\xff'
+            response = bytearray()
+            while time.ticks_diff(deadline, time.ticks_ms()) > 0:
+                value = self.uart.read(1)
+                if not value:
+                    continue
+                response.extend(value)
+                while len(response) >= len(header) and response[:len(header)] != header:
+                    del response[0]
+                if len(response) >= (7 if protocol == 2 else 4):
+                    total = 7 + response[5] + (response[6] << 8) if protocol == 2 else response[3] + 4
+                    if total < (11 if protocol == 2 else 6) or total > 128:
+                        raise ValueError('Invalid servo packet length')
+                    if len(response) == total:
+                        return response
+            raise OSError('Servo timeout: check ID, baud, power, and status return setting')
+        except BaseException:
+            # Fail closed, including Ctrl-C. A restart is required after error.
+            self.uart.deinit()
+            self.uart = None
+            self.pin.init(Pin.IN, Pin.PULL_UP)
+            raise
+`;
+  function espScsDriver(pioDriver) {
+    // Share the proven SCS packet/register logic, replacing only its transport.
+    const methods = pioDriver.slice(pioDriver.indexOf('    def write('));
+    return ESP32_BUS_DRIVER + `
+class SCS009UART:
+    INST_WRITE = 0x03
+    TORQUE_ENABLE = 0x28
+    GOAL_POSITION_L = 0x2A
+
+    def __init__(self, data_pin, baud):
+        self.bus = ServoBus(data_pin, baud, 1)
+
+    @staticmethod
+    def _limit(value, low, high):
+        return max(low, min(high, int(value)))
+
+    def _send(self, packet):
+        self.bus.exchange(packet, 0)
+
+` + methods;
+  }
+  const ESP32_LED_DRIVER = `
+import neopixel
+class _AtomLed:
+    def __init__(self):
+        self.pixel = neopixel.NeoPixel(Pin(27), 1)
+        self.state = 0
+        self.value(0)
+    def value(self, state):
+        self.state = bool(state)
+        self.pixel[0] = (16, 16, 16) if self.state else (0, 0, 0)
+        self.pixel.write()
+    def toggle(self):
+        self.value(not self.state)
+led = _AtomLed()
+`;
   const BUS_DRIVER = String.raw`
 import rp2
 
@@ -333,6 +447,6 @@ class PWMServo:
     def stop(self):
         self.pwm.duty_u16(0)
 `;
-  return { models, register, toolbox, statement, runtime, BUS_DRIVER, XL330_DRIVER, STS_DRIVER, PWM_DRIVER };
+  return { models, register, toolbox, statement, runtime, BUS_DRIVER, ESP32_BUS_DRIVER, ESP32_LED_DRIVER, espScsDriver, XL330_DRIVER, STS_DRIVER, PWM_DRIVER };
 })();
 if (typeof module !== "undefined") module.exports = ServoBlocks;

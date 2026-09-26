@@ -117,7 +117,7 @@ const BasicBlocks = (() => {
       default: return null;
     }
   }
-  function runtime(blocks) {
+  function runtime(blocks, profile = {}) {
     let code = "";
     const types = new Set(blocks.map(b=>b.type));
     if (types.has("basic_unary")) code += "import math\n";
@@ -127,6 +127,7 @@ const BasicBlocks = (() => {
     for (const b of blocks) {
       const pin = Number(b.getFieldValue("PIN"));
       if (b.type === "basic_adc") lines.add(`_adc_${pin} = ADC(Pin(${pin}))`);
+      if (b.type === "basic_adc" && profile.platform === "esp32") lines.add(`_adc_${pin}.atten(ADC.ATTN_11DB)`);
       if (b.type === "basic_read") lines.add(`_input_${pin} = Pin(${pin}, Pin.IN${({UP:", Pin.PULL_UP",DOWN:", Pin.PULL_DOWN",NONE:""})[b.getFieldValue("PULL")]})`);
       if (b.type === "basic_write") lines.add(`_output_${pin} = Pin(${pin}, Pin.OUT, value=0)`);
       if (["basic_get","basic_set","basic_change"].includes(b.type)) lines.add(`${variableName(b.getFieldValue("NAME"))} = 0`);

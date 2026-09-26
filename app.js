@@ -68,6 +68,16 @@
     firmwareUrl: "https://micropython.org/download/RPI_PICO2/", firmwareLabel: t("Raspberry Pi Pico 2用MicroPython"),
   };
   BOARD_PROFILES.pico2w.wifi = true;
+  BOARD_PROFILES.atom_lite = {
+    name: t("M5Stack ATOM Lite（開発中・動作未確認）"),
+    platform: "esp32", pins: [19, 21, 22, 23, 25, 26, 32, 33], adcPins: [32, 33],
+    pinLabels: Object.fromEntries([19, 21, 22, 23, 25, 26, 32, 33].map(pin => [pin, `G${pin}`])),
+    layout: "atom", ledPin: "27", wifi: true, experimental: true,
+    firmwareUrl: "https://micropython.org/download/ESP32_GENERIC/",
+    firmwareLabel: "ESP32_GENERIC MicroPython", firmwareIsZip: false,
+    pinoutUrl: "https://docs.m5stack.com/en/core/atom_lite",
+    boot: t("USBでPCへ接続し、公式ページのesptool手順で書き込みます。正面ボタンは初期ファーム用のBOOTボタンではありません。"),
+  };
   for (const chip of ["rp2040", "rp2350"]) {
     const pins = chip === "rp2040" ? [26, 27, 28, 29, 6, 7, 0, 1, 2, 4, 3] : [26, 27, 28, 5, 6, 7, 0, 1, 2, 4, 3];
     BOARD_PROFILES["xiao_" + chip] = {
@@ -87,7 +97,7 @@
   if (!BOARD_PROFILES[selectedBoard]) selectedBoard = "pico";
   const pinLabel = pin => BOARD_PROFILES[selectedBoard].pinLabels?.[pin] || `GP${pin}`;
   const pinOptions = () => BOARD_PROFILES[selectedBoard].pins.map(pin => [pinLabel(pin), String(pin)]);
-  const adcOptions = () => pinOptions().filter(([, pin]) => Number(pin) >= 26 && Number(pin) <= 29);
+  const adcOptions = () => pinOptions().filter(([, pin]) => BOARD_PROFILES[selectedBoard].adcPins?.includes(Number(pin)) ?? (Number(pin) >= 26 && Number(pin) <= 29));
 
   const elements = {
     connect: $("#connectButton"),
@@ -300,7 +310,7 @@
       message1: t("Wi-Fi名 %1"), args1: [{ type: "field_input", name: "SSID", text: "PicoBlocks-JOG" }],
       message2: t("パスワード %1"), args2: [{ type: "field_input", name: "PASSWORD", text: "picoblocks" }],
       previousStatement: null, nextStatement: null, colour: 190,
-      tooltip: t("Pico W / Pico 2 WがWi-Fi親機になります。スマホでこのWi-Fiへ接続して操作します。パスワードは8〜63文字。"),
+      tooltip: t("選択したWi-Fi対応ボードが親機になります。スマホでこのWi-Fiへ接続して操作します。パスワードは8〜63文字。"),
     },
     {
       type: "uart_scs_bind",
@@ -619,9 +629,9 @@ class SCS009PIO:
     const first = start ? start : roots.find((block) => block.previousConnection || block.nextConnection);
     let body = first ? chainToPython(first) : t("print(\"ブロックを置いてください\")\n");
     const scsCode = usesSCS009
-      ? `\n${SCS009_DRIVER}\nscs009 = SCS009PIO(data_pin=${scsConfig.pin}, baud=${scsConfig.baud})\n`
+      ? `\n${profile.platform === "esp32" ? ServoBlocks.espScsDriver(SCS009_DRIVER) : SCS009_DRIVER}\nscs009 = ${profile.platform === "esp32" ? "SCS009UART" : "SCS009PIO"}(data_pin=${scsConfig.pin}, baud=${scsConfig.baud})\n`
       : "";
-    const ledCode = usesLed && profile.ledPin !== null ? `\nled = Pin(${profile.ledPin}, Pin.OUT, value=${profile.ledActiveLow ? 1 : 0})\n` : "";
+    const ledCode = usesLed && profile.ledPin !== null ? (profile.platform === "esp32" ? ServoBlocks.ESP32_LED_DRIVER : `\nled = Pin(${profile.ledPin}, Pin.OUT, value=${profile.ledActiveLow ? 1 : 0})\n`) : "";
     let uartCode = "";
     if (uartSetup) {
       uartCode = PicoJog.runtime(getJogAxes(), wifiSetup ? {
@@ -632,7 +642,7 @@ class SCS009PIO:
       body += t`\n# PCからのJOG指令を待ちます\nwhile True:\n    _controller_poll()\n    time.sleep_ms(5)\n`;
     }
     const serialImports = uartSetup ? "\nimport sys\nimport select\nimport json" : "";
-    return t`# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks)}${BasicBlocks.runtime(allBlocks)}${GeekDisplay.runtime(allBlocks)}${ledCode}${uartCode}\n${body}`;
+    return t`# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks, profile)}${BasicBlocks.runtime(allBlocks, profile)}${GeekDisplay.runtime(allBlocks)}${ledCode}${uartCode}\n${body}`;
   }
 
   const PICO_LEFT_PINS = ["GP0", "GP1", "GND", "GP2", "GP3", "GP4", "GP5", "GND", "GP6", "GP7", "GP8", "GP9", "GND", "GP10", "GP11", "GP12", "GP13", "GND", "GP14", "GP15"];
@@ -720,6 +730,24 @@ class SCS009PIO:
     return { board, dataPoint, groundPoint };
   }
 
+  function atomBoardDrawing(profile, selectedPin) {
+    // Connector groups, deliberately schematic rather than an unverified view
+    // of the underside. Confirm physical orientation against M5Stack's pin map.
+    let dataPoint = null;
+    const groups = [
+      {name: "EXPANSION", x: 50, pins: ["G19", "G21", "G22", "G23", "G25", "G33", "3V3", "5V", "GND"]},
+      {name: "GROVE / HY2.0", x: 210, pins: ["GND", "5V", "G26", "G32"]},
+    ];
+    const connectors = groups.map(group => group.pins.map((name, index) => {
+      const x = group.x, y = 66 + index * 20;
+      const active = /^G\d+$/.test(name) && Number(name.slice(1)) === selectedPin;
+      if (active) dataPoint = {x, y};
+      return `<g class="pin-hit"><title>${group.name}: ${name}</title><circle cx="${x}" cy="${y}" r="4" class="board-pin ${active ? "active" : name === "GND" ? "ground" : name.endsWith("V") || name === "3V3" ? "power" : ""}"/><text x="${x === 50 ? 59 : 201}" y="${y + 3}" text-anchor="${x === 50 ? "start" : "end"}" class="pin-label">${name}</text></g>`;
+    }).join("")).join("");
+    const board = `<rect x="50" y="22" width="160" height="238" rx="16" class="board-body"/><rect x="105" y="14" width="50" height="22" rx="5" class="usb"/><text x="130" y="49" text-anchor="middle" class="board-title">ATOM Lite</text><text x="70" y="58" class="connector-title">EXPANSION</text><text x="170" y="58" class="connector-title">GROVE</text><circle cx="130" cy="126" r="21" class="button-mark"/><text x="130" y="128" text-anchor="middle" class="tiny-label">BUTTON G39</text><text x="130" y="162" text-anchor="middle" class="board-subtitle">RGB G27</text><text x="130" y="245" text-anchor="middle" class="caption">DEVELOPMENT / UNTESTED</text>${connectors}`;
+    return {board, dataPoint, groundPoint: {x: 50, y: 226}};
+  }
+
   function renderWiringDiagram() {
     const profile = BOARD_PROFILES[selectedBoard];
     const blocks = workspace.getAllBlocks(false);
@@ -738,7 +766,7 @@ class SCS009PIO:
     }));
     deviceSelect.value = group?.key || "all";
     deviceSelect.hidden = groups.length < 2;
-    const drawPin = pin => ({layout: profile.layout, ...(profile.layout === "pico" ? picoBoardDrawing(profile, pin) : profile.layout === "xiao" ? xiaoBoardDrawing(profile, pin) : geekBoardDrawing(profile, pin))});
+    const drawPin = pin => ({layout: profile.layout, ...(profile.layout === "atom" ? atomBoardDrawing(profile, pin) : profile.layout === "pico" ? picoBoardDrawing(profile, pin) : profile.layout === "xiao" ? xiaoBoardDrawing(profile, pin) : geekBoardDrawing(profile, pin))});
     const drawing = drawPin(null);
     elements.pinoutLink.href = profile.pinoutUrl;
     elements.pinoutLink.textContent = t`${profile.name}の公式ピン情報`;
@@ -751,6 +779,7 @@ class SCS009PIO:
       : setup?.type === "pwm_setup"
       ? t("信号線を選択したGPIOへつなぎ、電源はサーボ仕様に合う外部電源、GNDはボードと共通にします。50 Hzで出力します。初期値は1000〜2000 µsです。可動範囲は機種に合わせて調整してください。")
       : t`${servoName}の電源は専用の外部電源から供給し、GNDをボードと共通にします。DATAはGPIOへ接続し、PIOで方向を切り替えます。半二重変換回路は不要です。${setup?.type === "xl330_setup" ? t("XL330は3.7〜6.0 V（初回5 V）。DATAに220 Ωの直列保護抵抗を推奨します。") : t("電源電圧は機種・仕様を確認してください。")} GPIOへの5 V入力は禁止です。まず無負荷でPing・位置読取りを確認してください。`;
+    if (profile.experimental) elements.scsHelp.querySelector("p").textContent = t("ATOM Lite：開発中・動作未確認。シリアルサーボは同じGPIOのTX/RXとオープンドレインUARTを使います。半二重変換ICを使わない試作です。DATAのHighが3.3 V対応であることを確認し、5 V信号は直結しないでください。通信が不安定なら3.3 Vへの外付けプルアップが必要になる場合があります。サーボは外部給電、GND共通。線色は識別用です。");
     elements.boardPinHint.hidden = !setup;
     $("#signalLegend").replaceChildren(...visibleGroups.flatMap(g => (g.model === "pwm" ? g.devices : [g.devices[0]]).map(d => {
       const item = document.createElement("span"), swatch = document.createElement("i");
@@ -785,6 +814,12 @@ class SCS009PIO:
       ? t("純正Pico系にRSTボタンはありません。電源の入れ直し、またはRUN–GNDへ追加したリセットボタンを使います。")
       : t("この基板ではRST／RESETボタン、または電源の入れ直しを使います。BOOT判定には対応するMicroPythonが必要です。");
     const profile = BOARD_PROFILES[selectedBoard];
+    $("#boardDevelopment").hidden = !profile.experimental;
+    $("#atomHelp").hidden = !profile.experimental;
+    $("#buttonWriteHint").textContent = profile.experimental
+      ? t("ATOM Liteは電源を入れ直してから3秒以内に正面ボタンを押します（GPIO39）。初期ファーム書き込み用ではありません。")
+      : t("再起動してから3秒以内にBOOTを押します。押したまま再起動すると初期ファーム用のモードになるので注意。");
+    if (profile.experimental) $("#resetHint").textContent = t("電源の入れ直しで再起動します。USB接続中は「書き込み待機」ボタンも使えます。");
     elements.boardSelect.value = selectedBoard;
     PicoWifi.configure(selectedBoard, !!profile.wifi);
     $("#wifiHelp").hidden = !profile.wifi;
@@ -793,7 +828,12 @@ class SCS009PIO:
     elements.firmwareLink.href = profile.firmwareUrl;
     elements.firmwareLink.textContent = t`${profile.name}用ファームを入手 ↗`;
     elements.firmwareSteps.replaceChildren();
-    const steps = [
+    const steps = profile.platform === "esp32" ? [
+      t("下のリンクから標準ESP32_GENERICの安定版.bin（1.29以降）を入手。S3/C3版・UIFlow・UF2は使いません。"),
+      t("既存のUIFlow・プログラムをバックアップしてから、公式手順でesptoolのerase-flash、続けてwrite-flash 0x1000を実行します。消去すると設定・ファイルは失われます。"),
+      profile.boot,
+      t("再起動後、このサイトのUSB接続でFTDIのシリアルポートを選択。表示されなければM5Stack公式案内のFTDIドライバを確認してください。"),
+    ] : [
       profile.firmwareIsZip
         ? t("下のリンクからZIPを入手し、展開してUF2を用意。")
         : t`下のリンクから安定版UF2を入手${profile.wifi ? t("（1.29以降）") : ""}${selectedBoard.includes("2350") || selectedBoard.startsWith("pico2") ? t("。Arm版を選択") : ""}。`,
@@ -895,14 +935,14 @@ class SCS009PIO:
     if (GeekDisplay.uses(blocks) && !GeekDisplay.supported(selectedBoard)) error = t("LCD文字表示はRP2040-GEEK / RP2350-GEEK専用です。ボードを選び直すかLCDブロックを外してください。");
     const bindings = blocks.filter(block => /^(uart_scs|xl330|sts3215|sts3235|pwm)_bind$/.test(block.type));
     if (new Set(bindings.map(b => b.getFieldValue("AXIS"))).size !== bindings.length) error = t("JOGの同じ軸への割り当ては1個だけにしてください。USBとWi-Fiで共用します。");
-    if (wifi.length && !BOARD_PROFILES[selectedBoard].wifi) error = t("Wi-Fi JOGはPico W / Pico 2 Wで使えます。ボードを選び直すかWi-Fiブロックを外してください。");
+    if (wifi.length && !BOARD_PROFILES[selectedBoard].wifi) error = t("Wi-Fi JOGはPico W / Pico 2 W / ATOM Lite（開発中）で使えます。ボードを選び直すかWi-Fiブロックを外してください。");
     if (wifi.length > 1) error = t("Wi-Fiサーバの開始ブロックは1個にしてください。");
     if (wifi.length) {
       const ssid = wifi[0].getFieldValue("SSID"), password = wifi[0].getFieldValue("PASSWORD");
       if (!ssid || encoder.encode(ssid).length > 32 || !/^[\x20-\x7e]{8,63}$/.test(password)) error = t("Wi-Fi名は1〜32バイト、パスワードは半角8〜63文字で指定してください。");
     }
     const setups = blocks.filter(b => /^(scs009|xl330|sts3215|sts3235|pwm)_setup$/.test(b.type));
-    if (setups.filter(b => b.type !== "pwm_setup").length > 2) error = t("PIO通信のサーボ接続は合計2種類までです（Wi-Fi用のPIOを確保します）。PWMサーボは別に追加できます。");
+    if (setups.filter(b => b.type !== "pwm_setup").length > 2) error = t("シリアルサーボ接続は合計2種類までです（RPはPIO、ATOM LiteはUSB以外のUARTを使用）。PWMサーボは別に追加できます。");
     if (new Set(setups.map(b => b.getFieldValue("PIN"))).size !== setups.length) error = t("サーボ接続のGPIOが重複しています。種類ごとに別のGPIOを指定してください。");
     for (const key of ["scs009", "xl330", "sts3215", "sts3235"]) {
       if (setups.filter(b => b.type === key + "_setup").length > 1) error = t`${key}の接続ブロックは1個にしてください。同じ種類のサーボはIDで指定します。`;
@@ -925,7 +965,7 @@ class SCS009PIO:
     if (new Set(channels).size !== channels.length) error = t("PWMサーボの番号が重複しています。");
     // RP PWM outputs GPn and GP(n+16) share one channel; their duties cannot differ.
     const pwmChannels = pwmSetups.map(b => Number(b.getFieldValue("PIN")) % 16);
-    if (new Set(pwmChannels).size !== pwmChannels.length) error = t("この2本のGPIOはPWM出力を共有します。16番違いではないGPIOを選んでください。");
+    if (BOARD_PROFILES[selectedBoard].platform !== "esp32" && new Set(pwmChannels).size !== pwmChannels.length) error = t("この2本のGPIOはPWM出力を共有します。16番違いではないGPIOを選んでください。");
     for (const b of blocks.filter(b => b.type.startsWith("pwm_"))) {
       if (b.type === "pwm_setup" && Number(b.getFieldValue("MIN_US")) >= Number(b.getFieldValue("MAX_US"))) error = t("PWMの0°パルス幅は180°より小さくしてください。");
       if (b.type !== "pwm_setup" && !channels.includes(b.getFieldValue(b.type === "pwm_bind" ? "ID" : "CHANNEL"))) error = t("この番号のPWMサーボ接続ブロックを追加してください。");
@@ -963,8 +1003,8 @@ class SCS009PIO:
       controllerConfigSignature = signature;
     }
     elements.controllerPortSummary.textContent = port
-      ? t("RPボードへのWeb Serial接続を共用します")
-      : t("上部の「RPボードを接続」と同じ接続を使います");
+      ? t("ボードへのWeb Serial接続を共用します")
+      : t("上部の「ボードを接続」と同じ接続を使います");
     for (const axis of PicoJog.axes) {
       $(`#jogValue${axis}`).textContent = controllerValues[axis];
       $(`#jogBinding${axis}`).textContent = PicoJog.label(nextAxes[axis]);
@@ -990,10 +1030,10 @@ class SCS009PIO:
   function updateControllerConnection() {
     elements.controllerConnectionLabel.textContent = controllerActive
       ? t("コントローラ操作中")
-      : port ? t("RPボード 接続済み") : t("RPボード 未接続");
+      : port ? t("ボード 接続済み") : t("ボード 未接続");
     elements.controllerConnect.textContent = controllerActive
       ? t("コントローラを停止")
-      : port ? t("コントローラを開始") : t("RPボードを接続");
+      : port ? t("コントローラを開始") : t("ボードを接続");
     elements.controllerConnect.classList.toggle("is-connected", controllerActive);
     const enabled = controllerActive && !isBusy;
     elements.controllerConnect.disabled = isBusy;
@@ -1067,10 +1107,10 @@ class SCS009PIO:
     elements.writeMode.disabled = wireless || !connected || isBusy;
     elements.stop.disabled = wireless || !connected || isBusy;
     elements.connect.disabled = isBusy;
-    elements.connect.lastChild.textContent = wireless ? t(" Wi-Fi接続") : port ? t(" 切断する") : t(" RPボードを接続");
+    elements.connect.lastChild.textContent = wireless ? t(" Wi-Fi接続") : port ? t(" 切断する") : t(" ボードを接続");
     elements.actionHint.textContent = wireless ? t("無線は書き込み待機中の「保存して実行」に対応。実行中の停止・シリアル表示はUSBを使います。") : connected
       ? t("接続済み。ブロックを作って実行できます。")
-      : t("先に「RPボードを接続」を押してください。");
+      : t("先に「ボードを接続」を押してください。");
   }
 
   function setBusy(busy, label = t("処理中…")) {
@@ -1244,7 +1284,7 @@ class SCS009PIO:
       readLoopPromise = readLoop();
       setConnection("online", t("接続済み"));
       elements.connect.lastChild.textContent = t(" 切断する");
-      showToast(t("RPボードに接続しました。"), "success");
+      showToast(t("ボードに接続しました。"), "success");
       appendConsole(t("\n[接続しました]\n"));
       updateControllerConnection();
     } catch (error) {
@@ -1268,7 +1308,7 @@ class SCS009PIO:
       console.warn("Disconnect warning", error);
     }
     readLoopPromise = null;
-    elements.connect.lastChild.textContent = t(" RPボードを接続");
+    elements.connect.lastChild.textContent = t(" ボードを接続");
     setConnection("offline", t("未接続"));
     appendConsole(t("\n[切断しました]\n"));
     updateControllerConnection();
@@ -1315,7 +1355,7 @@ class SCS009PIO:
     showTab("console");
     try {
       const source = generatePython();
-      const saveCommand = PicoBoot.saveCommand(source, bytesLiteral);
+      const saveCommand = PicoBoot.saveCommand(source, bytesLiteral, selectedBoard);
       await executeRaw(saveCommand, 12000);
       if (!serialBuffer.includes("PICOBLOCKS_SAVED")) throw new Error(t("保存完了を確認できませんでした。"));
       serialBuffer = "";

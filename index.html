@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css?v=wifi1" />
+    <link rel="stylesheet" href="./styles.css?v=atom1" />
   </head>
   <body>
     <header class="topbar">
@@ -35,7 +35,7 @@
         </div>
         <button id="connectButton" class="button button-secondary" type="button">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 12h8m-4-4v8M7 4v3m10-3v3M5 9h14v4a7 7 0 0 1-14 0V9Z"/></svg>
-          RPボードを接続
+          ボードを接続
         </button>
         <div class="menu-wrap">
           <button id="menuButton" class="menu-button" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="appMenu">
@@ -83,7 +83,7 @@
               <span><i class="wire-power"></i>外部電源＋</span>
               <span><i class="wire-ground"></i>共通GND</span>
             </div>
-            <p class="wiring-note">サーボのV+はRPボードへ接続しません。コネクタは色や向きではなく、必ず端子名を確認してください。</p>
+            <p class="wiring-note">サーボのV+はボードへ接続しません。コネクタは色や向きではなく、必ず端子名を確認してください。</p>
           </div>
           <a id="pinoutLink" class="pinout-link" target="_blank" rel="noopener noreferrer">公式ピン配置を確認</a>
         </div>
@@ -130,9 +130,11 @@
               <option value="rp2040_geek">Waveshare RP2040-GEEK</option>
               <option value="xiao_rp2040">Seeed Studio XIAO RP2040</option>
               <option value="xiao_rp2350">Seeed Studio XIAO RP2350</option>
+              <option value="atom_lite">M5Stack ATOM Lite（開発中・動作未確認）</option>
             </select>
           </label>
           <label id="wifiTransport" class="board-field" for="transportSelect" hidden><span>書き込みの接続方法</span><select id="transportSelect"><option value="usb">USB（標準）</option><option value="wifi">Wi-Fi（試験対応）</option></select></label>
+          <p id="boardDevelopment" class="action-hint" hidden>開発中・動作未確認：ATOM Lite（ESP32-PICO-D4）。AtomS3は対象外です。接続条件はHELPをご確認ください。</p>
           <div class="run-actions">
             <button id="runButton" class="button button-primary" type="button" disabled>
               <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6V6Z"/></svg>
@@ -148,19 +150,19 @@
             </button>
           </div>
           <div class="mode-controls"><span id="boardMode" role="status">モード未確認</span><button id="writeModeButton" class="button button-secondary" type="button" disabled>書き込み待機</button></div>
-          <p id="actionHint" class="action-hint">先に「RPボードを接続」を押してください。</p>
+          <p id="actionHint" class="action-hint">先に「ボードを接続」を押してください。</p>
         </section>
 
         <details class="help-card" id="firmwareHelp">
           <summary>① 初回だけ：初期ファームを入れる</summary>
           <ol id="firmwareSteps"></ol>
           <p><a id="firmwareLink" class="firmware-link" target="_blank" rel="noopener noreferrer">初期ファームをダウンロード</a></p>
-          <p>再起動したら「RPボードを接続」→ ブロックを作る →「保存して実行」。</p>
+          <p>再起動したら「ボードを接続」→ ブロックを作る →「保存して実行」。</p>
         </details>
         <section class="help-card quick-write-guide" aria-labelledby="writeGuideTitle">
           <h3 id="writeGuideTitle">② 次回から：プログラムを書き込む</h3>
           <p>USB接続 →「書き込み待機」→ 編集 →「保存して実行」。初期ファームは入れ直しません。</p>
-          <details><summary>ボタンで書き込み待機にするには</summary><p>再起動してから3秒以内にBOOTを押します。押したまま再起動すると初期ファーム用のモードになるので注意。</p><p id="resetHint"></p></details>
+          <details><summary>ボタンで書き込み待機にするには</summary><p id="buttonWriteHint">再起動してから3秒以内にBOOTを押します。押したまま再起動すると初期ファーム用のモードになるので注意。</p><p id="resetHint"></p></details>
           <p><strong>保存しないと：</strong>次回の電源ONでは前のプログラムのまま。まだ一度も保存していなければ、自動では動きません。「今すぐ実行」は試運転だけです。</p>
         </section>
         <section class="help-card power-guide" aria-labelledby="powerGuideTitle">
@@ -203,10 +205,10 @@
 
       <div class="controller-connection">
         <div>
-          <strong id="controllerConnectionLabel">RPボード 未接続</strong>
+          <strong id="controllerConnectionLabel">ボード 未接続</strong>
           <small id="controllerPortSummary">上部の接続と同じUSBシリアルを使います</small>
         </div>
-        <button id="controllerConnectButton" class="button button-secondary" type="button">RPボードを接続</button>
+        <button id="controllerConnectButton" class="button button-secondary" type="button">ボードを接続</button>
       </div>
 
       <div class="axis-readout" aria-label="送信する軸の値">
@@ -247,7 +249,7 @@
       <div class="exchange-heading"><h2 id="wifiTitle">Wi-Fi書き込み</h2><button id="wifiClose" class="icon-button" type="button" aria-label="閉じる">×</button></div>
       <p>PC／Android版Chrome 142以降で試験対応。今のサイトから直接送ります。ファイル保存やPico側ページへの移動は不要です。</p>
       <details id="wifiSetup"><summary>初回だけ：PCからUSBで設定</summary>
-        <p>Pico W / Pico 2 WへMicroPython 1.29以降を入れ、USB接続してください。受信機能と現在のブロックのプログラムを保存します。現在動いている処理は停止します。</p>
+        <p>Pico W / Pico 2 W / ATOM Lite（開発中）へMicroPython 1.29以降を入れ、USB接続してください。受信機能と現在のブロックのプログラムを保存します。現在動いている処理は停止します。</p>
         <label class="wifi-field"><span>ルーターのWi-Fi名（2.4 GHz）</span><input id="wifiSsid" autocomplete="off" maxlength="32"></label>
         <label class="wifi-field"><span>Wi-Fiパスワード</span><input id="wifiPassword" type="password" autocomplete="new-password" maxlength="63"></label>
         <button id="wifiInstall" class="button button-secondary" type="button">USBで初回設定・プログラム保存</button>
@@ -255,7 +257,7 @@
       </details>
       <section>
         <h3>次回から：同じLANで接続</h3>
-        <p>ボードを再起動し、その後3秒以内にBOOTを押して離します。約20秒以内にWi-Fiへ接続します。BOOTを押したまま電源を入れないでください。</p>
+        <p>ボードを再起動し、その後3秒以内にBOOT（ATOM Liteは正面ボタン）を押して離します。約20秒以内にWi-Fiへ接続します。BOOTを押したまま電源を入れないでください。</p>
         <label class="wifi-field"><span>ボードのIPアドレス / .local名</span><input id="wifiHost" placeholder="192.168.1.123" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
         <label class="wifi-field"><span>接続キー（初回設定後に表示）</span><input id="wifiKey" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64"></label>
         <label class="wifi-remember"><input id="wifiRemember" type="checkbox">この端末に接続設定を保存</label>
@@ -274,19 +276,25 @@
       <details class="help-card"><summary>ブロックの操作・対話AIとの受け渡し</summary><p>左のツリーからブロックを置き、「プログラム開始」につなぎます。ブロック本体をダブルクリックすると複製できます。</p><p>メニューの「対話AIとプログラムを作る」で依頼文をコピーし、返答のJSONを取り込めます。取り込みは現在のブロックを置き換えますが、直前の状態に戻せます。</p></details>
       <details class="help-card" id="jogHelp"><summary>USBとWi-FiのJOG割り当て</summary><p>PWM・SCS009・XL330・STS3215・STS3235の割り当てはUSB／Wi-Fi共通。Wi-Fi JOGだけならUART開始ブロックは不要です。</p><p>「速度値 500」はサーボに送る機種固有の設定値で、500 msではありません。「増減幅」はキー1回で動かす位置の差です。同じ速度値でも機種によって速さは異なります。PWMのJOGは角度の増減幅だけを指定します。</p><p>両方から操作すると、同じ指令位置を処理順に増減します。優先権・排他ロックはないため、操作者を決めてください。同じ軸への割り当ては1個だけです。</p><p>↑↓＝Y、←→＝X、W/S＝Z、A/D＝R、Space＝中央復帰。表示は実測位置ではなく指令位置です。</p></details>
       <details class="help-card"><summary>サーボを複数つなぐときの配線図</summary><p>PWMは番号とGPIOを分けて接続ブロックを追加します。全台のコネクタ・信号線が番号別の色で表示されます。色は図で見分けるためのものです。</p><p>シリアルサーボは同じ種類の接続ブロックを1個にして、操作・JOGブロックのIDを変えます。重複を除いたIDごとにコネクタが増え、DATA・V+・GNDのデイジーチェーンを表示します。ID未指定のときは仮のコネクタ1個です。SCSの標準JOG割り当ても表示対象です。</p><p>接続図は実機検出ではありません。同じバスの各サーボには事前に異なるIDを設定してください（この画面ではIDを書き換えません）。実物の端子順・定格電圧を確認し、台数に応じた電源と配線容量を確保してください。異なる電圧のサーボ電源は共用しません。</p></details>
-      <details id="wifiHelp" class="help-card" hidden><summary>スマホでWi-Fi JOG</summary><p>Wi-Fi JOGの開始ブロックでWi-Fi名とパスワードを設定し、「保存して実行」を押します。</p><p>スマホをそのWi-Fiへ接続し、<a id="wifiJogAddress" href="http://192.168.4.1/" target="_blank" rel="noopener">http://192.168.4.1/</a> を開きます。実際のアドレスは起動時にシリアル欄へ表示されます。</p><p>Pico W / Pico 2 W用。インターネット接続は不要です。</p></details>
+      <details id="wifiHelp" class="help-card" hidden><summary>スマホでWi-Fi JOG</summary><p>Wi-Fi JOGの開始ブロックでWi-Fi名とパスワードを設定し、「保存して実行」を押します。</p><p>スマホをそのWi-Fiへ接続し、<a id="wifiJogAddress" href="http://192.168.4.1/" target="_blank" rel="noopener">http://192.168.4.1/</a> を開きます。実際のアドレスは起動時にシリアル欄へ表示されます。</p><p>Pico W / Pico 2 W / ATOM Lite（開発中）用。インターネット接続は不要です。</p></details>
       <details id="scsHelp" class="help-card" hidden><summary>サーボを接続する前に</summary><p></p></details>
       <details class="help-card"><summary>配線図・ADC・サーボ設定</summary><p>左の図は端子名の模式図です。実物の向きや線色ではなく、公式ピン配置と端子名で確認してください。XIAOはD番号とGPIO番号を併記しています。</p><p id="boardPinHint" class="board-pin-hint"></p><p>ADC入力は0〜3.3 Vのみ。GPIOへ5 Vを入れないでください。サーボは種類ごとに接続ブロックを置き、位置や速度の範囲を実機に合わせます。</p></details>
       <details class="help-card"><summary>接続できない・起動しないとき</summary><p>データ通信対応USBケーブルとPC版Chrome／Edgeを使います。ほかのアプリが同じシリアルポートを使っていないか確認してください。</p><p>通常起動では3秒後に保存プログラムが動きます。BOOTで待機する機能は、この版で「保存して実行」したプログラムにだけ追加されます。</p><p>BOOTを押したまま再起動するとUF2用モードです。誤って入ったらBOOTを離して再起動してください。BOOT判定が使えないファームでは自動実行せず待機するため、機種に合う新しいMicroPythonへ更新してください。</p><p>「書き込み待機」はプログラムを中断し、PWM・PIO・ネットワーク等をリセットします。保存ファイルは消しません。再接続直後の「モード未確認」は、状態をまだ受信していない表示です。</p></details>
       <details class="help-card"><summary>今のサイトからWi-Fiで書き込む（試験対応）</summary>
-        <p>対象はPico W / Pico 2 Wと、PC／Android版Chrome 142以降。iPhone版Chrome／Safariは対応未確認です。通常のUSB書き込みが基本です。</p>
-        <p>初回だけPCのUSB接続で、メニュー →「Wi-Fi書き込み」→「初回だけ」を開きます。ルーターのWi-Fi名・パスワードを入力して初回設定を押すと、受信機能と現在のプログラムを保存します。初期UF2を作り直す必要はありません。</p>
-        <p>次回は再起動後3秒以内にBOOTを押して離し、約20秒待ちます。同じLANの端末でこのサイトを開き、接続方法「Wi-Fi」→ IPと接続キー →「無線接続を確認」→ 画面を閉じて「保存して実行」。スマホへのプログラム保存は不要です。</p>
+        <p>対象はPico W / Pico 2 W / ATOM Lite（開発中）と、PC／Android版Chrome 142以降。iPhone版Chrome／Safariは対応未確認です。通常のUSB書き込みが基本です。</p>
+        <p>初回だけPCのUSB接続で、メニュー →「Wi-Fi書き込み」→「初回だけ」を開きます。ルーターのWi-Fi名・パスワードを入力して初回設定を押すと、受信機能と現在のプログラムを保存します。初期ファームを作り直す必要はありません。</p>
+        <p>次回は再起動後3秒以内にBOOT（ATOM Liteは正面ボタン）を押して離し、約20秒待ちます。同じLANの端末でこのサイトを開き、接続方法「Wi-Fi」→ IPと接続キー →「無線接続を確認」→ 画面を閉じて「保存して実行」。スマホへのプログラム保存は不要です。</p>
         <p>無線は書き込み待機中のみ。保存後は再起動して前と同じく自動実行し、受信を終了します。再び送るときはBOOTで待機へ戻します。実行中の停止・一時実行・シリアル表示はUSB専用です。純正Picoの再起動は電源の入れ直し、またはRUN–GNDのリセットボタンを使います。</p>
         <p>IPが変わったらUSBのシリアル表示、またはルーターで確認して更新してください。DHCP予約で固定できます。.local名は名前解決を別途設定した場合のみ使えます。ゲストWi-Fiの端末間隔離やブラウザーの接続拒否があると送れません。</p>
-        <p>Wi-Fi JOGはPicoが親機になる別機能です。無線書き込みはルーターへ接続する方式で、同時には動きません。JOGから書き込みへ戻すときは、スマホもルーターのWi-Fiへ戻してください。</p>
+        <p>Wi-Fi JOGはボードが親機になる別機能です。無線書き込みはルーターへ接続する方式で、同時には動きません。JOGから書き込みへ戻すときは、スマホもルーターのWi-Fiへ戻してください。</p>
         <p>受信は接続キーで保護し、128 KiBまでを分割転送・SHA-256検証後に置換します。転送途中の失敗では旧プログラムが残ります。保存完了の応答が途切れた場合は新旧どちらか不明なので、待機へ戻して再送してください。通信は暗号化されないため信頼できるLANだけで使い、キーは秘密にしてください。</p>
         <p>接続できなくてもUSBで再設定・書き込みできます。受信機能は別ファイルなので、このサイトからのUSB保存でも残ります。他のツールでmain.pyを置き換えた場合は初回設定をやり直してください。実機・Android端末での動作検証は未実施です。</p>
+      </details>
+      <details id="atomHelp" class="help-card" hidden><summary>ATOM Lite（開発中・動作未確認）</summary>
+        <p>対象はESP32-PICO-D4搭載のATOM Liteのみ。USB書き込み・USB JOG・Wi-Fi書き込み・Wi-Fi JOG・各ブロックは試験実装で、実機検証は未実施です。初期ファームは標準ESP32_GENERIC 1.29以降（通常版・LittleFS）。UIFlowやカスタムFAT版は対象外です。</p>
+        <p>このボードでは以降の説明の「BOOT」を「正面ボタン（GPIO39）」に読み替えてください。保存後は起動から3秒以内に正面ボタンを押すと書き込み待機。押さなければ保存プログラムを実行します。PicoのUF2・BOOTSEL手順は使いません。</p>
+        <p>サーボは外部電源を使いGNDを共通化。シリアルサーボはオープンドレインUARTでGPIO 1本を共有する試作です。半二重変換ICは使いませんが、DATAのHigh電圧は3.3 V対応が必須です。5 V信号の直結は禁止。信号の立ち上がりが遅い場合は3.3 Vへの外付けプルアップが必要です。1 Mbpsを含む実際の通信品質は未確認です。</p>
+        <p>USB用UART0は予約し、シリアルサーボは合計2種類まで。GPIOは19・21・22・23・25・26・32・33、ADCはWi-Fiと共存できる32・33のみ。ADCの電圧表示は概算です。LEDブロックは内蔵RGB LEDの白色点灯・消灯です。配線図はコネクタ別の模式図で、実物の位置・向きは公式ピン情報をご確認ください。</p>
       </details>
       <footer class="help-credit">made by pscmps</footer>
     </dialog>
@@ -313,20 +321,20 @@
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
-    <script src="./i18n.en.js?v=wifi1"></script>
+    <script src="./i18n.en.js?v=atom1"></script>
     <script src="./i18n.js?v=i18n1"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
     <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/ja.js"></script>
     <script>PicoI18n.captureBlockly("ja", Blockly.Msg); PicoI18n.setLanguage(PicoI18n.language); PicoI18n.bindDocument(document);</script>
-    <script src="./servo.js?v=i18n1"></script>
+    <script src="./servo.js?v=atom1"></script>
     <script src="./jog.js?v=i18n1"></script>
-    <script src="./basic.js?v=i18n1"></script>
+    <script src="./basic.js?v=atom1"></script>
     <script src="./wiring.js?v=i18n1"></script>
-    <script src="./exchange.js?v=i18n1"></script>
-    <script src="./boot.js?v=wifi1"></script>
-    <script src="./wifi.js?v=wifi1"></script>
+    <script src="./exchange.js?v=atom1"></script>
+    <script src="./boot.js?v=atom1"></script>
+    <script src="./wifi.js?v=atom1"></script>
     <script src="./display.js?v=i18n1"></script>
-    <script src="./app.js?v=wifi1"></script>
+    <script src="./app.js?v=atom1"></script>
   </body>
 </html>

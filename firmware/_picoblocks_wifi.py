@@ -177,7 +177,7 @@ def serve():
     import machine
     with open("picoblocks-wifi.json", "rb") as source:
         config = json.loads(source.read().decode("utf-8"))
-    if config.get("board") not in ("picow", "pico2w") or len(config.get("key", "")) != 64:
+    if config.get("board") not in ("picow", "pico2w", "atom_lite") or len(config.get("key", "")) != 64:
         raise ValueError("Invalid PicoBlocks Wi-Fi config")
     network.WLAN(network.AP_IF).active(False)
     wlan = network.WLAN(network.STA_IF)

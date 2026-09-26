@@ -13,7 +13,7 @@ const context=vm.createContext({PicoWifi:{selected:()=>false},PicoBoot:require('
   executeRaw:async code=>{calls.push(['save',code]);context.serialBuffer='PICOBLOCKS_SAVED';},
   writeControl:async(...bytes)=>{calls.push(['control',...bytes]);context.serialBuffer=bytes.join(',')==='2,4'?'PICOBLOCKS_MODE '+context.bootResult+'\nPICOBLOCKS_READY':'OK';},
   waitFor:async(pattern)=>{calls.push(['wait',pattern]);assert.ok(context.serialBuffer.includes(pattern));},
-  bootResult:'RUN',
+  bootResult:'RUN', selectedBoard:'pico',
 });
 vm.runInContext(app.slice(app.indexOf('  function bytesLiteral'),app.indexOf('  async function connect()')),context);
 vm.runInContext(app.slice(app.indexOf('  async function runProgram'),app.indexOf('  function showTab')),context);

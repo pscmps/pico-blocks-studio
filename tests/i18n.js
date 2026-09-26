@@ -160,4 +160,4 @@ try {
 } finally {Blockly.svgResize=oldResize; console.warn=oldWarn;}
 workspace.dispose();
 if(process.argv.includes('--json')) process.stdout.write(JSON.stringify(sources));
-else console.log(`PASS: ${Object.keys(en).length} translations, coverage, HELP credit, persistence, 8 bilingual catalogs, both guides, mobile JOG, live switch preserves USB/controller/blocks/undo; busy guard`);
+else console.log(`PASS: ${Object.keys(en).length} translations, coverage, HELP credit, persistence, 9 bilingual catalogs, both guides, mobile JOG, live switch preserves USB/controller/blocks/undo; busy guard`);

@@ -134,6 +134,26 @@ process.stdout.write(Wifi.installCommand(fs.readFileSync('firmware/_picoblocks_w
         assert json.loads(Path('picoblocks-wifi.json').read_text(encoding='utf-8'))['ssid']=='quote"日本語'
         assert '_picoblocks_wifi.serve()' in Path('main.py').read_text(encoding='utf-8')
         compile(Path('main.py').read_text(encoding='utf-8'),'main.py','exec')
+        # Same USB provisioning path, now for classic ESP32; existing files are
+        # replaced without losing the ATOM-specific front-button boot gate.
+        atom_command=subprocess.check_output(['node','-e',script.replace("board:'picow'", "board:'atom_lite'")],cwd=ROOT,text=True,encoding='utf-8')
+        def atom_importer(name,*args):
+            if name=='sys':return types.SimpleNamespace(platform='esp32',implementation=types.SimpleNamespace(_machine='Generic ESP32 module with ESP32'))
+            return importer(name,*args)
+        builtin_map['__import__']=atom_importer
+        exec(atom_command,{'__builtins__':builtin_map})
+        assert json.loads(Path('picoblocks-wifi.json').read_text(encoding='utf-8'))['board']=='atom_lite'
+        assert 'Pin(39, Pin.IN)' in Path('main.py').read_text(encoding='utf-8')
+        assert 'import rp2' not in Path('main.py').read_text(encoding='utf-8')
+        def wrong_chip(name,*args):
+            if name=='sys':return types.SimpleNamespace(platform='esp32',implementation=types.SimpleNamespace(_machine='Generic ESP32S3 module with ESP32S3'))
+            return importer(name,*args)
+        builtin_map['__import__']=wrong_chip
+        before=Path('main.py').read_bytes()
+        try:exec(atom_command,{'__builtins__':builtin_map})
+        except ValueError:pass
+        else:raise AssertionError('Wrong ESP32 variant must be rejected')
+        assert Path('main.py').read_bytes()==before
         # Full listener lifecycle with a simulated WLAN and machine.reset.
         events=[]
         class WLAN:

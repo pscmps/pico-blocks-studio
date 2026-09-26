@@ -1,5 +1,9 @@
 # PicoBlocks Studio — Block JSON guide for chat AI, v1
 
+## ATOM Lite (in development / hardware untested)
+
+Use `board: "atom_lite"` for ESP32-PICO-D4 ATOM Lite, not AtomS3. GPIOs: 19, 21, 22, 23, 25, 26, 32, 33; ADC: 32/33 only. USB/Wi-Fi JOG uses the same block format as Pico W. SCS009, XL330, STS3215, STS3235, PWM and basic blocks are available; LCD is not. Single-wire UART is selected automatically for serial servos (two types maximum). GPIO27 is the white RGB LED and GPIO39 the write-mode button. DATA must be 3.3 V-compatible, with external servo power and common GND; never wire 5 V signals directly. An external 3.3 V pull-up may be needed. Explicitly state hardware is untested. See the README's ATOM Lite section for firmware/wiring. The RP-specific ADC/PIO notes below do not apply to ATOM Lite.
+
 [日本語](AI_GUIDE.md) · English · [README](README.en.md)
 
 App: https://pscmps.github.io/pico-blocks-studio/
@@ -55,6 +59,7 @@ Reply with exactly one JSON code block. Minimal structure:
 | rp2040_geek / rp2350_geek | 2, 3, 4, 5, 28, 29 | 28, 29 | No |
 | xiao_rp2040 | 26, 27, 28, 29, 6, 7, 0, 1, 2, 4, 3 | 26, 27, 28, 29 | No |
 | xiao_rp2350 | 26, 27, 28, 5, 6, 7, 0, 1, 2, 4, 3 | 26, 27, 28 | No |
+| atom_lite (development / untested) | 19, 21, 22, 23, 25, 26, 32, 33 | 32, 33 | Experimental |
 
 XIAO GPIO choices are listed in D0–D10 order; rear pads are excluded.
 

@@ -62,15 +62,17 @@ const PicoWifi = (() => {
     }
   }
   function installCommand(receiver, config, source, bytesLiteral) {
-    if (!['picow','pico2w'].includes(config.board) || !/^[a-f0-9]{64}$/.test(config.key)) throw new Error('Invalid configuration');
+    if (!['picow','pico2w','atom_lite'].includes(config.board) || !/^[a-f0-9]{64}$/.test(config.key)) throw new Error('Invalid configuration');
     // Install only the receiver/config and the explicitly requested current program.
     let command = 'import os, sys\n';
     const model = config.board === 'picow' ? 'Raspberry Pi Pico W' : 'Raspberry Pi Pico 2 W';
-    command += `if not getattr(sys.implementation, '_machine', '').startswith(${JSON.stringify(model)}):\n    raise ValueError('Select the matching Pico W / Pico 2 W firmware and board')\n`;
+    command += config.board === 'atom_lite'
+      ? "if sys.platform != 'esp32' or not getattr(sys.implementation, '_machine', '').endswith('with ESP32'):\n    raise ValueError('ATOM Lite needs standard ESP32_GENERIC firmware, not S3/C3 or UIFlow')\n"
+      : `if not getattr(sys.implementation, '_machine', '').startswith(${JSON.stringify(model)}):\n    raise ValueError('Select the matching Pico W / Pico 2 W firmware and board')\n`;
     for (const [path, value] of [['_picoblocks_wifi.py',receiver],['picoblocks-wifi.json',JSON.stringify(config)]]) {
       command += `_pb_data = ${bytesLiteral(value)}\nwith open('${path}.tmp', 'wb') as _pb_file:\n    if _pb_file.write(_pb_data) != len(_pb_data):\n        raise OSError('Incomplete write')\nwith open('${path}.tmp', 'rb') as _pb_file:\n    if _pb_file.read() != _pb_data:\n        raise OSError('Verification failed')\nos.rename('${path}.tmp', '${path}')\nos.sync()\n`;
     }
-    return command + PicoBoot.saveCommand(source, bytesLiteral) + '\ndel _pb_data\nimport gc\ngc.collect()\n';
+    return command + PicoBoot.saveCommand(source, bytesLiteral, config.board) + '\ndel _pb_data\nimport gc\ngc.collect()\n';
   }
 
   let ui, client = null, board = '', busy = false;
@@ -120,7 +122,7 @@ const PicoWifi = (() => {
     ui.busy(true);
     let saved = false;
     try {
-      await client.upload(PicoBoot.wrap(source), percent => ui.progress(t`Wi-Fi転送中 ${percent}%`));
+      await client.upload(PicoBoot.wrap(source, board), percent => ui.progress(t`Wi-Fi転送中 ${percent}%`));
       saved = true;
       const result = await client.request('/run', {});
       if (!result.restarting) throw new Error(t('再起動を確認できませんでした。'));

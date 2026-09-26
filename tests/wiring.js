@@ -88,4 +88,4 @@ for (const [key, profile] of Object.entries(profiles)) {
   context.workspace={getAllBlocks:()=>[]}; vm.runInContext('renderWiringDiagram()',context);
   assert.equal($('#wiringDiagram').querySelectorAll('[data-servo]').length,0);
 }
-console.log('PASS: app wiring renderer for 8 boards, multi-PWM, serial chains, removal');
+console.log('PASS: app wiring renderer for 9 boards, multi-PWM, serial chains, removal');

@@ -4,6 +4,21 @@
 
 RP2040 / RP2350 + MicroPython向けの、ブラウザーだけで使えるブロックプログラミング環境のプロトタイプです。
 
+## ATOM Lite（開発中・動作未確認）
+
+M5Stack **ATOM Lite / ESP32-PICO-D4**を試験追加しました。AtomS3等は対象外です。USB書き込み・USB JOG・Wi-Fi書き込み・Wi-Fi JOG、SCS009 / XL330 / STS3215 / STS3235・PWM・基本ブロックに対応する実装です。LCDはGEEK専用のままです。**実機・通信波形・電源断耐性は未確認**です。
+
+- 初回は[標準ESP32_GENERIC MicroPython](https://micropython.org/download/ESP32_GENERIC/)の安定版1.29以降を使用（通常版・LittleFS。UIFlow、S3/C3、UF2、カスタムFAT版は不可）。既存ファイルをバックアップ後、公式のesptool手順で`erase-flash`、`.bin`を`write-flash 0x1000`で書き込みます。**消去で既存UIFlow・設定・ファイルは失われます**。正面ボタンは初期ファーム用BOOTボタンではありません。
+- 再起動後、このサイトで「ボードを接続」からFTDIのUSBシリアルポートを選択（115200 bps）。表示されなければ[M5Stack公式のFTDIドライバ案内](https://docs.m5stack.com/en/core/atom_lite)を確認します。
+- 保存後は起動から3秒後に自動実行。書き込み待機にするには、電源を入れ直して3秒以内に**正面ボタン（GPIO39）**を押します。一般説明のBOOTはATOM Liteではこのボタンです。USB接続中は画面の「書き込み待機」も使えます。
+- Wi-FiはPico Wと同じメニュー・手順です。初回のみPC＋USBで受信機能と現在のプログラムを保存し、以後は同じLANのPC／Android Chromeからこのサイトで直接保存します。Wi-Fi JOGは別のAP動作です。実機ではいずれも未確認です。
+- シリアルサーボは**同一GPIOのTX/RX＋オープンドレインUART**を使用。USB用UART0を残しUART1/2を自動割当て（合計2種類まで）。ブロックはGPIOと通信速度だけです。送信エコーを除去してから応答を解析し、異常時はUARTを停止してピンを入力へ戻します。再試行にはプログラムの再起動が必要です。
+- **半二重変換ICなしの試作ですが、無条件に直結できる意味ではありません。** DATAは3.3 V互換が条件で、5 V信号の直結は禁止。内蔵プルアップは弱く、配線長・容量・速度によって外付け3.3 Vプルアップが必要です。1 Mbpsを含め通信品質は未確認。サーボは仕様に合う外部電源、GND共通で、まず無負荷・低速で確認します。
+- GPIO候補は19 / 21 / 22 / 23 / 25 / 26 / 32 / 33。ADCはWi-Fiと共存するADC1の32 / 33のみ、電圧表示は概算。LEDはGPIO27のRGBを白色点灯・消灯。GPIO39はボタン、GPIO12はIR用として予約します。
+- 配線図は拡張端子とGroveを分けたオリジナルの模式図で、3V3・5V・GNDも表示します。物理的な端子順・向きは公式ピン情報を確認してください。
+
+根拠：[ESP-IDF同一GPIO TX/RXの注意事項](https://docs.espressif.com/projects/esp-idf/en/v5.0.9/esp32/api-reference/peripherals/uart.html)、[MicroPython ESP32 UART実装](https://github.com/micropython/micropython/blob/v1.29.0/ports/esp32/machine_uart.c)、[ESP32 API](https://docs.micropython.org/en/latest/esp32/quickref.html)。テストは`node tests/atom.js`、`python tests/atom_runtime.py`。実機検証を代替するものではありません。
+
 ## 表示言語
 
 右上メニューの **Language / 言語** で「日本語」「English」を選べます。選択はブラウザーに保存します。USB接続・配置したブロック・入力値・ボード選択・編集履歴を保ったまま切り替え、ボードへの書き込みは行いません。ユーザーが入力した文字列・変数名・パスワードや、既存のシリアル出力は翻訳しません。転送等の処理中は切り替えを無効にします。
@@ -214,6 +229,7 @@ PIOは特定のGPIOだけに固定されているわけではなく、RP2040 / R
 | Raspberry Pi Pico W | GP0〜GP22、GP26〜GP28 | 対応（`LED`） |
 | Raspberry Pi Pico 2 | GP0〜GP22、GP26〜GP28 | 対応（GP25） |
 | Raspberry Pi Pico 2 W | GP0〜GP22、GP26〜GP28 | 対応（`LED`） |
+| M5Stack ATOM Lite（開発中・動作未確認） | G19, 21, 22, 23, 25, 26, 32, 33 | RGBの白色点灯（G27） |
 | Waveshare RP2350-GEEK | GP2、GP3、GP4、GP5、GP28、GP29 | 非表示 |
 | Waveshare RP2040-GEEK | GP2、GP3、GP4、GP5、GP28、GP29 | 非表示 |
 

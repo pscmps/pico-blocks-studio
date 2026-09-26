@@ -4,6 +4,21 @@
 
 A browser-based block programming prototype for RP2040 / RP2350 boards running MicroPython.
 
+## ATOM Lite (in development / hardware untested)
+
+Experimental **M5Stack ATOM Lite / ESP32-PICO-D4** support, not AtomS3. Includes USB upload/JOG, Wi-Fi upload/JOG, SCS009 / XL330 / STS3215 / STS3235, PWM and basic blocks. LCD stays GEEK-only. **No hardware, signal-waveform or power-loss testing has been performed.**
+
+- First install stable [standard ESP32_GENERIC MicroPython](https://micropython.org/download/ESP32_GENERIC/) 1.29+ with LittleFS, not UIFlow, S3/C3, UF2 or custom FAT builds. Back up files, then follow official esptool instructions: `erase-flash`, then `write-flash 0x1000` with the downloaded `.bin`. **Erasing removes existing UIFlow, files and settings.** The front button is not the firmware bootloader button.
+- After restart, use Connect board to select the FTDI USB serial port (115200 bps). If missing, consult [M5Stack's official FTDI driver instructions](https://docs.m5stack.com/en/core/atom_lite).
+- Saved programs auto-start after 3 seconds. To enter write mode, power cycle and press the **front button (GPIO39)** within 3 seconds. BOOT in general instructions means this button on ATOM Lite. The UI's Enter write mode also works over USB.
+- Use the same Wi-Fi menu as Pico W: provision the receiver/current program once from a PC over USB, then save directly from this site on PC/Android Chrome on the same LAN. Wi-Fi JOG uses a separate access-point mode. Both are hardware-unverified.
+- Serial servos use **shared-GPIO TX/RX with open-drain UART**, not PIO. UART0 stays reserved for USB; UART1/2 are assigned automatically, allowing two serial servo types. Blocks take only GPIO and baud. TX echo is removed before status parsing. Errors close the UART and release the pin; restart the program to retry.
+- **No half-duplex converter IC does not mean unconditional direct wiring.** DATA must be 3.3 V-compatible; never connect 5 V signals directly. The weak internal pull-up may need an external 3.3 V pull-up depending on baud, wiring length and capacitance. Communication quality, including at 1 Mbps, is unverified. Use rated external servo power with common GND; start unloaded with slow motion.
+- GPIOs: 19 / 21 / 22 / 23 / 25 / 26 / 32 / 33. ADC uses ADC1 pins 32/33 for Wi-Fi coexistence; voltage estimates are approximate. LED blocks switch the GPIO27 RGB LED on in white or off. GPIO39 (button), GPIO12 (IR) and internal/USB pins are excluded.
+- The original wiring schematic groups expansion/Grove connectors and includes 3V3, 5V and GND. Check official pin information for physical orientation and order.
+
+References: [ESP-IDF shared TX/RX precautions](https://docs.espressif.com/projects/esp-idf/en/v5.0.9/esp32/api-reference/peripherals/uart.html), [MicroPython ESP32 UART](https://github.com/micropython/micropython/blob/v1.29.0/ports/esp32/machine_uart.c), [ESP32 APIs](https://docs.micropython.org/en/latest/esp32/quickref.html). Tests: `node tests/atom.js`, `python tests/atom_runtime.py`. These do not replace hardware validation.
+
 ## Language
 
 Open the top-right menu and choose **Language / 言語 → English** or **日本語**. The preference is remembered in this browser. Switching redraws the editor without disconnecting USB or uploading a program. Blocks, field values, board selection, and undo history are preserved. User-written text, variable names, passwords, and existing serial output are not translated.
@@ -68,6 +83,7 @@ PIO is not limited to a dedicated UART pin pair. The editor intentionally offers
 | Raspberry Pi Pico W | GP0–22, GP26–28 | `LED` |
 | Raspberry Pi Pico 2 | GP0–22, GP26–28 | GP25 |
 | Raspberry Pi Pico 2 W | GP0–22, GP26–28 | `LED` |
+| M5Stack ATOM Lite (development / untested) | G19, 21, 22, 23, 25, 26, 32, 33 | RGB white on/off (G27) |
 | Waveshare RP2040-GEEK | GP2, 3, 4, 5, 28, 29 | Hidden |
 | Waveshare RP2350-GEEK | GP2, 3, 4, 5, 28, 29 | Hidden |
 | Seeed Studio XIAO RP2040 | GP26, 27, 28, 29, 6, 7, 0, 1, 2, 4, 3 (D0–D10) | GP25, active-low |
