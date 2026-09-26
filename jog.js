@@ -5,12 +5,17 @@ const PicoJog = (() => {
   function defaults(scs) {
     return Object.fromEntries(axes.map((axis, index) => [axis, { id: scs ? index + 1 : null, center: 511, step: 10, speed: 500 }]));
   }
+  function label(config) {
+    if (config.id === null) return "汎用値";
+    const target = config.target || "scs009";
+    return target === "pwm" ? `PWM ${config.id} · °` : `${target.toUpperCase()} ID ${config.id}`;
+  }
   function mobilePage(config) {
     const labels = { Y: ["↑", "↓"], X: ["→", "←"], Z: ["W", "S"], R: ["D", "A"] };
     return `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PicoBlocks JOG</title>
 <style>body{font:16px system-ui;color:#273345;background:#fafafa;max-width:520px;margin:auto;padding:24px}h1{font-size:24px}p{color:#697485}section{display:grid;grid-template-columns:1fr 70px 70px 70px;align-items:center;gap:8px;padding:18px 0;border-bottom:1px solid #e1e5eb}button{touch-action:manipulation;font:600 20px system-ui;border:1px solid #dedbea;border-radius:12px;background:#f2f0fb;color:#51458a;min-height:58px}button:disabled{opacity:.4}output{text-align:center;font-variant-numeric:tabular-nums}.center{width:100%;margin-top:24px;font-size:16px}</style>
 <h1>PicoBlocks JOG</h1><p id="status">接続を確認しています…</p>
-${axes.map(axis => `<section><span>${config[axis].id === null ? axis : "ID " + config[axis].id}</span><button disabled data-axis="${axis}" data-dir="-1">${labels[axis][1]}</button><output id="${axis}">—</output><button disabled data-axis="${axis}" data-dir="1">${labels[axis][0]}</button></section>`).join("")}
+${axes.map(axis => `<section><span>${label(config[axis])}</span><button disabled data-axis="${axis}" data-dir="-1">${labels[axis][1]}</button><output id="${axis}">—</output><button disabled data-axis="${axis}" data-dir="1">${labels[axis][0]}</button></section>`).join("")}
 <button disabled class="center" id="center">中央へ戻す · Space</button><p>各行のボタン、または同じキーで操作できます。<br>ボタン1回／キー入力1回で設定した幅だけ動きます。</p>
 <script>
 const keys=${JSON.stringify(keys)};let busy=false,online=false,lastKey=0;
@@ -32,10 +37,18 @@ _controller_buffer = ''
 _controller_discard = False
 
 def _apply_controller_value(axis, value):
-    value = max(0, min(1023, int(value)))
     config = _jog_config[axis]
+    value = max(config.get('min', 0), min(config.get('max', 1023), int(value)))
     if config['id'] is not None:
-        scs009.move(config['id'], value, 0, config['speed'])
+        target = config.get('target', 'scs009')
+        if target == 'pwm':
+            pwm_servos[config['id']].angle(value)
+        elif target == 'xl330':
+            xl330.move(config['id'], value, config['speed'])
+        elif target == 'sts3215':
+            sts3215.move(config['id'], value, config['speed'])
+        else:
+            scs009.move(config['id'], value, 0, config['speed'])
     controller_values[axis] = value
 
 def _jog_delta(axis, direction):
@@ -74,8 +87,8 @@ def _controller_usb_poll():
                     elif parts[0] == 'JOG':
                         _apply_controller_value(parts[1], int(parts[2]))
                 _jog_report()
-            except ValueError:
-                pass
+            except (ValueError, OSError) as error:
+                print('PICOBLOCKS_ERROR ' + str(error))
         elif not _controller_discard:
             _controller_buffer += char
             if len(_controller_buffer) > 80:
@@ -157,6 +170,9 @@ def _wifi_route(raw):
         return _wifi_response('200 OK', json.dumps(controller_values).encode())
     except (ValueError, KeyError, UnicodeError):
         return _wifi_response('400 Bad Request', b'{}')
+    except OSError as error:
+        print('PICOBLOCKS_ERROR ' + str(error))
+        return _wifi_response('503 Service Unavailable', b'{}')
 
 def _wifi_poll():
     try:
@@ -203,6 +219,6 @@ def _wifi_poll():
             _wifi_clients.remove(item)
 `;
   }
-  return { axes, keys, defaults, runtime, mobilePage };
+  return { axes, keys, defaults, runtime, mobilePage, label };
 })();
 if (typeof module !== "undefined") module.exports = PicoJog;

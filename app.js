@@ -66,8 +66,22 @@
     firmwareUrl: "https://micropython.org/download/RPI_PICO2/", firmwareLabel: "Raspberry Pi Pico 2用MicroPython",
   };
   BOARD_PROFILES.pico2w.wifi = true;
+  for (const chip of ["rp2040", "rp2350"]) {
+    const pins = chip === "rp2040" ? [26, 27, 28, 29, 6, 7, 0, 1, 2, 4, 3] : [26, 27, 28, 5, 6, 7, 0, 1, 2, 4, 3];
+    BOARD_PROFILES["xiao_" + chip] = {
+      name: `Seeed Studio XIAO ${chip.toUpperCase()}`, pins, layout: "xiao", ledPin: "25", ledActiveLow: true,
+      pinLabels: Object.fromEntries(pins.map((pin, i) => [pin, `D${i} / GP${pin}`])),
+      firmwareUrl: `https://micropython.org/download/SEEED_XIAO_${chip.toUpperCase()}/`,
+      firmwareLabel: `XIAO ${chip.toUpperCase()}用MicroPython`, firmwareIsZip: false,
+      pinoutUrl: chip === "rp2350" ? "https://wiki.seeedstudio.com/xiao_rp2350_arduino/" : "https://wiki.seeedstudio.com/XIAO-RP2040/",
+      driveName: chip === "rp2350" ? "RP2350" : "RPI-RP2",
+      boot: "USBを外し、XIAO本体のBOOTボタンを押したままUSB接続し、ボタンを離します。接続済みならBOOTを押しながらRESETを押して離し、最後にBOOTを離します。",
+    };
+  }
   let selectedBoard = localStorage.getItem("picoblocks-board-v1");
   if (!BOARD_PROFILES[selectedBoard]) selectedBoard = "pico";
+  const pinLabel = pin => BOARD_PROFILES[selectedBoard].pinLabels?.[pin] || `GP${pin}`;
+  const pinOptions = () => BOARD_PROFILES[selectedBoard].pins.map(pin => [pinLabel(pin), String(pin)]);
 
   const elements = {
     connect: $("#connectButton"),
@@ -239,7 +253,6 @@
 
   Blockly.Blocks.scs009_setup = {
     init() {
-      const pinOptions = () => BOARD_PROFILES[selectedBoard].pins.map((pin) => [`GP${pin}`, String(pin)]);
       this.appendDummyInput().appendField("SCS009を接続");
       this.appendDummyInput().appendField("DATA").appendField(new Blockly.FieldDropdown(pinOptions), "PIN");
       this.appendDummyInput()
@@ -251,6 +264,8 @@
       this.setTooltip("SCS009 / SCS0009のDATA線を、選択中の基板で外部に出ているGPIOへ直接接続します。");
     },
   };
+
+  ServoBlocks.register(Blockly, pinOptions);
 
   Blockly.Blocks.uart_controller_setup = {
     init() {
@@ -300,6 +315,7 @@
     return {
     kind: "categoryToolbox",
     contents: [
+      ...ServoBlocks.toolbox(),
       ...(BOARD_PROFILES[selectedBoard].wifi ? [{
         kind: "category", name: "Wi-Fi JOG", colour: "#31a8b0",
         contents: [{ kind: "block", type: "wifi_jog_setup" }, { kind: "block", type: "uart_scs_bind" }],
@@ -538,7 +554,7 @@ class SCS009PIO:
           if (BOARD_PROFILES[selectedBoard].ledPin === null) {
             piece = "# 選択中の基板では本体LEDブロックを使用しません\n";
           } else {
-            piece = state === "TOGGLE" ? "led.toggle()\n" : `led.value(${state})\n`;
+            piece = state === "TOGGLE" ? "led.toggle()\n" : `led.value(${BOARD_PROFILES[selectedBoard].ledActiveLow ? 1 - Number(state) : state})\n`;
           }
           break;
         }
@@ -579,7 +595,7 @@ class SCS009PIO:
           break;
         }
         default:
-          piece = `# 未対応のブロック: ${current.type}\n`;
+          piece = ServoBlocks.statement(current) || `pass  # 未対応のブロック: ${current.type}\n`;
       }
       code += piece;
       current = current.getNextBlock();
@@ -606,7 +622,7 @@ class SCS009PIO:
     const scsCode = usesSCS009
       ? `\n${SCS009_DRIVER}\nscs009 = SCS009PIO(data_pin=${scsConfig.pin}, baud=${scsConfig.baud})\n`
       : "";
-    const ledCode = usesLed && profile.ledPin !== null ? `\nled = Pin(${profile.ledPin}, Pin.OUT)\n` : "";
+    const ledCode = usesLed && profile.ledPin !== null ? `\nled = Pin(${profile.ledPin}, Pin.OUT, value=${profile.ledActiveLow ? 1 : 0})\n` : "";
     let uartCode = "";
     if (uartSetup) {
       uartCode = PicoJog.runtime(getJogAxes(), wifiSetup ? {
@@ -617,7 +633,7 @@ class SCS009PIO:
       body += `\n# PCからのJOG指令を待ちます\nwhile True:\n    _controller_poll()\n    time.sleep_ms(5)\n`;
     }
     const serialImports = uartSetup ? "\nimport sys\nimport select\nimport json" : "";
-    return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ledCode}${uartCode}\n${body}`;
+    return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks)}${ledCode}${uartCode}\n${body}`;
   }
 
   const PICO_LEFT_PINS = ["GP0", "GP1", "GND", "GP2", "GP3", "GP4", "GP5", "GND", "GP6", "GP7", "GP8", "GP9", "GND", "GP10", "GP11", "GP12", "GP13", "GND", "GP14", "GP15"];
@@ -648,6 +664,25 @@ class SCS009PIO:
       <text x="130" y="139" text-anchor="middle" class="board-subtitle">RP GPIO / PIO</text>
       ${makeSide(PICO_LEFT_PINS, 50, "left")}${makeSide(PICO_RIGHT_PINS, 210, "right")}`;
     return { board, dataPoint, groundPoint };
+  }
+
+  function xiaoBoardDrawing(profile, selectedPin) {
+    let dataPoint = null;
+    const left = profile.pins.slice(0, 7).map((pin, i) => ({ pin, name: `D${i} / GP${pin}` }));
+    const right = [{ name: "5V" }, { name: "GND" }, { name: "3V3" }, ...[10, 9, 8, 7].map(i => ({ pin: profile.pins[i], name: `D${i} / GP${profile.pins[i]}` }))];
+    const side = (list, x, isLeft) => list.map((item, i) => {
+      const y = 70 + i * 23, active = item.pin === selectedPin;
+      if (active) dataPoint = { x, y };
+      return `<g class="pin-hit"><title>USBを上にした表面・${isLeft ? "左" : "右"}側の上から${i + 1}番: ${item.name}</title><circle cx="${x}" cy="${y}" r="4" class="board-pin ${active ? "active" : ""}"/><text x="${x + (isLeft ? 9 : -9)}" y="${y + 3}" text-anchor="${isLeft ? "start" : "end"}" class="pin-label ${active ? "active" : ""}">${item.name}</text></g>`;
+    }).join("");
+    const board = `
+      <rect x="38" y="42" width="184" height="196" rx="10" class="board-body"/>
+      <rect x="105" y="31" width="50" height="28" rx="6" class="usb"/>
+      <text x="130" y="120" text-anchor="middle" class="board-title">XIAO</text>
+      <text x="130" y="135" text-anchor="middle" class="board-subtitle">${profile.name.includes("2350") ? "RP2350" : "RP2040"}</text>
+      ${side(left, 38, true)}${side(right, 222, false)}
+      <text x="130" y="260" text-anchor="middle" class="caption">表面 / USB-Cを上 · 両側の14端子</text>`;
+    return { dataPoint, groundPoint: { x: 222, y: 93 }, board };
   }
 
   function geekBoardDrawing(profile, selectedPin) {
@@ -688,14 +723,29 @@ class SCS009PIO:
 
   function renderWiringDiagram() {
     const profile = BOARD_PROFILES[selectedBoard];
-    const setup = workspace.getAllBlocks(false).find((block) => block.type === "scs009_setup");
+    const setups = workspace.getAllBlocks(false).filter(block => /^(scs009|xl330|sts3215|pwm)_setup$/.test(block.type));
+    const chosen = workspace.getBlockById($("#wiringDevice").value);
+    const setup = setups.includes(chosen) ? chosen : setups[0];
+    const servoName = setup ? ({ scs009_setup: "SCS009", xl330_setup: "XL330", sts3215_setup: "STS3215", pwm_setup: "PWMサーボ" })[setup.type] : "";
+    const deviceSelect = $("#wiringDevice");
+    deviceSelect.replaceChildren(...setups.map(b => {
+      const option = document.createElement("option"); option.value = b.id;
+      option.textContent = `${({ scs009_setup: "SCS009", xl330_setup: "XL330", sts3215_setup: "STS3215", pwm_setup: "PWMサーボ" })[b.type]} · ${pinLabel(Number(b.getFieldValue("PIN")))}`;
+      return option;
+    }));
+    if (setup) deviceSelect.value = setup.id;
+    deviceSelect.hidden = setups.length < 2;
     const selectedPin = setup ? Number(setup.getFieldValue("PIN")) : null;
-    const drawing = profile.layout === "pico" ? picoBoardDrawing(profile, selectedPin) : geekBoardDrawing(profile, selectedPin);
+    const drawing = profile.layout === "pico" ? picoBoardDrawing(profile, selectedPin) : profile.layout === "xiao" ? xiaoBoardDrawing(profile, selectedPin) : geekBoardDrawing(profile, selectedPin);
     elements.pinoutLink.href = profile.pinoutUrl;
     elements.pinoutLink.textContent = `${profile.name}の公式ピン情報`;
     elements.wiringDiagram.classList.toggle("is-board-only", !setup);
     elements.scsWiringDetails.hidden = !setup;
     elements.scsHelp.hidden = !setup;
+    elements.scsHelp.querySelector("summary").textContent = `${servoName}を接続する前に`;
+    elements.scsHelp.querySelector("p").textContent = setup?.type === "pwm_setup"
+      ? "信号線を選択したGPIOへつなぎ、電源はサーボ仕様に合う外部電源、GNDはボードと共通にします。50 Hzで出力します。初期値は1000〜2000 µsです。可動範囲は機種に合わせて調整してください。"
+      : `${servoName}の電源は専用の外部電源から供給し、GNDをボードと共通にします。DATAはGPIOへ接続し、PIOで方向を切り替えます。半二重変換回路は不要です。${setup?.type === "xl330_setup" ? "XL330は3.7〜6.0 V（初回5 V）。DATAに220 Ωの直列保護抵抗を推奨します。" : "電源電圧は機種・仕様を確認してください。"} GPIOへの5 V入力は禁止です。まず無負荷でPing・位置読取りを確認してください。`;
     elements.boardPinHint.hidden = !setup;
     const diagramStyle = `
       .board-body{fill:#edf4f7;stroke:#78909c;stroke-width:2}.usb{fill:#c7ced6;stroke:#87929e}.chip{fill:#334155;stroke:#172033}.lcd{fill:#e7f6f4;stroke:#0f766e;stroke-width:1.5}.button-mark{fill:#fff;stroke:#8796a8}.board-pin{fill:#fff;stroke:#64748b;stroke-width:1}.board-pin.active{fill:#fbbf24;stroke:#b45309;stroke-width:2}.board-pin.ground{fill:#cbd5e1}.board-pin.power{fill:#fda4af}.pin-label{fill:#475467;font:6.5px Inter,sans-serif}.pin-label.active{fill:#9a3412;font-weight:800}.pin-number{fill:#667085;font:6.2px Inter,sans-serif}.board-title{fill:#172033;font:700 10px Inter,sans-serif}.board-subtitle,.tiny-label{fill:#667085;font:6.5px Inter,sans-serif}.connector-group{fill:#fff;stroke:#cbd5e1}.connector-title{fill:#344054;font:700 6px Inter,sans-serif}.device-box{fill:#fff;stroke:#b8c2cf;stroke-width:1.5}.terminal{fill:#f8fafc;stroke:#667085}.terminal-label{fill:#344054;font:700 8px Inter,sans-serif}.caption{fill:#667085;font:7px Inter,sans-serif}.data-wire{fill:none;stroke:#d69e00;stroke-width:3}.power-wire{fill:none;stroke:#e5484d;stroke-width:3}.ground-wire{fill:none;stroke:#64748b;stroke-width:3}.pin-hit{cursor:help}`;
@@ -710,11 +760,12 @@ class SCS009PIO:
         </svg>`;
       return;
     }
-    elements.wiringSummary.textContent = `接続ブロックの設定: GP${selectedPin}をSCS009のDATAへ接続します。`;
+    if (!drawing.dataPoint) return;
+    elements.wiringSummary.textContent = `接続ブロックの設定: ${pinLabel(selectedPin)}を${servoName}の${setup.type === "pwm_setup" ? "信号" : "DATA"}へ接続します。`;
     elements.wiringDiagram.innerHTML = `
       <svg viewBox="0 0 260 460" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <style>${diagramStyle}</style>
-        <title>${profile.name}とSCS009の簡易配線図</title>
+        <title>${profile.name}と${servoName}の簡易配線図</title>
         <path d="M${drawing.dataPoint.x} ${drawing.dataPoint.y} C235 ${drawing.dataPoint.y},70 330,112 330" class="data-wire"/>
         <path d="M${drawing.groundPoint.x} ${drawing.groundPoint.y} C238 ${drawing.groundPoint.y},75 372,112 372" class="ground-wire"/>
         <path d="M118 416 C150 416,82 351,112 351" class="power-wire"/>
@@ -722,8 +773,8 @@ class SCS009PIO:
         ${drawing.board}
         <text x="130" y="282" text-anchor="middle" class="caption">黄色で選択中: GP${selectedPin}</text>
         <rect x="112" y="306" width="136" height="82" rx="11" class="device-box"/>
-        <text x="180" y="320" text-anchor="middle" class="board-title">SCS009 コネクタ</text>
-        <circle cx="122" cy="330" r="6" class="terminal"/><text x="135" y="333" class="terminal-label">DATA</text>
+        <text x="180" y="320" text-anchor="middle" class="board-title">${servoName} コネクタ</text>
+        <circle cx="122" cy="330" r="6" class="terminal"/><text x="135" y="333" class="terminal-label">${setup.type === "pwm_setup" ? "SIGNAL / PWM" : "DATA"}</text>
         <circle cx="122" cy="351" r="6" class="terminal"/><text x="135" y="354" class="terminal-label">V+（外部電源）</text>
         <circle cx="122" cy="372" r="6" class="terminal"/><text x="135" y="375" class="terminal-label">GND（共通）</text>
         <rect x="12" y="398" width="106" height="52" rx="10" class="device-box"/>
@@ -737,7 +788,7 @@ class SCS009PIO:
     const profile = BOARD_PROFILES[selectedBoard];
     elements.boardSelect.value = selectedBoard;
     $("#wifiHelp").hidden = !profile.wifi;
-    elements.boardPinHint.textContent = `SCS009 DATAで選べる端子: ${profile.pins.map((pin) => `GP${pin}`).join(" / ")}`;
+    elements.boardPinHint.textContent = `接続で選べる端子: ${profile.pins.map(pinLabel).join(" · ")}${profile.layout === "xiao" ? "。今回は両側のD0〜D10端子に対応（背面パッドは対象外）。" : ""}`;
     elements.firmwareLink.href = profile.firmwareUrl;
     elements.firmwareLink.textContent = `${profile.firmwareLabel}のダウンロード先を開く`;
     elements.firmwareSteps.replaceChildren();
@@ -748,6 +799,7 @@ class SCS009PIO:
       profile.boot,
       `PCに「${profile.driveName}」というUSBドライブが表示されたことを確認します。`,
       "ダウンロードしたUF2ファイルを、そのUSBドライブへドラッグ＆ドロップします。コピーが終わるとボードが自動で再起動します。",
+      ...(profile.layout === "xiao" ? ["XIAO専用のファームを使ってください。RP2350は通常のArm版を選びます。RP2040 / RP2350のこの2機種にはWi-Fi機能はありません。"] : []),
       ...(profile.wifi ? ["Wi-Fi JOGには、この機種用のMicroPython 1.29以降を選んでください。Pico 2 Wは通常のArm版を使用します。"] : []),
     ];
     for (const text of steps) {
@@ -760,8 +812,16 @@ class SCS009PIO:
 
   function validateSCS009Pins() {
     const allowed = BOARD_PROFILES[selectedBoard].pins.map(String);
-    for (const block of workspace.getAllBlocks(false).filter((item) => item.type === "scs009_setup")) {
-      if (!allowed.includes(block.getFieldValue("PIN"))) block.setFieldValue(allowed[0], "PIN");
+    for (const block of workspace.getAllBlocks(false).filter((item) => /^(scs009|xl330|sts3215|pwm)_setup$/.test(item.type))) {
+      const oldPin = block.getFieldValue("PIN");
+      // Blockly 11 has dynamic getOptions, but not the newer setOptions API.
+      const field = block.getField("PIN");
+      field.getOptions(false);
+      Blockly.Events.disable();
+      try {
+        field.setValue(allowed.find(pin => pin !== oldPin) || allowed[0]);
+        field.setValue(allowed.includes(oldPin) ? oldPin : allowed[0]);
+      } finally { Blockly.Events.enable(); }
     }
   }
 
@@ -783,6 +843,7 @@ class SCS009PIO:
     localStorage.setItem("picoblocks-wiring-collapsed-v1", collapsed ? "1" : "0");
     requestAnimationFrame(() => Blockly.svgResize(workspace));
   }
+  $("#wiringDevice").addEventListener("change", renderWiringDiagram);
 
   let saveTimer = null;
   workspace.addChangeListener((event) => {
@@ -815,10 +876,13 @@ class SCS009PIO:
     const blocks = workspace.getAllBlocks(false);
     const hasScs = blocks.some(block => block.type === "scs009_setup");
     const config = PicoJog.defaults(hasScs);
-    for (const block of blocks.filter(block => block.type === "uart_scs_bind")) {
+    for (const block of blocks.filter(block => /^(uart_scs|xl330|sts3215|pwm)_bind$/.test(block.type))) {
+      const target = block.type === "uart_scs_bind" ? "scs009" : block.type.split("_")[0];
+      const connected = blocks.some(b => b.type === target + "_setup" && (target !== "pwm" || b.getFieldValue("CHANNEL") === block.getFieldValue("ID")));
       config[block.getFieldValue("AXIS")] = {
-        id: hasScs ? Number(block.getFieldValue("ID")) : null,
-        center: Number(block.getFieldValue("CENTER")), step: Number(block.getFieldValue("STEP")), speed: Number(block.getFieldValue("SPEED")),
+        id: connected ? Number(block.getFieldValue("ID")) : null, target,
+        center: Number(block.getFieldValue("CENTER")), step: Number(block.getFieldValue("STEP")), speed: Number(block.getFieldValue("SPEED") || 0),
+        min: 0, max: ServoBlocks.models[target]?.max || 1023,
       };
     }
     return config;
@@ -833,6 +897,24 @@ class SCS009PIO:
     if (wifi.length) {
       const ssid = wifi[0].getFieldValue("SSID"), password = wifi[0].getFieldValue("PASSWORD");
       if (!ssid || encoder.encode(ssid).length > 32 || !/^[\x20-\x7e]{8,63}$/.test(password)) error = "Wi-Fi名は1〜32バイト、パスワードは半角8〜63文字で指定してください。";
+    }
+    const setups = blocks.filter(b => /^(scs009|xl330|sts3215|pwm)_setup$/.test(b.type));
+    if (setups.filter(b => b.type !== "pwm_setup").length > 2) error = "PIO通信のサーボ接続は合計2種類までです（Wi-Fi用のPIOを確保します）。PWMサーボは別に追加できます。";
+    if (new Set(setups.map(b => b.getFieldValue("PIN"))).size !== setups.length) error = "サーボ接続のGPIOが重複しています。種類ごとに別のGPIOを指定してください。";
+    for (const key of ["scs009", "xl330", "sts3215"]) {
+      if (setups.filter(b => b.type === key + "_setup").length > 1) error = `${key}の接続ブロックは1個にしてください。同じ種類のサーボはIDで指定します。`;
+      if (blocks.some(b => b.type.startsWith(key + "_") && b.type !== key + "_setup") && !setups.some(b => b.type === key + "_setup")) error = `${key}の接続ブロックを追加してください。`;
+    }
+    const pwmSetups = setups.filter(b => b.type === "pwm_setup");
+    if (blocks.some(b => b.type === "gpio_write" && setups.some(s => s.getFieldValue("PIN") === b.getFieldValue("PIN")))) error = "サーボの接続GPIOには、通常のGPIO出力ブロックを同時に使えません。";
+    const channels = pwmSetups.map(b => b.getFieldValue("CHANNEL"));
+    if (new Set(channels).size !== channels.length) error = "PWMサーボの番号が重複しています。";
+    // RP PWM outputs GPn and GP(n+16) share one channel; their duties cannot differ.
+    const pwmChannels = pwmSetups.map(b => Number(b.getFieldValue("PIN")) % 16);
+    if (new Set(pwmChannels).size !== pwmChannels.length) error = "この2本のGPIOはPWM出力を共有します。16番違いではないGPIOを選んでください。";
+    for (const b of blocks.filter(b => b.type.startsWith("pwm_"))) {
+      if (b.type === "pwm_setup" && Number(b.getFieldValue("MIN_US")) >= Number(b.getFieldValue("MAX_US"))) error = "PWMの0°パルス幅は180°より小さくしてください。";
+      if (b.type !== "pwm_setup" && !channels.includes(b.getFieldValue(b.type === "pwm_bind" ? "ID" : "CHANNEL"))) error = "この番号のPWMサーボ接続ブロックを追加してください。";
     }
     if (error) showToast(error, "error");
     return !error;
@@ -870,7 +952,7 @@ class SCS009PIO:
       : "上部の「RPボードを接続」と同じ接続を使います";
     for (const axis of PicoJog.axes) {
       $(`#jogValue${axis}`).textContent = controllerValues[axis];
-      $(`#jogBinding${axis}`).textContent = nextAxes[axis].id === null ? "汎用値" : `SCS009 ID ${nextAxes[axis].id}`;
+      $(`#jogBinding${axis}`).textContent = PicoJog.label(nextAxes[axis]);
     }
   }
 
@@ -994,6 +1076,7 @@ class SCS009PIO:
           $("#wifiJogAddress").href = url;
         }
       }
+      if (line.startsWith("PICOBLOCKS_ERROR ")) showToast(line.slice(17), "error");
       if (controllerActive && line.includes("Traceback (most recent call last)")) {
         controllerActive = false;
         updateControllerConnection();
@@ -1081,6 +1164,12 @@ class SCS009PIO:
     serialBuffer = "";
     await writeControl(0x01);
     await waitFor(">");
+    // Release the previous program's PIO/PWM/network resources before reloading.
+    // Raw-REPL soft reset skips main.py, like MicroPython's mpremote.
+    serialBuffer = "";
+    await writeControl(0x04);
+    await waitFor("soft reboot", 8000);
+    await waitFor("raw REPL; CTRL-B to exit\r\n>", 8000);
   }
 
   async function executeRaw(code, timeout = 9000) {
@@ -1182,7 +1271,7 @@ class SCS009PIO:
       const source = generatePython();
       const saveCommand = `f=open('main.py','wb')\nf.write(${bytesLiteral(source)})\nf.close()\nprint('PicoBlocks: main.py saved')\n`;
       await executeRaw(saveCommand, 12000);
-      await writeControl(0x04);
+      await writeControl(0x02, 0x04);
       showToast("main.pyに保存しました。ボードを再起動します。", "success");
     } catch (error) {
       showToast(error.message, "error");

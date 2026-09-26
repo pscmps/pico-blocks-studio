@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css?v=wifi4" />
+    <link rel="stylesheet" href="./styles.css?v=servos1" />
   </head>
   <body>
     <header class="topbar">
@@ -68,6 +68,7 @@
             <span class="original-diagram">簡略図</span>
           </div>
           <p id="wiringSummary" class="wiring-summary"></p>
+          <select id="wiringDevice" aria-label="配線を表示するサーボ" hidden></select>
           <div id="wiringDiagram" class="wiring-diagram" role="img" aria-label="選択したボードの端子・配線図"></div>
           <div id="scsWiringDetails" class="scs-wiring-details" hidden>
             <div class="wiring-legend" aria-label="配線色の説明">
@@ -115,6 +116,8 @@
               <option value="pico2w">Raspberry Pi Pico 2 W</option>
               <option value="rp2350_geek">Waveshare RP2350-GEEK</option>
               <option value="rp2040_geek">Waveshare RP2040-GEEK</option>
+              <option value="xiao_rp2040">Seeed Studio XIAO RP2040</option>
+              <option value="xiao_rp2350">Seeed Studio XIAO RP2350</option>
             </select>
           </label>
           <p id="boardPinHint" class="board-pin-hint"></p>
@@ -229,7 +232,8 @@
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/ja.js"></script>
-    <script src="./jog.js?v=wifi4"></script>
-    <script src="./app.js?v=wifi4"></script>
+    <script src="./servo.js?v=servos1"></script>
+    <script src="./jog.js?v=servos1"></script>
+    <script src="./app.js?v=servos1"></script>
   </body>
 </html>

@@ -86,6 +86,21 @@ assert b'400 Bad Request' in request('POST', '/jog/NOPE/1')
 assert b'200 OK' in request('POST', '/center')
 assert set(env['controller_values'].values()) == {511}
 old_server = env['_wifi_server']
+# New targets share the same USB/HTTP routing with their own position ranges.
+env['_jog_config']['Y'] = dict(id=3, target='xl330', center=2048, step=10, speed=20, min=0, max=4095)
+env['xl330'] = types.SimpleNamespace(move=lambda *args:moves.append(('xl330',) + args))
+env['_apply_controller_value']('Y', 9999)
+assert moves[-1] == ('xl330', 3, 4095, 20)
+env['_jog_config']['R'] = dict(id=2, target='pwm', center=90, step=2, speed=0, min=0, max=180)
+env['pwm_servos'] = {2:types.SimpleNamespace(angle=lambda value:moves.append(('pwm', value)))}
+env['_apply_controller_value']('R', -10)
+assert moves[-1] == ('pwm', 0)
+assert b'200 OK' in request('POST', '/jog/R/1')
+assert moves[-1] == ('pwm', 2)
+def unavailable(*args): raise OSError('test timeout')
+env['xl330'].move = unavailable
+assert b'503 Service' in request('POST', '/jog/Y/-1')
+assert env['controller_values']['Y'] == 4095  # Never report a failed command as accepted.
 exec(source, env)
 assert old_server.closed
 print('PASS: 4-axis mapping, limits, USB fragmentation, HTTP commands, origins, restart')
