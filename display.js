@@ -1,21 +1,23 @@
 /* GEEK ST7789 text output. Pinning/orientation follow the existing GEEK C
  * implementation and Waveshare schematics; MicroPython supplies the font. */
 const GeekDisplay = (() => {
+  const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw: args[0]}, ...args.slice(1));
+
   const supported = board => board === "rp2040_geek" || board === "rp2350_geek";
   const uses = blocks => blocks.some(b => b.type.startsWith("lcd_"));
   function register(Blockly) {
     const value = {type:"input_value", name:"VALUE"};
     Blockly.defineBlocksWithJsonArray([
-      {type:"lcd_print", message0:"LCDに %1 を改行して表示", args0:[value], tooltip:"GEEK内蔵LCDへ表示。英数字・記号で1行15文字、8行。長文は折り返し、下端でスクロールします。日本語は?に置換します。"},
-      {type:"lcd_line", message0:"LCDの %1 行目に %2 を表示", args0:[{type:"field_number",name:"ROW",value:1,min:1,max:8,precision:1},value], tooltip:"指定行を消して上書き。15文字まで。短い値に変わっても前の文字は残りません。"},
-      {type:"lcd_clear", message0:"LCDの文字をすべて消す", tooltip:"画面を黒くして、次の改行表示を1行目から始めます。"},
-      {type:"lcd_usb_mirror", message0:"USBシリアル表示をLCDにも %1", args0:[{type:"field_dropdown",name:"ENABLED",options:[["表示する","1"],["表示しない","0"]]}], tooltip:"「USBシリアルへ表示」ブロックの文字列をLCDへも表示します。USB受信・JOG通信・内部ログは対象外です。"},
+      {type:"lcd_print", message0:t("LCDに %1 を改行して表示"), args0:[value], tooltip:t("GEEK内蔵LCDへ表示。英数字・記号で1行15文字、8行。長文は折り返し、下端でスクロールします。日本語は?に置換します。")},
+      {type:"lcd_line", message0:t("LCDの %1 行目に %2 を表示"), args0:[{type:"field_number",name:"ROW",value:1,min:1,max:8,precision:1},value], tooltip:t("指定行を消して上書き。15文字まで。短い値に変わっても前の文字は残りません。")},
+      {type:"lcd_clear", message0:t("LCDの文字をすべて消す"), tooltip:t("画面を黒くして、次の改行表示を1行目から始めます。")},
+      {type:"lcd_usb_mirror", message0:t("USBシリアル表示をLCDにも %1"), args0:[{type:"field_dropdown",name:"ENABLED",options:[[t("表示する"),"1"],[t("表示しない"),"0"]]}], tooltip:t("「USBシリアルへ表示」ブロックの文字列をLCDへも表示します。USB受信・JOG通信・内部ログは対象外です。")},
     ].map(def=>({previousStatement:null,nextStatement:null,colour:175,...def})));
   }
   function toolbox(board) {
     if (!supported(board)) return [];
     const text = {shadow:{type:"basic_text",fields:{TEXT:"Hello, GEEK!"}}};
-    return [{kind:"category",name:"LCD文字表示",colour:"#398e86",contents:[
+    return [{kind:"category",name:t("LCD文字表示"),colour:"#398e86",contents:[
       {kind:"block",type:"lcd_print",inputs:{VALUE:text}},
       {kind:"block",type:"lcd_line",inputs:{VALUE:text}},
       {kind:"block",type:"lcd_clear"}, {kind:"block",type:"lcd_usb_mirror"},

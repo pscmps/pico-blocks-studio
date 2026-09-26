@@ -2,9 +2,10 @@
   "name": "pico-blocks-studio",
   "private": true,
   "scripts": {
-    "test": "node tests/generation.js && node tests/basics.js && node tests/modes.js && node tests/help.js && node tests/wiring.js"
+    "test": "node tests/generation.js && node tests/basics.js && node tests/modes.js && node tests/help.js && node tests/wiring.js && node tests/i18n.js"
   },
   "devDependencies": {
+    "acorn": "^8.15.0",
     "blockly": "11.2.2"
   }
 }

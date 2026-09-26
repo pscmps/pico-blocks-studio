@@ -1,18 +1,20 @@
 /* Shared USB / Wi-Fi JOG model and board-hosted controller. */
 const PicoJog = (() => {
+  const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw: args[0]}, ...args.slice(1));
+
   const axes = ["Y", "X", "Z", "R"];
   const keys = { ArrowUp: ["Y", 1], ArrowDown: ["Y", -1], ArrowLeft: ["X", -1], ArrowRight: ["X", 1], KeyW: ["Z", 1], KeyS: ["Z", -1], KeyA: ["R", -1], KeyD: ["R", 1] };
   function defaults(scs) {
     return Object.fromEntries(axes.map((axis, index) => [axis, { id: scs ? index + 1 : null, center: 511, step: 10, speed: 500 }]));
   }
   function label(config) {
-    if (config.id === null) return "汎用値";
+    if (config.id === null) return t("汎用値");
     const target = config.target || "scs009";
     return target === "pwm" ? `PWM ${config.id} · °` : `${target.toUpperCase()} ID ${config.id}`;
   }
   function mobilePage(config) {
     const labels = { Y: ["↑", "↓"], X: ["→", "←"], Z: ["W", "S"], R: ["D", "A"] };
-    return `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PicoBlocks JOG</title>
+    return t`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PicoBlocks JOG</title>
 <style>body{font:16px system-ui;color:#273345;background:#fafafa;max-width:520px;margin:auto;padding:24px}h1{font-size:24px}p{color:#697485}section{display:grid;grid-template-columns:1fr 70px 70px 70px;align-items:center;gap:8px;padding:18px 0;border-bottom:1px solid #e1e5eb}button{touch-action:manipulation;font:600 20px system-ui;border:1px solid #dedbea;border-radius:12px;background:#f2f0fb;color:#51458a;min-height:58px}button:disabled{opacity:.4}output{text-align:center;font-variant-numeric:tabular-nums}.center{width:100%;margin-top:24px;font-size:16px}</style>
 <h1>PicoBlocks JOG</h1><p id="status">接続を確認しています…</p>
 ${axes.map(axis => `<section><span>${label(config[axis])}</span><button disabled data-axis="${axis}" data-dir="-1">${labels[axis][1]}</button><output id="${axis}">—</output><button disabled data-axis="${axis}" data-dir="1">${labels[axis][0]}</button></section>`).join("")}

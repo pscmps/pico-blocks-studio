@@ -1,49 +1,51 @@
 /* Small, explicit block vocabulary, also usable by external chat tools. */
 const BasicBlocks = (() => {
+  const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw: args[0]}, ...args.slice(1));
+
   const number = (name, value) => ({type:"field_number", name, value});
   const value = (name, check="Number") => ({type:"input_value", name, ...(check ? {check} : {})});
   const choice = (name, options) => ({type:"field_dropdown", name, options});
-  const variable = () => ({type:"field_input", name:"NAME", text:"値"});
+  const variable = () => ({type:"field_input", name:"NAME", text:t("値")});
   const stmt = (type, message0, args0, extra={}) => ({type, message0, args0, previousStatement:null, nextStatement:null, colour:180, ...extra});
   const expr = (type, message0, args0, output="Number", extra={}) => ({type, message0, args0, output, colour:225, inputsInline:true, ...extra});
-  const definitions = [
+  const definitions = () => [
     expr("basic_number", "%1", [number("NUM", 0)]),
-    expr("basic_math", "%1 %2 %3", [value("A"), choice("OP", [["＋","ADD"],["−","SUB"],["×","MUL"],["÷","DIV"],["余り","MOD"]]), value("B")]),
-    expr("basic_unary", "%1 %2", [choice("OP", [["絶対値","ABS"],["整数へ丸める","ROUND"],["切り捨て","FLOOR"],["平方根","SQRT"]]), value("VALUE")]),
-    expr("basic_limit", "%1 を %2 〜 %3 に収める", [value("VALUE"),value("MIN"),value("MAX")]),
-    expr("basic_map", "%1 の範囲を変換", [value("VALUE")], "Number", {message1:"入力 %1 〜 %2 → 出力 %3 〜 %4",args1:[value("IN_MIN"),value("IN_MAX"),value("OUT_MIN"),value("OUT_MAX")], inputsInline:false, tooltip:"入力範囲外は出力の上下限で止めます。入力の上下限を同じ値にしないでください。"}),
-    expr("basic_random", "%1 〜 %2 の整数乱数", [value("MIN"),value("MAX")]),
+    expr("basic_math", "%1 %2 %3", [value("A"), choice("OP", [["＋","ADD"],["−","SUB"],["×","MUL"],["÷","DIV"],[t("余り"),"MOD"]]), value("B")]),
+    expr("basic_unary", "%1 %2", [choice("OP", [[t("絶対値"),"ABS"],[t("整数へ丸める"),"ROUND"],[t("切り捨て"),"FLOOR"],[t("平方根"),"SQRT"]]), value("VALUE")]),
+    expr("basic_limit", t("%1 を %2 〜 %3 に収める"), [value("VALUE"),value("MIN"),value("MAX")]),
+    expr("basic_map", t("%1 の範囲を変換"), [value("VALUE")], "Number", {message1:t("入力 %1 〜 %2 → 出力 %3 〜 %4"),args1:[value("IN_MIN"),value("IN_MAX"),value("OUT_MIN"),value("OUT_MAX")], inputsInline:false, tooltip:t("入力範囲外は出力の上下限で止めます。入力の上下限を同じ値にしないでください。")}),
+    expr("basic_random", t("%1 〜 %2 の整数乱数"), [value("MIN"),value("MAX")]),
     expr("basic_compare", "%1 %2 %3", [value("A"),choice("OP",[["＝","EQ"],["≠","NE"],["＜","LT"],["≤","LE"],["＞","GT"],["≥","GE"]]),value("B")], "Boolean",{colour:210}),
-    expr("basic_boolean", "%1", [choice("VALUE",[["真","TRUE"],["偽","FALSE"]])], "Boolean",{colour:210}),
-    expr("basic_logic", "%1 %2 %3", [value("A","Boolean"),choice("OP",[["かつ","AND"],["または","OR"]]),value("B","Boolean")], "Boolean",{colour:210}),
-    expr("basic_not", "%1 ではない", [value("VALUE","Boolean")], "Boolean",{colour:210}),
-    expr("basic_get", "変数 %1", [variable()], null,{colour:300}),
-    stmt("basic_set", "変数 %1 を %2 にする", [variable(),value("VALUE",null)],{colour:300}),
-    stmt("basic_change", "変数 %1 を %2 増やす", [variable(),value("VALUE")],{colour:300}),
-    stmt("basic_if", "もし %1 なら", [value("IF","Boolean")],{colour:210,message1:"%1",args1:[{type:"input_statement",name:"DO"}],message2:"そうでなければ %1",args2:[{type:"input_statement",name:"ELSE"}]}),
-    stmt("basic_repeat", "%1 回くり返す", [value("TIMES")],{colour:210,message1:"%1",args1:[{type:"input_statement",name:"DO"}]}),
-    stmt("basic_while", "%1 の間くり返す", [value("IF","Boolean")],{colour:210,message1:"%1",args1:[{type:"input_statement",name:"DO"}]}),
-    stmt("basic_wait", "%1 ミリ秒待つ", [value("MS")]),
-    expr("basic_ticks", "起動からのミリ秒", [], "Number",{tooltip:"カウンタには折り返しがあります。時間差ブロックで比較してください。"}),
-    expr("basic_elapsed", "%1 から %2 までの時間差（ms）", [value("START"),value("END")]),
+    expr("basic_boolean", "%1", [choice("VALUE",[[t("真"),"TRUE"],[t("偽"),"FALSE"]])], "Boolean",{colour:210}),
+    expr("basic_logic", "%1 %2 %3", [value("A","Boolean"),choice("OP",[[t("かつ"),"AND"],[t("または"),"OR"]]),value("B","Boolean")], "Boolean",{colour:210}),
+    expr("basic_not", t("%1 ではない"), [value("VALUE","Boolean")], "Boolean",{colour:210}),
+    expr("basic_get", t("変数 %1"), [variable()], null,{colour:300}),
+    stmt("basic_set", t("変数 %1 を %2 にする"), [variable(),value("VALUE",null)],{colour:300}),
+    stmt("basic_change", t("変数 %1 を %2 増やす"), [variable(),value("VALUE")],{colour:300}),
+    stmt("basic_if", t("もし %1 なら"), [value("IF","Boolean")],{colour:210,message1:"%1",args1:[{type:"input_statement",name:"DO"}],message2:t("そうでなければ %1"),args2:[{type:"input_statement",name:"ELSE"}]}),
+    stmt("basic_repeat", t("%1 回くり返す"), [value("TIMES")],{colour:210,message1:"%1",args1:[{type:"input_statement",name:"DO"}]}),
+    stmt("basic_while", t("%1 の間くり返す"), [value("IF","Boolean")],{colour:210,message1:"%1",args1:[{type:"input_statement",name:"DO"}]}),
+    stmt("basic_wait", t("%1 ミリ秒待つ"), [value("MS")]),
+    expr("basic_ticks", t("起動からのミリ秒"), [], "Number",{tooltip:t("カウンタには折り返しがあります。時間差ブロックで比較してください。")}),
+    expr("basic_elapsed", t("%1 から %2 までの時間差（ms）"), [value("START"),value("END")]),
     expr("basic_text", "%1", [{type:"field_input",name:"TEXT",text:"Hello!"}], "String",{colour:270}),
-    expr("basic_join", "%1 と %2 をつなぐ", [value("A",null),value("B",null)], "String",{colour:270}),
-    stmt("basic_print", "%1 をUSBシリアルへ表示", [value("VALUE",null)],{colour:270,tooltip:"LCDではなくPCのシリアル欄へ表示します。"}),
+    expr("basic_join", t("%1 と %2 をつなぐ"), [value("A",null),value("B",null)], "String",{colour:270}),
+    stmt("basic_print", t("%1 をUSBシリアルへ表示"), [value("VALUE",null)],{colour:270,tooltip:t("LCDではなくPCのシリアル欄へ表示します。")}),
   ];
   function register(Blockly, pinOptions, adcOptions) {
-    Blockly.defineBlocksWithJsonArray(definitions);
+    Blockly.defineBlocksWithJsonArray(definitions());
     for (const kind of ["adc", "read", "write"]) {
       Blockly.Blocks["basic_"+kind] = {init() {
         this.appendDummyInput().appendField(kind === "adc" ? "ADC" : "GPIO").appendField(new Blockly.FieldDropdown(kind === "adc" ? adcOptions : pinOptions),"PIN");
         if (kind === "adc") {
-          this.appendDummyInput().appendField(new Blockly.FieldDropdown([["値 0〜65535","RAW"],["電圧（V）","VOLT"]]),"MODE");
+          this.appendDummyInput().appendField(new Blockly.FieldDropdown([[t("値 0〜65535"),"RAW"],[t("電圧（V）"),"VOLT"]]),"MODE");
           this.setOutput(true,"Number");
-          this.setTooltip("入力は0〜3.3 Vのみ。電圧は基準3.3 Vと仮定した概算です。5 Vは接続しないでください。");
+          this.setTooltip(t("入力は0〜3.3 Vのみ。電圧は基準3.3 Vと仮定した概算です。5 Vは接続しないでください。"));
         } else if (kind === "read") {
-          this.appendDummyInput().appendField("を読む").appendField(new Blockly.FieldDropdown([["プルアップ","UP"],["プルダウン","DOWN"],["なし","NONE"]]),"PULL");
+          this.appendDummyInput().appendField(t("を読む")).appendField(new Blockly.FieldDropdown([[t("プルアップ"),"UP"],[t("プルダウン"),"DOWN"],[t("なし"),"NONE"]]),"PULL");
           this.setOutput(true,"Number");
         } else {
-          this.appendValueInput("VALUE").setCheck(["Number","Boolean"]).appendField("に出力（0/1）");
+          this.appendValueInput("VALUE").setCheck(["Number","Boolean"]).appendField(t("に出力（0/1）"));
           this.setPreviousStatement(true); this.setNextStatement(true);
         }
         this.setColour(39);
@@ -51,7 +53,7 @@ const BasicBlocks = (() => {
     }
     for (const model of ["pwm", "scs009", "xl330", "sts3215", "sts3235"]) {
       const isPwm = model === "pwm";
-      Blockly.defineBlocksWithJsonArray([stmt(model+"_value", `${isPwm ? "PWMサーボ" : model.toUpperCase()} ${isPwm ? "番号" : "ID"} %1 を %2 ${isPwm ? "°へ" : "の位置へ"}`, [{type:"field_number",name:isPwm?"CHANNEL":"ID",value:1,min:isPwm?1:0,max:isPwm?16:model==="xl330"?252:253,precision:1},value("VALUE")],{colour:isPwm?42:14,tooltip:"計算・変数・ADCの値をつなげます。サーボの接続・トルク設定は別ブロックです。"})]);
+      Blockly.defineBlocksWithJsonArray([stmt(model+"_value", t`${isPwm ? t("PWMサーボ") : model.toUpperCase()} ${isPwm ? t("番号") : "ID"} %1 を %2 ${isPwm ? t("°へ") : t("の位置へ")}`, [{type:"field_number",name:isPwm?"CHANNEL":"ID",value:1,min:isPwm?1:0,max:isPwm?16:model==="xl330"?252:253,precision:1},value("VALUE")],{colour:isPwm?42:14,tooltip:t("計算・変数・ADCの値をつなげます。サーボの接続・トルク設定は別ブロックです。")})]);
     }
   }
   const shadow = n => ({shadow:{type:"basic_number",fields:{NUM:n}}});
@@ -59,12 +61,12 @@ const BasicBlocks = (() => {
   function toolbox() {
     const category = (name, colour, contents) => ({kind:"category",name,colour,contents});
     return [
-      category("入力・出力", "#bd903c", [entry("basic_adc"),entry("basic_read"),entry("basic_write",{VALUE:shadow(1)})]),
-      category("計算", "#527baa", [entry("basic_number"),entry("basic_math",{A:shadow(1),B:shadow(2)}),entry("basic_unary",{VALUE:shadow(-10)}),entry("basic_limit",{VALUE:shadow(90),MIN:shadow(0),MAX:shadow(180)}),entry("basic_map",{VALUE:shadow(0),IN_MIN:shadow(0),IN_MAX:shadow(65535),OUT_MIN:shadow(0),OUT_MAX:shadow(180)}),entry("basic_random",{MIN:shadow(0),MAX:shadow(100)})]),
-      category("条件・論理", "#6885b2", [entry("basic_if"),entry("basic_compare",{A:shadow(0),B:shadow(100)}),entry("basic_boolean"),entry("basic_logic"),entry("basic_not")]),
-      category("変数", "#ac71a3", [entry("basic_set",{VALUE:shadow(0)}),entry("basic_get"),entry("basic_change",{VALUE:shadow(1)})]),
-      category("時間・くり返し", "#598ea4", [entry("basic_wait",{MS:shadow(100)}),entry("basic_ticks"),entry("basic_elapsed"),entry("basic_repeat",{TIMES:shadow(10)}),entry("basic_while"),entry("forever_loop")]),
-      category("文字・シリアル", "#9673ac", [entry("basic_text"),entry("basic_join"),entry("basic_print",{VALUE:{shadow:{type:"basic_text",fields:{TEXT:"Hello!"}}}})]),
+      category(t("入力・出力"), "#bd903c", [entry("basic_adc"),entry("basic_read"),entry("basic_write",{VALUE:shadow(1)})]),
+      category(t("計算"), "#527baa", [entry("basic_number"),entry("basic_math",{A:shadow(1),B:shadow(2)}),entry("basic_unary",{VALUE:shadow(-10)}),entry("basic_limit",{VALUE:shadow(90),MIN:shadow(0),MAX:shadow(180)}),entry("basic_map",{VALUE:shadow(0),IN_MIN:shadow(0),IN_MAX:shadow(65535),OUT_MIN:shadow(0),OUT_MAX:shadow(180)}),entry("basic_random",{MIN:shadow(0),MAX:shadow(100)})]),
+      category(t("条件・論理"), "#6885b2", [entry("basic_if"),entry("basic_compare",{A:shadow(0),B:shadow(100)}),entry("basic_boolean"),entry("basic_logic"),entry("basic_not")]),
+      category(t("変数"), "#ac71a3", [entry("basic_set",{VALUE:shadow(0)}),entry("basic_get"),entry("basic_change",{VALUE:shadow(1)})]),
+      category(t("時間・くり返し"), "#598ea4", [entry("basic_wait",{MS:shadow(100)}),entry("basic_ticks"),entry("basic_elapsed"),entry("basic_repeat",{TIMES:shadow(10)}),entry("basic_while"),entry("forever_loop")]),
+      category(t("文字・シリアル"), "#9673ac", [entry("basic_text"),entry("basic_join"),entry("basic_print",{VALUE:{shadow:{type:"basic_text",fields:{TEXT:"Hello!"}}}})]),
     ];
   }
   const variableName = name => "user_" + Array.from(String(name)).map(c=>c.codePointAt(0).toString(16)).join("_");
@@ -72,7 +74,7 @@ const BasicBlocks = (() => {
     if (!block) return fallback;
     const f = n => block.getFieldValue(n);
     const input = (n, d="0") => expression(block.getInputTargetBlock(n), d);
-    const op = (map, key) => {if (!map[key]) throw new Error("未対応の演算子です"); return map[key];};
+    const op = (map, key) => {if (!map[key]) throw new Error(t("未対応の演算子です")); return map[key];};
     switch(block.type) {
       case "basic_number": return String(Number(f("NUM")) || 0);
       case "basic_math": return `(${input("A")} ${op({ADD:"+",SUB:"-",MUL:"*",DIV:"/",MOD:"%"},f("OP"))} ${input("B","1")})`;
@@ -91,7 +93,7 @@ const BasicBlocks = (() => {
       case "basic_read": return `_input_${f("PIN")}.value()`;
       case "basic_text": return JSON.stringify(String(f("TEXT")));
       case "basic_join": return `(str(${input("A","''")}) + str(${input("B","''")}))`;
-      default: throw new Error("値として使えないブロック: " + block.type);
+      default: throw new Error(t("値として使えないブロック: ") + block.type);
     }
   }
   function statement(block, chain, indent, jog) {

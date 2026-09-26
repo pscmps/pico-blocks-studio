@@ -1,5 +1,9 @@
 # PicoBlocks Studio — 対話AI向けブロックJSONガイド v1
 
+日本語 · [English](AI_GUIDE.en.md) · [README](README.md)
+
+メニューでEnglishを選ぶと、依頼文・ブロックカタログ・ガイドリンクも英語になります。JSONのtype、フィールド名、選択値、ボードIDは言語によらず同じです。これらの識別子は翻訳しないでください。
+
 アプリ: https://pscmps.github.io/pico-blocks-studio/
 
 この文書のURL: https://raw.githubusercontent.com/pscmps/pico-blocks-studio/main/AI_GUIDE.md
@@ -91,7 +95,7 @@ ADCは `read_u16()` の0〜65535、入力0〜3.3 V。5 Vを入れない。`VOLT`
 
 変数はプログラム先頭で0に初期化される。同じ `NAME` は同じ変数。除算の0、負数の平方根、範囲変換の同じ入力上下限、文字列の数値演算等は実行時エラーになる。`ROUND` はPythonの `round()`（ちょうど半分は偶数側）。長いループには待機を入れる。時刻は折り返すため単純な引き算ではなく `basic_elapsed` を使う。
 
-今回の基本セットにI2C/SPIの汎用通信、割り込み、任意のPython関数、LCD固有処理は含めない。
+今回の基本セットにI2C/SPIの汎用通信、割り込み、任意のPython関数は含めない。GEEK専用LCDブロックは下記を参照。
 
 ## サーボとJOG
 

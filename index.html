@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css?v=mixed-wiring2" />
+    <link rel="stylesheet" href="./styles.css?v=i18n1" />
   </head>
   <body>
     <header class="topbar">
@@ -42,6 +42,7 @@
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
           </button>
           <div id="appMenu" class="app-menu" hidden>
+            <label class="language-choice" for="languageSelect"><span>Language / 言語</span><select id="languageSelect" aria-label="Language / 言語"><option value="ja">日本語</option><option value="en">English</option></select></label>
             <button id="controllerMenuItem" type="button" disabled>
               <span>コントローラ</span>
               <small>UARTブロックを置くと使えます</small>
@@ -252,6 +253,7 @@
       <details id="scsHelp" class="help-card" hidden><summary>サーボを接続する前に</summary><p></p></details>
       <details class="help-card"><summary>配線図・ADC・サーボ設定</summary><p>左の図は端子名の模式図です。実物の向きや線色ではなく、公式ピン配置と端子名で確認してください。XIAOはD番号とGPIO番号を併記しています。</p><p id="boardPinHint" class="board-pin-hint"></p><p>ADC入力は0〜3.3 Vのみ。GPIOへ5 Vを入れないでください。サーボは種類ごとに接続ブロックを置き、位置や速度の範囲を実機に合わせます。</p></details>
       <details class="help-card"><summary>接続できない・起動しないとき</summary><p>データ通信対応USBケーブルとPC版Chrome／Edgeを使います。ほかのアプリが同じシリアルポートを使っていないか確認してください。</p><p>通常起動では3秒後に保存プログラムが動きます。BOOTで待機する機能は、この版で「保存して実行」したプログラムにだけ追加されます。</p><p>BOOTを押したまま再起動するとUF2用モードです。誤って入ったらBOOTを離して再起動してください。BOOT判定が使えないファームでは自動実行せず待機するため、機種に合う新しいMicroPythonへ更新してください。</p><p>「書き込み待機」はプログラムを中断し、PWM・PIO・ネットワーク等をリセットします。保存ファイルは消しません。再接続直後の「モード未確認」は、状態をまだ受信していない表示です。</p></details>
+      <footer class="help-credit">made by pscmps</footer>
     </dialog>
 
     <dialog id="exchangeDialog" class="exchange-dialog" aria-labelledby="exchangeTitle">
@@ -261,7 +263,7 @@
         <h3>1. 依頼テンプレートをコピー</h3>
         <p id="exchangeBoard"></p>
         <button id="copyPrompt" class="button button-secondary" type="button">依頼文をコピー</button>
-        <a href="https://github.com/pscmps/pico-blocks-studio/blob/main/AI_GUIDE.md" target="_blank" rel="noopener noreferrer">形式のガイド ↗</a>
+        <a id="exchangeGuideLink" href="https://github.com/pscmps/pico-blocks-studio/blob/main/AI_GUIDE.md" target="_blank" rel="noopener noreferrer">形式のガイド ↗</a>
         <details><summary>依頼文を表示・手動コピー</summary><textarea id="promptText" aria-label="依頼テンプレート" readonly spellcheck="false"></textarea></details>
         <p class="exchange-note">選択ボードと使えるブロックの仕様を含みます。現在のプログラムやWi-Fiパスワードは含みません。「作りたい動き」を書き換えて依頼してください。</p>
       </section>
@@ -276,14 +278,19 @@
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
+    <script src="./i18n.en.js?v=i18n1"></script>
+    <script src="./i18n.js?v=i18n1"></script>
+    <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
+    <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/ja.js"></script>
-    <script src="./servo.js?v=multi-servo1"></script>
-    <script src="./jog.js?v=multi-servo1"></script>
-    <script src="./basic.js?v=multi-servo1"></script>
-    <script src="./wiring.js?v=mixed-wiring2"></script>
-    <script src="./exchange.js?v=basics1"></script>
+    <script>PicoI18n.captureBlockly("ja", Blockly.Msg); PicoI18n.setLanguage(PicoI18n.language); PicoI18n.bindDocument(document);</script>
+    <script src="./servo.js?v=i18n1"></script>
+    <script src="./jog.js?v=i18n1"></script>
+    <script src="./basic.js?v=i18n1"></script>
+    <script src="./wiring.js?v=i18n1"></script>
+    <script src="./exchange.js?v=i18n1"></script>
     <script src="./boot.js?v=boot1"></script>
-    <script src="./display.js?v=lcd1"></script>
-    <script src="./app.js?v=lcd1"></script>
+    <script src="./display.js?v=i18n1"></script>
+    <script src="./app.js?v=i18n1"></script>
   </body>
 </html>

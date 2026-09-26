@@ -1,6 +1,14 @@
 # PicoBlocks Studio
 
+日本語 · [English](README.en.md) · [エディターを開く](https://pscmps.github.io/pico-blocks-studio/)
+
 RP2040 / RP2350 + MicroPython向けの、ブラウザーだけで使えるブロックプログラミング環境のプロトタイプです。
+
+## 表示言語
+
+右上メニューの **Language / 言語** で「日本語」「English」を選べます。選択はブラウザーに保存します。USB接続・配置したブロック・入力値・ボード選択・編集履歴を保ったまま切り替え、ボードへの書き込みは行いません。ユーザーが入力した文字列・変数名・パスワードや、既存のシリアル出力は翻訳しません。転送等の処理中は切り替えを無効にします。
+
+メニュー・ブロック・ツールチップ・配線図・初期ファーム案内・HELP・エラー・AI依頼文を翻訳します。生成コメントとWi-Fi JOGのスマホ画面は生成時の言語になります。保存済みWi-Fi画面を変えるには「保存して実行」で更新してください。HELP末尾は両言語共通で `made by pscmps` と表示します。GitHubのREADMEとAIガイドにも英語版があります。
 
 ## できること
 
@@ -31,7 +39,7 @@ RP2040 / RP2350 + MicroPython向けの、ブラウザーだけで使えるブロ
 
 取り込みは現在のブロックを置き換え、直前の状態を1件保存します。「取り込み前に戻す」で復元可能です。形式や配線の競合を検査し、自動実行はしません。任意のPythonを貼り付けてブロック化する機能ではありません。AIへ自動送信せず、現在のプログラムやWi-Fiパスワードもテンプレートに含めません。
 
-詳細とサンプルは [AI_GUIDE.md](AI_GUIDE.md)。基本ブロックは左の「基本」ツリーにまとめています。ADCは各基板で利用できるGP26〜29だけを表示します。入力は0〜3.3 V、5 V不可。文字の表示はUSBシリアル用で、LCD処理は含めません。サーボカテゴリはPWM → SCS009 → XL330 → STS3215です。
+詳細とサンプルは [AI_GUIDE.md](AI_GUIDE.md)。基本ブロックは左の「基本」ツリーにまとめています。ADCは各基板で利用できるGP26〜29だけを表示します。入力は0〜3.3 V、5 V不可。USBシリアル表示に加え、GEEKだけ「LCD文字表示」が使えます。サーボカテゴリはPWM → SCS009 → XL330 → STS3215 → STS3235です。
 
 ### 開発時のテスト
 
@@ -44,6 +52,8 @@ python tests/basics_runtime.py
 python tests/servo_runtime.py
 python tests/jog_runtime.py
 python tests/boot_runtime.py
+python tests/display_runtime.py
+python tests/i18n_runtime.py
 ```
 
 基本ブロック・8ボードの候補・入力検査・取り込み失敗時の保護・バックアップ復元・Python構文と模擬実行を検査します。実機のADC精度やサーボ動作はこの検査には含みません。
@@ -157,7 +167,7 @@ USB / Wi-FiのJOG割り当ては共通です。Wi-FiだけならUART開始ブロ
 
 参考: [MicroPython起動手順・raw REPLのsoft reset](https://docs.micropython.org/en/latest/reference/reset_boot.html)、[BOOTSEL API](https://docs.micropython.org/en/latest/library/rp2.html#rp2.bootsel_button)、[RP2040/RP2350対応の実装](https://github.com/micropython/micropython/blob/v1.29.0/ports/rp2/modrp2.c)、[Picoリセット操作](https://www.raspberrypi.com/news/how-to-add-a-reset-button-to-your-raspberry-pi-pico/)。起動ゲートと保存処理は模擬環境で検査済みですが、各基板の実ボタン操作・USB再接続・サーボ実機動作は未検証です。
 
-左側の「基本」「UART」「SCS009」は開閉できるツリーです。「SCS009」内にはPIO通信の準備、トルクON/OFF、位置移動ブロックがあります。「プログラム開始」はワークスペースに最初から1個だけ固定され、ツリーから追加したり削除したりできません。LCDは機種ごとに処理が異なるため、表示カテゴリは設けていません。
+左側の「基本」「UART」は開閉できるツリーです。「SCS009」内にはPIO通信の準備、トルクON/OFF、位置移動ブロックがあります。「プログラム開始」はワークスペースに最初から1個だけ固定され、ツリーから追加したり削除したりできません。GEEKでは「基本 → LCD文字表示」が使えます。
 
 「UART」→「接続」または「Wi-Fi JOG」の開始ブロックを置くと、右上のメニューから「コントローラ」を開けます。USBでもWi-Fiでも、上/下がID1、右/左がID2、W/SがID3、D/AがID4の増減、Spaceが4軸の中央復帰です。スマホでは画面上の同じボタンをタップします。キーを離すと追加指令は止まります（サーボの保持トルクは解除しません）。
 

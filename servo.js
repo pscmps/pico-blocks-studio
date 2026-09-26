@@ -1,10 +1,12 @@
 /* MicroPython ports of the user's XL330 / STS3215 C protocol implementations.
  * No EEPROM configuration is changed automatically. See README for scope. */
 const ServoBlocks = (() => {
+  const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw: args[0]}, ...args.slice(1));
+
   const models = {
     xl330: { name: "XL330", colour: 204, center: 2048, max: 4095, speed: 20, baud: "57600" },
     sts3215: { name: "STS3215", colour: 330, center: 2048, max: 4095, speed: 500, baud: "1000000" },
-    pwm: { name: "PWMサーボ", colour: 42, center: 90, max: 180, speed: 0 },
+    pwm: { get name() { return t("PWMサーボ"); }, colour: 42, center: 90, max: 180, speed: 0 },
     sts3235: { name: "STS3235", colour: 350, center: 2048, max: 4095, speed: 500, baud: "1000000" },
   };
   const axes = [["↑ ↓", "Y"], ["← →", "X"], ["W S", "Z"], ["A D", "R"]];
@@ -13,38 +15,38 @@ const ServoBlocks = (() => {
     const defs = [];
     for (const [key, m] of Object.entries(models)) {
       Blockly.Blocks[key + "_setup"] = { init() {
-        this.appendDummyInput().appendField(m.name + "を接続");
-        this.appendDummyInput().appendField(key === "pwm" ? "信号" : "DATA").appendField(new Blockly.FieldDropdown(pinOptions), "PIN");
+        this.appendDummyInput().appendField(m.name + t("を接続"));
+        this.appendDummyInput().appendField(key === "pwm" ? t("信号") : "DATA").appendField(new Blockly.FieldDropdown(pinOptions), "PIN");
         if (key === "pwm") {
-          this.appendDummyInput().appendField("番号").appendField(new Blockly.FieldNumber(1, 1, 16, 1), "CHANNEL");
+          this.appendDummyInput().appendField(t("番号")).appendField(new Blockly.FieldNumber(1, 1, 16, 1), "CHANNEL");
           this.appendDummyInput().appendField("0°").appendField(new Blockly.FieldNumber(1000, 500, 2500, 1), "MIN_US").appendField("µs / 180°").appendField(new Blockly.FieldNumber(2000, 500, 2500, 1), "MAX_US").appendField("µs");
-          this.setTooltip("50 HzのPWM出力。接続だけでは動かしません。サーボの仕様に合わせてパルス幅を調整してください。");
+          this.setTooltip(t("50 HzのPWM出力。接続だけでは動かしません。サーボの仕様に合わせてパルス幅を調整してください。"));
         } else {
           const baud = [["57600 bps", "57600"], ["115200 bps", "115200"], ["1 Mbps", "1000000"]];
-          this.appendDummyInput().appendField("通信速度").appendField(new Blockly.FieldDropdown(baud), "BAUD");
+          this.appendDummyInput().appendField(t("通信速度")).appendField(new Blockly.FieldDropdown(baud), "BAUD");
           this.setFieldValue(m.baud, "BAUD");
-          this.setTooltip("GPIO 1本でPIO半二重通信。接続だけではトルクを有効にしません。1種類につき接続ブロックは1個です。");
+          this.setTooltip(t("GPIO 1本でPIO半二重通信。接続だけではトルクを有効にしません。1種類につき接続ブロックは1個です。"));
         }
         this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(m.colour);
       }};
       const add = (suffix, content) => defs.push({ type: key + "_" + suffix, previousStatement: null, nextStatement: null, colour: m.colour, ...content });
       const id = () => num("ID", 1, 0, key === "xl330" ? 252 : 253);
       if (key !== "pwm") {
-        add("ping", { message0: `${m.name} ID %1 の接続を確認`, args0: [id()], tooltip: "Ping応答をシリアル欄へ表示します。移動しません。" });
-        add("read", { message0: `${m.name} ID %1 の現在位置を読む`, args0: [id()], tooltip: "サーボから読み取った実測位置をシリアル欄へ表示します。" });
-        add("torque", { message0: `${m.name} ID %1 のトルクを %2`, args0: [id(), { type: "field_dropdown", name: "STATE", options: [["ON", "1"], ["OFF", "0"]] }], tooltip: "ON時は現在位置を目標へ設定してから有効化します。標準の単回転位置モード専用です。" });
-        add("move", { message0: `${m.name} ID %1 を位置 %2 へ`, args0: [id(), num("POSITION", m.center, 0, m.max)], message1: "速度値 %1  加速度値 %2", args1: [num("SPEED", m.speed, 1, key === "xl330" ? 100 : 3400), num("ACCEL", 20, 1, 100)], tooltip: "0〜4095の単回転位置。先にトルクONを置いてください。EEPROMや動作モードは変更しません。" });
+        add("ping", { message0: t`${m.name} ID %1 の接続を確認`, args0: [id()], tooltip: t("Ping応答をシリアル欄へ表示します。移動しません。") });
+        add("read", { message0: t`${m.name} ID %1 の現在位置を読む`, args0: [id()], tooltip: t("サーボから読み取った実測位置をシリアル欄へ表示します。") });
+        add("torque", { message0: t`${m.name} ID %1 のトルクを %2`, args0: [id(), { type: "field_dropdown", name: "STATE", options: [["ON", "1"], ["OFF", "0"]] }], tooltip: t("ON時は現在位置を目標へ設定してから有効化します。標準の単回転位置モード専用です。") });
+        add("move", { message0: t`${m.name} ID %1 を位置 %2 へ`, args0: [id(), num("POSITION", m.center, 0, m.max)], message1: t("速度値 %1  加速度値 %2"), args1: [num("SPEED", m.speed, 1, key === "xl330" ? 100 : 3400), num("ACCEL", 20, 1, 100)], tooltip: t("0〜4095の単回転位置。先にトルクONを置いてください。EEPROMや動作モードは変更しません。") });
       } else {
-        add("move", { message0: "PWMサーボ %1 を %2 °へ", args0: [num("CHANNEL", 1, 1, 16), num("ANGLE", 90, 0, 180)] });
-        add("pulse", { message0: "PWMサーボ %1 のパルス幅を %2 µsに", args0: [num("CHANNEL", 1, 1, 16), num("PULSE", 1500, 500, 2500)], tooltip: "接続ブロックで設定した上下限の範囲内だけを出力します。" });
-        add("stop", { message0: "PWMサーボ %1 の出力を停止", args0: [num("CHANNEL", 1, 1, 16)], tooltip: "PWM信号を停止します。保持力の挙動はサーボに依存します。" });
+        add("move", { message0: t("PWMサーボ %1 を %2 °へ"), args0: [num("CHANNEL", 1, 1, 16), num("ANGLE", 90, 0, 180)] });
+        add("pulse", { message0: t("PWMサーボ %1 のパルス幅を %2 µsに"), args0: [num("CHANNEL", 1, 1, 16), num("PULSE", 1500, 500, 2500)], tooltip: t("接続ブロックで設定した上下限の範囲内だけを出力します。") });
+        add("stop", { message0: t("PWMサーボ %1 の出力を停止"), args0: [num("CHANNEL", 1, 1, 16)], tooltip: t("PWM信号を停止します。保持力の挙動はサーボに依存します。") });
       }
-      add("bind", { message0: `JOGの %1 を ${m.name} ${key === "pwm" ? "番号" : "ID"} %2 に割り当て`, args0: [{ type: "field_dropdown", name: "AXIS", options: axes }, num("ID", 1, key === "pwm" ? 1 : 0, key === "pwm" ? 16 : key === "xl330" ? 252 : 253)], message1: "中央 %1  増減幅 %2" + (key === "pwm" ? "（度）" : "  速度値 %3"), args1: [num("CENTER", m.center, 0, m.max), num("STEP", key === "pwm" ? 2 : 10, 1, m.max), ...(key === "pwm" ? [] : [num("SPEED", m.speed, 1, key === "xl330" ? 100 : 3400)])] });
+      add("bind", { message0: t`JOGの %1 を ${m.name} ${key === "pwm" ? t("番号") : "ID"} %2 に割り当て`, args0: [{ type: "field_dropdown", name: "AXIS", options: axes }, num("ID", 1, key === "pwm" ? 1 : 0, key === "pwm" ? 16 : key === "xl330" ? 252 : 253)], message1: t("中央 %1  増減幅 %2") + (key === "pwm" ? t("（度）") : t("  速度値 %3")), args1: [num("CENTER", m.center, 0, m.max), num("STEP", key === "pwm" ? 2 : 10, 1, m.max), ...(key === "pwm" ? [] : [num("SPEED", m.speed, 1, key === "xl330" ? 100 : 3400)])] });
     }
     for (const def of defs) {
       if (def.args1?.some(field => field.name === "SPEED")) {
-        def.message1 = def.message1.replace("速度値", "速度値（機種固有）");
-        def.tooltip = (def.tooltip || "") + " 速度値はサーボへ渡す設定値です。時間（ms）ではなく、同じ値でも機種によって速さが異なります。";
+        def.message1 = def.message1.replace(t("速度値"), t("速度値（機種固有）"));
+        def.tooltip = (def.tooltip || "") + t(" 速度値はサーボへ渡す設定値です。時間（ms）ではなく、同じ値でも機種によって速さが異なります。");
       }
     }
     Blockly.defineBlocksWithJsonArray(defs);
@@ -56,7 +58,7 @@ const ServoBlocks = (() => {
     const [model, op] = block.type.split("_");
     if (!models[model]) return null;
     const n = name => Number(block.getFieldValue(name));
-    if (op === "setup" || op === "bind") return "pass  # サーボ接続・JOG設定は先頭で準備済み\n";
+    if (op === "setup" || op === "bind") return t("pass  # サーボ接続・JOG設定は先頭で準備済み\n");
     if (model === "pwm") {
       const method = { move: `angle(${n("ANGLE")})`, pulse: `pulse(${n("PULSE")})`, stop: "stop()" }[op];
       return method ? `pwm_servos[${n("CHANNEL")}].${method}\n` : null;

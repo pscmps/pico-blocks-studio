@@ -1,6 +1,8 @@
 /* Schematic connector layout, not a drawing of physical plug pin order. */
 const ServoWiring = (() => {
-  const names = {scs009: "SCS009", xl330: "XL330", sts3215: "STS3215", sts3235: "STS3235", pwm: "PWMサーボ"};
+  const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw: args[0]}, ...args.slice(1));
+
+  const names = {scs009: "SCS009", xl330: "XL330", sts3215: "STS3215", sts3235: "STS3235", get pwm() { return t("PWMサーボ"); }};
   const colours = ["#2479bf", "#42953b", "#518fe5", "#7e9b22", "#465ab7", "#1b9965", "#389ab6", "#637a29", "#335886", "#286b42", "#68a8cf", "#527a56", "#5c69dd", "#438574", "#346ba8", "#80a842"];
   const serialColours = {scs009: "#dc7900", xl330: "#8246bc", sts3215: "#c23582", sts3235: "#00888e"};
   function groups(blocks, jogAxes = {}) {
@@ -60,7 +62,7 @@ const ServoWiring = (() => {
       const supplyY = cursor + 15;
       backgrounds += `<rect x="102" y="${supplyY}" width="198" height="48" rx="9" class="device-box"/>`;
       supplies += `<g data-supply="${group.model}">`;
-      supplies += text(111, supplyY + 15, `${group.name}用 外部電源`, "board-title") + terminal(125, supplyY + 34, power) + text(135, supplyY + 37, "V+") + terminal(210, supplyY + 34, ground) + text(220, supplyY + 37, "GND") + "</g>";
+      supplies += text(111, supplyY + 15, t`${group.name}用 外部電源`, "board-title") + terminal(125, supplyY + 34, power) + text(135, supplyY + 37, "V+") + terminal(210, supplyY + 34, ground) + text(220, supplyY + 37, "GND") + "</g>";
       // Each kind has a separate V+ feed; only GND is shared with the board.
       wires += path(`M${width - 3} 284 V${supplyY + 34} H210`, ground);
       for (const [index, device] of group.devices.entries()) {
@@ -85,7 +87,7 @@ const ServoWiring = (() => {
         }
         backgrounds += `<rect x="154" y="${y}" width="146" height="92" rx="9" fill="white" stroke="${colour}" stroke-width="2"/>`;
         connectors += `<g data-servo="${group.model}" data-id="${device.id ?? "unknown"}"><rect x="158" y="${y + 5}" width="138" height="17" rx="3" fill="white"/>`;
-        connectors += text(164, y + 17, `${group.name} · ${device.id === null ? "ID未指定" : "ID " + device.id}`, "board-title");
+        connectors += text(164, y + 17, `${group.name} · ${device.id === null ? t("ID未指定") : "ID " + device.id}`, "board-title");
         positions.forEach((x, i) => {
           connectors += path(`M${x} ${y + 34} V${y + 76}`, colours[i]);
           connectors += terminal(x, y + 34, colours[i]) + terminal(x, y + 76, colours[i]);
@@ -97,7 +99,7 @@ const ServoWiring = (() => {
       cursor = start + group.devices.length * stride + 8;
     }
     const height = cursor + 18;
-    return {width, height, content: `<g transform="translate(${shift} 0)">${drawing.board}</g>` + backgrounds + wires + supplies + connectors + highlights + text(width / 2, height - 6, "機能の接続図です。実物の端子順・定格電圧は要確認", "caption", "middle")};
+    return {width, height, content: `<g transform="translate(${shift} 0)">${drawing.board}</g>` + backgrounds + wires + supplies + connectors + highlights + text(width / 2, height - 6, t("機能の接続図です。実物の端子順・定格電圧は要確認"), "caption", "middle")};
   }
   return {groups, render};
 })();

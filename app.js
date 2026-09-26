@@ -6,64 +6,66 @@
   const decoder = new TextDecoder();
 
   const PICO_PINS = [...Array.from({ length: 23 }, (_, pin) => pin), 26, 27, 28];
+  const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw: args[0]}, ...args.slice(1));
   const GEEK_PINS = [2, 3, 4, 5, 28, 29];
+  function createBoardProfiles() {
   const BOARD_PROFILES = {
     pico: {
       name: "Raspberry Pi Pico",
       pins: PICO_PINS,
       ledPin: "25",
       firmwareUrl: "https://micropython.org/download/RPI_PICO/",
-      firmwareLabel: "Raspberry Pi Pico用MicroPython",
+      firmwareLabel: t("Raspberry Pi Pico用MicroPython"),
       firmwareIsZip: false,
       pinoutUrl: "https://datasheets.raspberrypi.com/pico/Pico-2-Pinout.pdf",
       layout: "pico",
       driveName: "RPI-RP2",
-      boot: "USBを外し、BOOTSELボタンを押したままUSBでPCへ接続してから、ボタンを離します。",
+      boot: t("USBを外し、BOOTSELボタンを押したままUSBでPCへ接続してから、ボタンを離します。"),
     },
     pico2w: {
       name: "Raspberry Pi Pico 2 W",
       pins: PICO_PINS,
       ledPin: "\"LED\"",
       firmwareUrl: "https://micropython.org/download/RPI_PICO2_W/",
-      firmwareLabel: "Raspberry Pi Pico 2 W用MicroPython",
+      firmwareLabel: t("Raspberry Pi Pico 2 W用MicroPython"),
       firmwareIsZip: false,
       pinoutUrl: "https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html",
       layout: "pico",
       driveName: "RP2350",
-      boot: "USBを外し、BOOTSELボタンを押したままUSBでPCへ接続してから、ボタンを離します。",
+      boot: t("USBを外し、BOOTSELボタンを押したままUSBでPCへ接続してから、ボタンを離します。"),
     },
     rp2350_geek: {
       name: "Waveshare RP2350-GEEK",
       pins: GEEK_PINS,
       ledPin: null,
       firmwareUrl: "https://files.waveshare.com/wiki/RP2350-Plus/WAVESHARE-RP2350A-Board.zip",
-      firmwareLabel: "Waveshare RP2350A用MicroPython ZIP",
+      firmwareLabel: t("Waveshare RP2350A用MicroPython ZIP"),
       firmwareIsZip: true,
       pinoutUrl: "https://files.waveshare.com/wiki/RP2350-GEEK/RP2350-GEEK.pdf",
       layout: "geek",
       driveName: "RP2350",
-      boot: "USBでPCへ接続し、BOOTとRESETを同時に押します。RESETを先に離し、次にBOOTを離します。",
+      boot: t("USBでPCへ接続し、BOOTとRESETを同時に押します。RESETを先に離し、次にBOOTを離します。"),
     },
     rp2040_geek: {
       name: "Waveshare RP2040-GEEK",
       pins: GEEK_PINS,
       ledPin: null,
       firmwareUrl: "https://files.waveshare.com/wiki/RP2350-Plus/WAVESHARE-RP2040-Board.zip",
-      firmwareLabel: "Waveshare RP2040用MicroPython ZIP",
+      firmwareLabel: t("Waveshare RP2040用MicroPython ZIP"),
       firmwareIsZip: true,
       pinoutUrl: "https://files.waveshare.com/wiki/RP2040-GEEK/RP2040-GEEK-Schematic.pdf",
       layout: "geek",
       driveName: "RPI-RP2",
-      boot: "USBでPCへ接続し、BOOTとRESETを同時に押します。RESETを先に離し、次にBOOTを離します。",
+      boot: t("USBでPCへ接続し、BOOTとRESETを同時に押します。RESETを先に離し、次にBOOTを離します。"),
     },
   };
   BOARD_PROFILES.picow = {
     ...BOARD_PROFILES.pico, name: "Raspberry Pi Pico W", wifi: true, ledPin: '"LED"',
-    firmwareUrl: "https://micropython.org/download/RPI_PICO_W/", firmwareLabel: "Raspberry Pi Pico W用MicroPython",
+    firmwareUrl: "https://micropython.org/download/RPI_PICO_W/", firmwareLabel: t("Raspberry Pi Pico W用MicroPython"),
   };
   BOARD_PROFILES.pico2 = {
     ...BOARD_PROFILES.pico2w, name: "Raspberry Pi Pico 2", ledPin: "25",
-    firmwareUrl: "https://micropython.org/download/RPI_PICO2/", firmwareLabel: "Raspberry Pi Pico 2用MicroPython",
+    firmwareUrl: "https://micropython.org/download/RPI_PICO2/", firmwareLabel: t("Raspberry Pi Pico 2用MicroPython"),
   };
   BOARD_PROFILES.pico2w.wifi = true;
   for (const chip of ["rp2040", "rp2350"]) {
@@ -72,12 +74,15 @@
       name: `Seeed Studio XIAO ${chip.toUpperCase()}`, pins, layout: "xiao", ledPin: "25", ledActiveLow: true,
       pinLabels: Object.fromEntries(pins.map((pin, i) => [pin, `D${i} / GP${pin}`])),
       firmwareUrl: `https://micropython.org/download/SEEED_XIAO_${chip.toUpperCase()}/`,
-      firmwareLabel: `XIAO ${chip.toUpperCase()}用MicroPython`, firmwareIsZip: false,
+      firmwareLabel: t`XIAO ${chip.toUpperCase()}用MicroPython`, firmwareIsZip: false,
       pinoutUrl: chip === "rp2350" ? "https://wiki.seeedstudio.com/xiao_rp2350_arduino/" : "https://wiki.seeedstudio.com/XIAO-RP2040/",
       driveName: chip === "rp2350" ? "RP2350" : "RPI-RP2",
-      boot: "USBを外し、XIAO本体のBOOTボタンを押したままUSB接続し、ボタンを離します。接続済みならBOOTを押しながらRESETを押して離し、最後にBOOTを離します。",
+      boot: t("USBを外し、XIAO本体のBOOTボタンを押したままUSB接続し、ボタンを離します。接続済みならBOOTを押しながらRESETを押して離し、最後にBOOTを離します。"),
     };
   }
+  return BOARD_PROFILES;
+  }
+  const BOARD_PROFILES = createBoardProfiles();
   let selectedBoard = localStorage.getItem("picoblocks-board-v1");
   if (!BOARD_PROFILES[selectedBoard]) selectedBoard = "pico";
   const pinLabel = pin => BOARD_PROFILES[selectedBoard].pinLabels?.[pin] || `GP${pin}`;
@@ -138,7 +143,7 @@
   let boardMode = "UNKNOWN";
   function setBoardMode(mode) {
     boardMode = mode;
-    elements.boardMode.textContent = ({UNKNOWN:"モード未確認",BOOT:"起動待ち · BOOT受付中",WRITE:"書き込み待機",RUN:"実行中",FINISHED:"実行終了",STOPPED:"中断中（出力は要確認）"})[mode] || "モード未確認";
+    elements.boardMode.textContent = ({UNKNOWN:t("モード未確認"),BOOT:t("起動待ち · BOOT受付中"),WRITE:t("書き込み待機"),RUN:t("実行中"),FINISHED:t("実行終了"),STOPPED:t("中断中（出力は要確認）")})[mode] || t("モード未確認");
   }
   const waiters = new Set();
   let controllerActive = false;
@@ -165,27 +170,28 @@
     startHats: true,
   });
 
+  function registerBlocks() {
   Blockly.defineBlocksWithJsonArray([
     {
       type: "program_start",
-      message0: "プログラム開始",
+      message0: t("プログラム開始"),
       nextStatement: null,
       colour: 174,
       hat: "cap",
-      tooltip: "この下につないだ処理から始まります。",
+      tooltip: t("この下につないだ処理から始まります。"),
     },
     {
       type: "pico_led",
-      message0: "本体LEDを %1",
-      args0: [{ type: "field_dropdown", name: "STATE", options: [["点灯", "1"], ["消灯", "0"], ["反転", "TOGGLE"]] }],
+      message0: t("本体LEDを %1"),
+      args0: [{ type: "field_dropdown", name: "STATE", options: [[t("点灯"), "1"], [t("消灯"), "0"], [t("反転"), "TOGGLE"]] }],
       previousStatement: null,
       nextStatement: null,
       colour: 39,
-      tooltip: "ボード上のLEDを操作します。",
+      tooltip: t("ボード上のLEDを操作します。"),
     },
     {
       type: "wait_ms",
-      message0: "%1 ミリ秒待つ",
+      message0: t("%1 ミリ秒待つ"),
       args0: [{ type: "field_number", name: "MS", value: 500, min: 0, precision: 1 }],
       previousStatement: null,
       nextStatement: null,
@@ -193,7 +199,7 @@
     },
     {
       type: "print_text",
-      message0: "%1 を表示",
+      message0: t("%1 を表示"),
       args0: [{ type: "field_input", name: "TEXT", text: "Hello Pico!" }],
       previousStatement: null,
       nextStatement: null,
@@ -201,7 +207,7 @@
     },
     {
       type: "repeat_times",
-      message0: "%1 回くり返す",
+      message0: t("%1 回くり返す"),
       args0: [{ type: "field_number", name: "TIMES", value: 3, min: 0, precision: 1 }],
       message1: "%1",
       args1: [{ type: "input_statement", name: "DO" }],
@@ -211,7 +217,7 @@
     },
     {
       type: "forever_loop",
-      message0: "ずっとくり返す",
+      message0: t("ずっとくり返す"),
       message1: "%1",
       args1: [{ type: "input_statement", name: "DO" }],
       previousStatement: null,
@@ -219,7 +225,7 @@
     },
     {
       type: "gpio_write",
-      message0: "GP %1 を %2",
+      message0: t("GP %1 を %2"),
       args0: [
         { type: "field_number", name: "PIN", value: 0, min: 0, max: 29, precision: 1 },
         { type: "field_dropdown", name: "VALUE", options: [["HIGH", "1"], ["LOW", "0"]] },
@@ -230,7 +236,7 @@
     },
     {
       type: "scs009_torque",
-      message0: "SCS009 ID %1 のトルクを %2",
+      message0: t("SCS009 ID %1 のトルクを %2"),
       args0: [
         { type: "field_number", name: "ID", value: 1, min: 0, max: 253, precision: 1 },
         { type: "field_dropdown", name: "STATE", options: [["ON", "1"], ["OFF", "0"]] },
@@ -238,16 +244,16 @@
       previousStatement: null,
       nextStatement: null,
       colour: 14,
-      tooltip: "指定IDのトルクを有効または無効にします。",
+      tooltip: t("指定IDのトルクを有効または無効にします。"),
     },
     {
       type: "scs009_move",
-      message0: "SCS009 ID %1 を位置 %2 へ",
+      message0: t("SCS009 ID %1 を位置 %2 へ"),
       args0: [
         { type: "field_number", name: "ID", value: 1, min: 0, max: 253, precision: 1 },
         { type: "field_number", name: "POSITION", value: 511, min: 0, max: 1023, precision: 1 },
       ],
-      message1: "時間値 %1  速度値 %2",
+      message1: t("時間値 %1  速度値 %2"),
       args1: [
         { type: "field_number", name: "TIME", value: 0, min: 0, max: 65535, precision: 1 },
         { type: "field_number", name: "SPEED", value: 500, min: 0, max: 1023, precision: 1 },
@@ -255,21 +261,21 @@
       previousStatement: null,
       nextStatement: null,
       colour: 14,
-      tooltip: "0〜1023が約0〜300°です。時間値と速度値はSCS1.1メモリーテーブルの生値です。",
+      tooltip: t("0〜1023が約0〜300°です。時間値と速度値はSCS1.1メモリーテーブルの生値です。"),
     },
   ]);
 
   Blockly.Blocks.scs009_setup = {
     init() {
-      this.appendDummyInput().appendField("SCS009を接続");
+      this.appendDummyInput().appendField(t("SCS009を接続"));
       this.appendDummyInput().appendField("DATA").appendField(new Blockly.FieldDropdown(pinOptions), "PIN");
       this.appendDummyInput()
-        .appendField("通信速度")
+        .appendField(t("通信速度"))
         .appendField(new Blockly.FieldDropdown([["1 Mbps", "1000000"], ["500 kbps", "500000"], ["38400 bps", "38400"]]), "BAUD");
       this.setPreviousStatement(true);
       this.setNextStatement(true);
       this.setColour(14);
-      this.setTooltip("SCS009 / SCS0009のDATA線を、選択中の基板で外部に出ているGPIOへ直接接続します。");
+      this.setTooltip(t("SCS009 / SCS0009のDATA線を、選択中の基板で外部に出ているGPIOへ直接接続します。"));
     },
   };
 
@@ -279,31 +285,31 @@
 
   Blockly.Blocks.uart_controller_setup = {
     init() {
-      this.appendDummyInput().appendField("PCからUART値を受信");
-      this.appendDummyInput().appendField("USBシリアル接続を共用");
+      this.appendDummyInput().appendField(t("PCからUART値を受信"));
+      this.appendDummyInput().appendField(t("USBシリアル接続を共用"));
       this.setPreviousStatement(true);
       this.setNextStatement(true);
       this.setColour(262);
-      this.setTooltip("書き込みに使うWeb Serial接続から、4軸のJOG値を受信します。");
+      this.setTooltip(t("書き込みに使うWeb Serial接続から、4軸のJOG値を受信します。"));
     },
   };
 
   Blockly.defineBlocksWithJsonArray([
     {
-      type: "wifi_jog_setup", message0: "Wi-Fi JOGサーバを開始",
-      message1: "Wi-Fi名 %1", args1: [{ type: "field_input", name: "SSID", text: "PicoBlocks-JOG" }],
-      message2: "パスワード %1", args2: [{ type: "field_input", name: "PASSWORD", text: "picoblocks" }],
+      type: "wifi_jog_setup", message0: t("Wi-Fi JOGサーバを開始"),
+      message1: t("Wi-Fi名 %1"), args1: [{ type: "field_input", name: "SSID", text: "PicoBlocks-JOG" }],
+      message2: t("パスワード %1"), args2: [{ type: "field_input", name: "PASSWORD", text: "picoblocks" }],
       previousStatement: null, nextStatement: null, colour: 190,
-      tooltip: "Pico W / Pico 2 WがWi-Fi親機になります。スマホでこのWi-Fiへ接続して操作します。パスワードは8〜63文字。",
+      tooltip: t("Pico W / Pico 2 WがWi-Fi親機になります。スマホでこのWi-Fiへ接続して操作します。パスワードは8〜63文字。"),
     },
     {
       type: "uart_scs_bind",
-      message0: "JOGの %1 を SCS009 ID %2 に割り当て",
+      message0: t("JOGの %1 を SCS009 ID %2 に割り当て"),
       args0: [
         { type: "field_dropdown", name: "AXIS", options: [["↑ ↓", "Y"], ["← →", "X"], ["W S", "Z"], ["A D", "R"]] },
         { type: "field_number", name: "ID", value: 1, min: 0, max: 253, precision: 1 },
       ],
-      message1: "中央 %1  増減幅 %2  速度値（機種固有）%3",
+      message1: t("中央 %1  増減幅 %2  速度値（機種固有）%3"),
       args1: [
         { type: "field_number", name: "CENTER", value: 511, min: 0, max: 1023, precision: 1 },
         { type: "field_number", name: "STEP", value: 10, min: 1, max: 1023, precision: 1 },
@@ -312,9 +318,12 @@
       previousStatement: null,
       nextStatement: null,
       colour: 262,
-      tooltip: "USB／Wi-Fi共通のJOG割り当て。速度500はサーボに送る生の速度値で、500 msではありません。増減幅は1回のキー操作で動かす位置の差です。",
+      tooltip: t("USB／Wi-Fi共通のJOG割り当て。速度500はサーボに送る生の速度値で、500 msではありません。増減幅は1回のキー操作で動かす位置の差です。"),
     },
   ]);
+
+  }
+  registerBlocks();
 
   function buildToolbox() {
     const motionBlocks = [
@@ -331,13 +340,13 @@
       }] : []),
       {
         kind: "category",
-        name: "基本",
+        name: t("基本"),
         colour: "#27b7a7",
         expanded: true,
         contents: [
           {
             kind: "category",
-            name: "うごき",
+            name: t("うごき"),
             colour: "#f0a65a",
             contents: motionBlocks,
           },
@@ -353,19 +362,19 @@
         contents: [
           {
             kind: "category",
-            name: "接続",
+            name: t("接続"),
             colour: "#7c6ee6",
             contents: [{ kind: "block", type: "uart_controller_setup" }],
           },
           {
             kind: "category",
-            name: "コントローラ",
+            name: t("コントローラ"),
             colour: "#7c6ee6",
             contents: [{ kind: "block", type: "uart_scs_bind" }],
           },
         ],
       },
-      ...ServoBlocks.toolbox().filter(category => category.name === "PWMサーボ"),
+      ...ServoBlocks.toolbox().filter(category => category.name === t("PWMサーボ")),
       {
         kind: "category",
         name: "SCS009",
@@ -378,7 +387,7 @@
           { kind: "block", type: "uart_scs_bind" },
         ],
       },
-      ...ServoBlocks.toolbox().filter(category => category.name !== "PWMサーボ"),
+      ...ServoBlocks.toolbox().filter(category => category.name !== t("PWMサーボ")),
     ],
     };
   }
@@ -542,7 +551,7 @@ class SCS009PIO:
         case "pico_led": {
           const state = current.getFieldValue("STATE");
           if (BOARD_PROFILES[selectedBoard].ledPin === null) {
-            piece = "# 選択中の基板では本体LEDブロックを使用しません\n";
+            piece = t("# 選択中の基板では本体LEDブロックを使用しません\n");
           } else {
             piece = state === "TOGGLE" ? "led.toggle()\n" : `led.value(${BOARD_PROFILES[selectedBoard].ledActiveLow ? 1 - Number(state) : state})\n`;
           }
@@ -558,14 +567,14 @@ class SCS009PIO:
           piece = `Pin(${Number(current.getFieldValue("PIN"))}, Pin.OUT).value(${current.getFieldValue("VALUE")})\n`;
           break;
         case "scs009_setup":
-          piece = `pass  # SCS009はプログラム先頭で接続済みです\n`;
+          piece = t`pass  # SCS009はプログラム先頭で接続済みです\n`;
           break;
         case "uart_controller_setup":
         case "wifi_jog_setup":
-          piece = `pass  # JOGコントローラはプログラム先頭で接続済みです\n`;
+          piece = t`pass  # JOGコントローラはプログラム先頭で接続済みです\n`;
           break;
         case "uart_scs_bind":
-          piece = `pass  # ${current.getFieldValue("AXIS")}軸をSCS009 ID ${Number(current.getFieldValue("ID"))}へ割り当て済みです\n`;
+          piece = t`pass  # ${current.getFieldValue("AXIS")}軸をSCS009 ID ${Number(current.getFieldValue("ID"))}へ割り当て済みです\n`;
           break;
         case "scs009_torque":
           piece = `scs009.torque(${Number(current.getFieldValue("ID"))}, ${current.getFieldValue("STATE") === "1" ? "True" : "False"})\n`;
@@ -585,7 +594,7 @@ class SCS009PIO:
           break;
         }
         default:
-          piece = GeekDisplay.statement(current, BasicBlocks.expression, workspace.getAllBlocks(false)) || BasicBlocks.statement(current, chainToPython, indent, Boolean(getUartControllerBlock())) || ServoBlocks.statement(current) || `pass  # 未対応のブロック: ${current.type}\n`;
+          piece = GeekDisplay.statement(current, BasicBlocks.expression, workspace.getAllBlocks(false)) || BasicBlocks.statement(current, chainToPython, indent, Boolean(getUartControllerBlock())) || ServoBlocks.statement(current) || t`pass  # 未対応のブロック: ${current.type}\n`;
       }
       code += piece;
       current = current.getNextBlock();
@@ -608,7 +617,7 @@ class SCS009PIO:
     };
     const start = roots.find((block) => block.type === "program_start");
     const first = start ? start : roots.find((block) => block.previousConnection || block.nextConnection);
-    let body = first ? chainToPython(first) : "print(\"ブロックを置いてください\")\n";
+    let body = first ? chainToPython(first) : t("print(\"ブロックを置いてください\")\n");
     const scsCode = usesSCS009
       ? `\n${SCS009_DRIVER}\nscs009 = SCS009PIO(data_pin=${scsConfig.pin}, baud=${scsConfig.baud})\n`
       : "";
@@ -620,10 +629,10 @@ class SCS009PIO:
       } : null);
       body = body.replace(/time\.sleep_ms\((\d+)\)/g, "_controller_wait($1)");
       body = 'print("PICOBLOCKS_READY")\n' + body;
-      body += `\n# PCからのJOG指令を待ちます\nwhile True:\n    _controller_poll()\n    time.sleep_ms(5)\n`;
+      body += t`\n# PCからのJOG指令を待ちます\nwhile True:\n    _controller_poll()\n    time.sleep_ms(5)\n`;
     }
     const serialImports = uartSetup ? "\nimport sys\nimport select\nimport json" : "";
-    return `# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks)}${BasicBlocks.runtime(allBlocks)}${GeekDisplay.runtime(allBlocks)}${ledCode}${uartCode}\n${body}`;
+    return t`# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks)}${BasicBlocks.runtime(allBlocks)}${GeekDisplay.runtime(allBlocks)}${ledCode}${uartCode}\n${body}`;
   }
 
   const PICO_LEFT_PINS = ["GP0", "GP1", "GND", "GP2", "GP3", "GP4", "GP5", "GND", "GP6", "GP7", "GP8", "GP9", "GND", "GP10", "GP11", "GP12", "GP13", "GND", "GP14", "GP15"];
@@ -642,7 +651,7 @@ class SCS009PIO:
       const numberX = side === "left" ? x - 7 : x + 7;
       const anchor = side === "left" ? "start" : "end";
       const numberAnchor = side === "left" ? "end" : "start";
-      return `<g class="pin-hit"><title>物理ピン ${physical}: ${name}</title><circle cx="${x}" cy="${y}" r="3.2" class="board-pin ${active ? "active" : ""}"/><text x="${labelX}" y="${y + 2.2}" text-anchor="${anchor}" class="pin-label ${active ? "active" : ""}">${name}</text><text x="${numberX}" y="${y + 2.2}" text-anchor="${numberAnchor}" class="pin-number">${physical}</text></g>`;
+      return t`<g class="pin-hit"><title>物理ピン ${physical}: ${name}</title><circle cx="${x}" cy="${y}" r="3.2" class="board-pin ${active ? "active" : ""}"/><text x="${labelX}" y="${y + 2.2}" text-anchor="${anchor}" class="pin-label ${active ? "active" : ""}">${name}</text><text x="${numberX}" y="${y + 2.2}" text-anchor="${numberAnchor}" class="pin-number">${physical}</text></g>`;
     }).join("");
     const board = `
       <rect x="50" y="22" width="160" height="238" rx="16" class="board-body"/>
@@ -663,9 +672,9 @@ class SCS009PIO:
     const side = (list, x, isLeft) => list.map((item, i) => {
       const y = 70 + i * 23, active = item.pin === selectedPin;
       if (active) dataPoint = { x, y };
-      return `<g class="pin-hit"><title>USBを上にした表面・${isLeft ? "左" : "右"}側の上から${i + 1}番: ${item.name}</title><circle cx="${x}" cy="${y}" r="4" class="board-pin ${active ? "active" : ""}"/><text x="${x + (isLeft ? 9 : -9)}" y="${y + 3}" text-anchor="${isLeft ? "start" : "end"}" class="pin-label ${active ? "active" : ""}">${item.name}</text></g>`;
+      return t`<g class="pin-hit"><title>USBを上にした表面・${isLeft ? t("左") : t("右")}側の上から${i + 1}番: ${item.name}</title><circle cx="${x}" cy="${y}" r="4" class="board-pin ${active ? "active" : ""}"/><text x="${x + (isLeft ? 9 : -9)}" y="${y + 3}" text-anchor="${isLeft ? "start" : "end"}" class="pin-label ${active ? "active" : ""}">${item.name}</text></g>`;
     }).join("");
-    const board = `
+    const board = t`
       <rect x="38" y="42" width="184" height="196" rx="10" class="board-body"/>
       <rect x="105" y="31" width="50" height="28" rx="6" class="usb"/>
       <text x="130" y="120" text-anchor="middle" class="board-title">XIAO</text>
@@ -692,14 +701,14 @@ class SCS009PIO:
         const active = pinNumber === selectedPin;
         if (pinNumber !== null) points[pinNumber] = { x, y };
         if (name === "GND") grounds[groupIndex] = { x, y };
-        return `<g class="pin-hit"><title>${group.name} / ${index + 1}番: ${name}</title><circle cx="${x}" cy="${y}" r="4.5" class="board-pin ${active ? "active" : name === "GND" ? "ground" : name === "3V3" ? "power" : ""}"/><text x="${x}" y="236" text-anchor="middle" class="pin-label ${active ? "active" : ""}">${name}</text><text x="${x}" y="247" text-anchor="middle" class="pin-number">${index + 1}</text></g>`;
+        return t`<g class="pin-hit"><title>${group.name} / ${index + 1}番: ${name}</title><circle cx="${x}" cy="${y}" r="4.5" class="board-pin ${active ? "active" : name === "GND" ? "ground" : name === "3V3" ? "power" : ""}"/><text x="${x}" y="236" text-anchor="middle" class="pin-label ${active ? "active" : ""}">${name}</text><text x="${x}" y="247" text-anchor="middle" class="pin-number">${index + 1}</text></g>`;
       }).join("");
       return `<rect x="${group.x}" y="196" width="${width}" height="58" rx="7" class="connector-group"/><text x="${group.x + width / 2}" y="208" text-anchor="middle" class="connector-title">${group.name}</text>${pins}`;
     }).join("");
     const selectedGroup = selectedPin === 2 || selectedPin === 3 ? 0 : selectedPin === 4 || selectedPin === 5 ? 1 : 2;
     const dataPoint = selectedPin === null ? null : points[selectedPin];
     const groundPoint = grounds[selectedGroup];
-    const board = `
+    const board = t`
       <rect x="27" y="24" width="206" height="242" rx="18" class="board-body"/>
       <path d="M79 24h102v20H79z" class="usb"/>
       <rect x="63" y="61" width="134" height="76" rx="8" class="lcd"/>
@@ -721,10 +730,10 @@ class SCS009PIO:
     const primary = visibleGroups[0];
     const setup = primary ? {type: primary.model + "_setup"} : null;
     const servoName = primary?.name || "";
-    const allOption = document.createElement("option"); allOption.value = "all"; allOption.textContent = "すべてのサーボ";
+    const allOption = document.createElement("option"); allOption.value = "all"; allOption.textContent = t("すべてのサーボ");
     deviceSelect.replaceChildren(allOption, ...groups.map(g => {
       const option = document.createElement("option"); option.value = g.key;
-      option.textContent = `${g.name} · ${g.model === "pwm" ? g.devices.length + "台" : pinLabel(g.pin)}`;
+      option.textContent = `${g.name} · ${g.model === "pwm" ? g.devices.length + t("台") : pinLabel(g.pin)}`;
       return option;
     }));
     deviceSelect.value = group?.key || "all";
@@ -732,16 +741,16 @@ class SCS009PIO:
     const drawPin = pin => ({layout: profile.layout, ...(profile.layout === "pico" ? picoBoardDrawing(profile, pin) : profile.layout === "xiao" ? xiaoBoardDrawing(profile, pin) : geekBoardDrawing(profile, pin))});
     const drawing = drawPin(null);
     elements.pinoutLink.href = profile.pinoutUrl;
-    elements.pinoutLink.textContent = `${profile.name}の公式ピン情報`;
+    elements.pinoutLink.textContent = t`${profile.name}の公式ピン情報`;
     elements.wiringDiagram.classList.toggle("is-board-only", !setup);
     elements.scsWiringDetails.hidden = !setup;
     elements.scsHelp.hidden = !setup;
-    elements.scsHelp.querySelector("summary").textContent = visibleGroups.length > 1 ? "複数種類のサーボを接続する前に" : `${servoName}を接続する前に`;
+    elements.scsHelp.querySelector("summary").textContent = visibleGroups.length > 1 ? t("複数種類のサーボを接続する前に") : t`${servoName}を接続する前に`;
     elements.scsHelp.querySelector("p").textContent = visibleGroups.length > 1
-      ? "PWMは番号ごと、シリアル系は種類ごとの信号線です。異なる種類には別GPIOを使い、V+は各機種の定格に合う外部電源へ、GNDはボードと共通にします。種類の異なるV+同士は図でも接続していません。GPIOへの5 V入力は禁止です。図の線色は識別用で、実物の線色・端子順ではありません。"
+      ? t("PWMは番号ごと、シリアル系は種類ごとの信号線です。異なる種類には別GPIOを使い、V+は各機種の定格に合う外部電源へ、GNDはボードと共通にします。種類の異なるV+同士は図でも接続していません。GPIOへの5 V入力は禁止です。図の線色は識別用で、実物の線色・端子順ではありません。")
       : setup?.type === "pwm_setup"
-      ? "信号線を選択したGPIOへつなぎ、電源はサーボ仕様に合う外部電源、GNDはボードと共通にします。50 Hzで出力します。初期値は1000〜2000 µsです。可動範囲は機種に合わせて調整してください。"
-      : `${servoName}の電源は専用の外部電源から供給し、GNDをボードと共通にします。DATAはGPIOへ接続し、PIOで方向を切り替えます。半二重変換回路は不要です。${setup?.type === "xl330_setup" ? "XL330は3.7〜6.0 V（初回5 V）。DATAに220 Ωの直列保護抵抗を推奨します。" : "電源電圧は機種・仕様を確認してください。"} GPIOへの5 V入力は禁止です。まず無負荷でPing・位置読取りを確認してください。`;
+      ? t("信号線を選択したGPIOへつなぎ、電源はサーボ仕様に合う外部電源、GNDはボードと共通にします。50 Hzで出力します。初期値は1000〜2000 µsです。可動範囲は機種に合わせて調整してください。")
+      : t`${servoName}の電源は専用の外部電源から供給し、GNDをボードと共通にします。DATAはGPIOへ接続し、PIOで方向を切り替えます。半二重変換回路は不要です。${setup?.type === "xl330_setup" ? t("XL330は3.7〜6.0 V（初回5 V）。DATAに220 Ωの直列保護抵抗を推奨します。") : t("電源電圧は機種・仕様を確認してください。")} GPIOへの5 V入力は禁止です。まず無負荷でPing・位置読取りを確認してください。`;
     elements.boardPinHint.hidden = !setup;
     $("#signalLegend").replaceChildren(...visibleGroups.flatMap(g => (g.model === "pwm" ? g.devices : [g.devices[0]]).map(d => {
       const item = document.createElement("span"), swatch = document.createElement("i");
@@ -752,8 +761,8 @@ class SCS009PIO:
     const diagramStyle = `
       .board-body{fill:#edf4f7;stroke:#78909c;stroke-width:2}.usb{fill:#c7ced6;stroke:#87929e}.chip{fill:#334155;stroke:#172033}.lcd{fill:#e7f6f4;stroke:#0f766e;stroke-width:1.5}.button-mark{fill:#fff;stroke:#8796a8}.board-pin{fill:#fff;stroke:#64748b;stroke-width:1}.board-pin.active{fill:#fbbf24;stroke:#b45309;stroke-width:2}.board-pin.ground{fill:#cbd5e1}.board-pin.power{fill:#fda4af}.pin-label{fill:#475467;font:6.5px Inter,sans-serif}.pin-label.active{fill:#9a3412;font-weight:800}.pin-number{fill:#667085;font:6.2px Inter,sans-serif}.board-title{fill:#172033;font:700 10px Inter,sans-serif}.board-subtitle,.tiny-label{fill:#667085;font:6.5px Inter,sans-serif}.connector-group{fill:#fff;stroke:#cbd5e1}.connector-title{fill:#344054;font:700 6px Inter,sans-serif}.device-box{fill:#fff;stroke:#b8c2cf;stroke-width:1.5}.terminal{fill:#f8fafc;stroke:#667085}.terminal-label{fill:#344054;font:700 8px Inter,sans-serif}.caption{fill:#667085;font:7px Inter,sans-serif}.data-wire{fill:none;stroke:#d69e00;stroke-width:3}.power-wire{fill:none;stroke:#e5484d;stroke-width:3}.ground-wire{fill:none;stroke:#64748b;stroke-width:3}.pin-hit{cursor:help}`;
     if (!setup) {
-      elements.wiringSummary.textContent = `${profile.name}の端子配置です。各端子へカーソルを合わせると番号を確認できます。`;
-      elements.wiringDiagram.innerHTML = `
+      elements.wiringSummary.textContent = t`${profile.name}の端子配置です。各端子へカーソルを合わせると番号を確認できます。`;
+      elements.wiringDiagram.innerHTML = t`
         <svg viewBox="0 0 260 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <style>${diagramStyle}</style>
           <title>${profile.name}の簡易ピン配置</title>
@@ -763,32 +772,32 @@ class SCS009PIO:
       return;
     }
     elements.wiringSummary.textContent = visibleGroups.length > 1
-      ? "全種類の配線を表示中。PWMは番号別、シリアル系は種類別の色です。V+は種類ごとに分け、GNDを共通にします。"
+      ? t("全種類の配線を表示中。PWMは番号別、シリアル系は種類別の色です。V+は種類ごとに分け、GNDを共通にします。")
       : primary.model === "pwm"
-        ? `PWM ${primary.devices.length}台：番号ごとにコネクタと信号線を色分け。電源・GNDは共通です。`
-        : `${pinLabel(primary.pin)} → ${servoName}。同じ種類のIDは同色のDATA線でデイジーチェーン接続します。`;
+        ? t`PWM ${primary.devices.length}台：番号ごとにコネクタと信号線を色分け。電源・GNDは共通です。`
+        : t`${pinLabel(primary.pin)} → ${servoName}。同じ種類のIDは同色のDATA線でデイジーチェーン接続します。`;
     const diagram = ServoWiring.render(visibleGroups, drawPin, pinLabel);
-    elements.wiringDiagram.innerHTML = `<svg viewBox="0 0 ${diagram.width} ${diagram.height}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><style>${diagramStyle}</style><title>${profile.name}のサーボ配線図</title>${diagram.content}</svg>`;
+    elements.wiringDiagram.innerHTML = t`<svg viewBox="0 0 ${diagram.width} ${diagram.height}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><style>${diagramStyle}</style><title>${profile.name}のサーボ配線図</title>${diagram.content}</svg>`;
   }
 
   function updateBoardUi() {
     $("#resetHint").textContent = BOARD_PROFILES[selectedBoard].layout === "pico"
-      ? "純正Pico系にRSTボタンはありません。電源の入れ直し、またはRUN–GNDへ追加したリセットボタンを使います。"
-      : "この基板ではRST／RESETボタン、または電源の入れ直しを使います。BOOT判定には対応するMicroPythonが必要です。";
+      ? t("純正Pico系にRSTボタンはありません。電源の入れ直し、またはRUN–GNDへ追加したリセットボタンを使います。")
+      : t("この基板ではRST／RESETボタン、または電源の入れ直しを使います。BOOT判定には対応するMicroPythonが必要です。");
     const profile = BOARD_PROFILES[selectedBoard];
     elements.boardSelect.value = selectedBoard;
     $("#wifiHelp").hidden = !profile.wifi;
     $("#lcdHelp").hidden = !GeekDisplay.supported(selectedBoard);
-    elements.boardPinHint.textContent = `接続で選べる端子: ${profile.pins.map(pinLabel).join(" · ")}${profile.layout === "xiao" ? "。今回は両側のD0〜D10端子に対応（背面パッドは対象外）。" : ""}`;
+    elements.boardPinHint.textContent = t`接続で選べる端子: ${profile.pins.map(pinLabel).join(" · ")}${profile.layout === "xiao" ? t("。今回は両側のD0〜D10端子に対応（背面パッドは対象外）。") : ""}`;
     elements.firmwareLink.href = profile.firmwareUrl;
-    elements.firmwareLink.textContent = `${profile.name}用ファームを入手 ↗`;
+    elements.firmwareLink.textContent = t`${profile.name}用ファームを入手 ↗`;
     elements.firmwareSteps.replaceChildren();
     const steps = [
       profile.firmwareIsZip
-        ? "下のリンクからZIPを入手し、展開してUF2を用意。"
-        : `下のリンクから安定版UF2を入手${profile.wifi ? "（1.29以降）" : ""}${selectedBoard.includes("2350") || selectedBoard.startsWith("pico2") ? "。Arm版を選択" : ""}。`,
+        ? t("下のリンクからZIPを入手し、展開してUF2を用意。")
+        : t`下のリンクから安定版UF2を入手${profile.wifi ? t("（1.29以降）") : ""}${selectedBoard.includes("2350") || selectedBoard.startsWith("pico2") ? t("。Arm版を選択") : ""}。`,
       profile.boot,
-      `表示された「${profile.driveName}」ドライブへUF2をコピー。自動で再起動します。`,
+      t`表示された「${profile.driveName}」ドライブへUF2をコピー。自動で再起動します。`,
     ];
     for (const text of steps) {
       const item = document.createElement("li");
@@ -829,7 +838,7 @@ class SCS009PIO:
   function setWiringCollapsed(collapsed) {
     elements.appShell.classList.toggle("wiring-collapsed", collapsed);
     elements.wiringToggle.setAttribute("aria-expanded", String(!collapsed));
-    elements.wiringToggle.title = collapsed ? "配線ガイドを開く" : "配線ガイドを閉じる";
+    elements.wiringToggle.title = collapsed ? t("配線ガイドを開く") : t("配線ガイドを閉じる");
     localStorage.setItem("picoblocks-wiring-collapsed-v1", collapsed ? "1" : "0");
     requestAnimationFrame(() => Blockly.svgResize(workspace));
   }
@@ -882,43 +891,43 @@ class SCS009PIO:
     const blocks = workspace.getAllBlocks(false);
     const wifi = blocks.filter(block => block.type === "wifi_jog_setup");
     let error = "";
-    if (GeekDisplay.uses(blocks) && !GeekDisplay.supported(selectedBoard)) error = "LCD文字表示はRP2040-GEEK / RP2350-GEEK専用です。ボードを選び直すかLCDブロックを外してください。";
+    if (GeekDisplay.uses(blocks) && !GeekDisplay.supported(selectedBoard)) error = t("LCD文字表示はRP2040-GEEK / RP2350-GEEK専用です。ボードを選び直すかLCDブロックを外してください。");
     const bindings = blocks.filter(block => /^(uart_scs|xl330|sts3215|sts3235|pwm)_bind$/.test(block.type));
-    if (new Set(bindings.map(b => b.getFieldValue("AXIS"))).size !== bindings.length) error = "JOGの同じ軸への割り当ては1個だけにしてください。USBとWi-Fiで共用します。";
-    if (wifi.length && !BOARD_PROFILES[selectedBoard].wifi) error = "Wi-Fi JOGはPico W / Pico 2 Wで使えます。ボードを選び直すかWi-Fiブロックを外してください。";
-    if (wifi.length > 1) error = "Wi-Fiサーバの開始ブロックは1個にしてください。";
+    if (new Set(bindings.map(b => b.getFieldValue("AXIS"))).size !== bindings.length) error = t("JOGの同じ軸への割り当ては1個だけにしてください。USBとWi-Fiで共用します。");
+    if (wifi.length && !BOARD_PROFILES[selectedBoard].wifi) error = t("Wi-Fi JOGはPico W / Pico 2 Wで使えます。ボードを選び直すかWi-Fiブロックを外してください。");
+    if (wifi.length > 1) error = t("Wi-Fiサーバの開始ブロックは1個にしてください。");
     if (wifi.length) {
       const ssid = wifi[0].getFieldValue("SSID"), password = wifi[0].getFieldValue("PASSWORD");
-      if (!ssid || encoder.encode(ssid).length > 32 || !/^[\x20-\x7e]{8,63}$/.test(password)) error = "Wi-Fi名は1〜32バイト、パスワードは半角8〜63文字で指定してください。";
+      if (!ssid || encoder.encode(ssid).length > 32 || !/^[\x20-\x7e]{8,63}$/.test(password)) error = t("Wi-Fi名は1〜32バイト、パスワードは半角8〜63文字で指定してください。");
     }
     const setups = blocks.filter(b => /^(scs009|xl330|sts3215|sts3235|pwm)_setup$/.test(b.type));
-    if (setups.filter(b => b.type !== "pwm_setup").length > 2) error = "PIO通信のサーボ接続は合計2種類までです（Wi-Fi用のPIOを確保します）。PWMサーボは別に追加できます。";
-    if (new Set(setups.map(b => b.getFieldValue("PIN"))).size !== setups.length) error = "サーボ接続のGPIOが重複しています。種類ごとに別のGPIOを指定してください。";
+    if (setups.filter(b => b.type !== "pwm_setup").length > 2) error = t("PIO通信のサーボ接続は合計2種類までです（Wi-Fi用のPIOを確保します）。PWMサーボは別に追加できます。");
+    if (new Set(setups.map(b => b.getFieldValue("PIN"))).size !== setups.length) error = t("サーボ接続のGPIOが重複しています。種類ごとに別のGPIOを指定してください。");
     for (const key of ["scs009", "xl330", "sts3215", "sts3235"]) {
-      if (setups.filter(b => b.type === key + "_setup").length > 1) error = `${key}の接続ブロックは1個にしてください。同じ種類のサーボはIDで指定します。`;
-      if (blocks.some(b => b.type.startsWith(key + "_") && b.type !== key + "_setup") && !setups.some(b => b.type === key + "_setup")) error = `${key}の接続ブロックを追加してください。`;
+      if (setups.filter(b => b.type === key + "_setup").length > 1) error = t`${key}の接続ブロックは1個にしてください。同じ種類のサーボはIDで指定します。`;
+      if (blocks.some(b => b.type.startsWith(key + "_") && b.type !== key + "_setup") && !setups.some(b => b.type === key + "_setup")) error = t`${key}の接続ブロックを追加してください。`;
     }
     const pwmSetups = setups.filter(b => b.type === "pwm_setup");
     const hardware = blocks.filter(b => /^(basic_(adc|read|write)|gpio_write)$/.test(b.type));
     for (const b of [...setups, ...hardware]) {
       const allowed = b.type === "basic_adc" ? adcOptions().map(([, pin]) => Number(pin)) : BOARD_PROFILES[selectedBoard].pins;
-      if (!allowed.includes(Number(b.getFieldValue("PIN")))) error = "このボードでは使えないGPIOが指定されています。ピンを選び直してください。";
+      if (!allowed.includes(Number(b.getFieldValue("PIN")))) error = t("このボードでは使えないGPIOが指定されています。ピンを選び直してください。");
     }
     for (const b of hardware) {
       const pin = String(b.getFieldValue("PIN"));
-      if (setups.some(s => String(s.getFieldValue("PIN")) === pin)) error = "サーボ接続とADC・GPIOには別々のピンを指定してください。";
+      if (setups.some(s => String(s.getFieldValue("PIN")) === pin)) error = t("サーボ接続とADC・GPIOには別々のピンを指定してください。");
       const mode = item => item.type === "gpio_write" ? "basic_write" : item.type;
-      if (hardware.some(other => String(other.getFieldValue("PIN")) === pin && (mode(other) !== mode(b) || (b.type === "basic_read" && other.getFieldValue("PULL") !== b.getFieldValue("PULL"))))) error = "同じGPIOの入力・出力・ADC・プル設定が競合しています。";
+      if (hardware.some(other => String(other.getFieldValue("PIN")) === pin && (mode(other) !== mode(b) || (b.type === "basic_read" && other.getFieldValue("PULL") !== b.getFieldValue("PULL"))))) error = t("同じGPIOの入力・出力・ADC・プル設定が競合しています。");
     }
-    if (blocks.some(b => b.type === "gpio_write" && setups.some(s => s.getFieldValue("PIN") === b.getFieldValue("PIN")))) error = "サーボの接続GPIOには、通常のGPIO出力ブロックを同時に使えません。";
+    if (blocks.some(b => b.type === "gpio_write" && setups.some(s => s.getFieldValue("PIN") === b.getFieldValue("PIN")))) error = t("サーボの接続GPIOには、通常のGPIO出力ブロックを同時に使えません。");
     const channels = pwmSetups.map(b => b.getFieldValue("CHANNEL"));
-    if (new Set(channels).size !== channels.length) error = "PWMサーボの番号が重複しています。";
+    if (new Set(channels).size !== channels.length) error = t("PWMサーボの番号が重複しています。");
     // RP PWM outputs GPn and GP(n+16) share one channel; their duties cannot differ.
     const pwmChannels = pwmSetups.map(b => Number(b.getFieldValue("PIN")) % 16);
-    if (new Set(pwmChannels).size !== pwmChannels.length) error = "この2本のGPIOはPWM出力を共有します。16番違いではないGPIOを選んでください。";
+    if (new Set(pwmChannels).size !== pwmChannels.length) error = t("この2本のGPIOはPWM出力を共有します。16番違いではないGPIOを選んでください。");
     for (const b of blocks.filter(b => b.type.startsWith("pwm_"))) {
-      if (b.type === "pwm_setup" && Number(b.getFieldValue("MIN_US")) >= Number(b.getFieldValue("MAX_US"))) error = "PWMの0°パルス幅は180°より小さくしてください。";
-      if (b.type !== "pwm_setup" && !channels.includes(b.getFieldValue(b.type === "pwm_bind" ? "ID" : "CHANNEL"))) error = "この番号のPWMサーボ接続ブロックを追加してください。";
+      if (b.type === "pwm_setup" && Number(b.getFieldValue("MIN_US")) >= Number(b.getFieldValue("MAX_US"))) error = t("PWMの0°パルス幅は180°より小さくしてください。");
+      if (b.type !== "pwm_setup" && !channels.includes(b.getFieldValue(b.type === "pwm_bind" ? "ID" : "CHANNEL"))) error = t("この番号のPWMサーボ接続ブロックを追加してください。");
     }
     if (error && throwOnError) throw new Error(error);
     if (error) showToast(error, "error");
@@ -935,10 +944,10 @@ class SCS009PIO:
     const config = getUartControllerConfig();
     const hasController = Boolean(config);
     elements.controllerMenuItem.disabled = !hasController;
-    elements.run.lastChild.textContent = hasController ? (controllerActive ? " 操作中" : " コントローラを開始") : " 今すぐ実行";
+    elements.run.lastChild.textContent = hasController ? (controllerActive ? t(" 操作中") : t(" コントローラを開始")) : t(" 今すぐ実行");
     elements.run.disabled = !port || isBusy || controllerActive;
     const menuHelp = elements.controllerMenuItem.querySelector("small");
-    menuHelp.textContent = hasController ? "矢印・WASDで4軸を操作" : "UART / Wi-Fi JOGブロックで有効";
+    menuHelp.textContent = hasController ? t("矢印・WASDで4軸を操作") : t("UART / Wi-Fi JOGブロックで有効");
 
     if (!hasController && elements.controllerDrawer.getAttribute("aria-hidden") === "false") closeController();
     if (!config) return;
@@ -953,8 +962,8 @@ class SCS009PIO:
       controllerConfigSignature = signature;
     }
     elements.controllerPortSummary.textContent = port
-      ? "RPボードへのWeb Serial接続を共用します"
-      : "上部の「RPボードを接続」と同じ接続を使います";
+      ? t("RPボードへのWeb Serial接続を共用します")
+      : t("上部の「RPボードを接続」と同じ接続を使います");
     for (const axis of PicoJog.axes) {
       $(`#jogValue${axis}`).textContent = controllerValues[axis];
       $(`#jogBinding${axis}`).textContent = PicoJog.label(nextAxes[axis]);
@@ -979,11 +988,11 @@ class SCS009PIO:
 
   function updateControllerConnection() {
     elements.controllerConnectionLabel.textContent = controllerActive
-      ? "コントローラ操作中"
-      : port ? "RPボード 接続済み" : "RPボード 未接続";
+      ? t("コントローラ操作中")
+      : port ? t("RPボード 接続済み") : t("RPボード 未接続");
     elements.controllerConnect.textContent = controllerActive
-      ? "コントローラを停止"
-      : port ? "コントローラを開始" : "RPボードを接続";
+      ? t("コントローラを停止")
+      : port ? t("コントローラを開始") : t("RPボードを接続");
     elements.controllerConnect.classList.toggle("is-connected", controllerActive);
     const enabled = controllerActive && !isBusy;
     elements.controllerConnect.disabled = isBusy;
@@ -1006,7 +1015,7 @@ class SCS009PIO:
       return;
     }
     try {
-      setBusy(true, "準備中…");
+      setBusy(true, t("準備中…"));
       showTab("console");
       await enterRawRepl();
       serialBuffer = "";
@@ -1016,10 +1025,10 @@ class SCS009PIO:
       await waitFor("PICOBLOCKS_READY", 15000);
       setBoardMode("RUN");
       controllerActive = true;
-      showToast("同じUSB接続でコントローラを開始しました。", "success");
+      showToast(t("同じUSB接続でコントローラを開始しました。"), "success");
     } catch (error) {
       controllerActive = false;
-      showToast(`コントローラを開始できませんでした: ${error.message}`, "error");
+      showToast(t`コントローラを開始できませんでした: ${error.message}`, "error");
     } finally {
       setBusy(false);
       updateControllerConnection();
@@ -1053,13 +1062,14 @@ class SCS009PIO:
     elements.stop.disabled = !connected || isBusy;
     elements.connect.disabled = isBusy;
     elements.actionHint.textContent = connected
-      ? "接続済み。ブロックを作って実行できます。"
-      : "先に「RPボードを接続」を押してください。";
+      ? t("接続済み。ブロックを作って実行できます。")
+      : t("先に「RPボードを接続」を押してください。");
   }
 
-  function setBusy(busy, label = "処理中…") {
+  function setBusy(busy, label = t("処理中…")) {
+    $("#languageSelect").disabled = busy;
     isBusy = busy;
-    setConnection(busy ? "busy" : port ? "online" : "offline", busy ? label : port ? "接続済み" : "未接続");
+    setConnection(busy ? "busy" : port ? "online" : "offline", busy ? label : port ? t("接続済み") : t("未接続"));
     updateControllerConnection();
   }
 
@@ -1119,7 +1129,7 @@ class SCS009PIO:
       const waiter = { pattern, resolve, reject, timer: null };
       waiter.timer = setTimeout(() => {
         waiters.delete(waiter);
-        reject(new Error(`ボードからの応答を確認できませんでした: ${JSON.stringify(pattern)}`));
+        reject(new Error(t`ボードからの応答を確認できませんでした: ${JSON.stringify(pattern)}`));
       }, timeout);
       waiters.add(waiter);
     });
@@ -1138,7 +1148,7 @@ class SCS009PIO:
           notifyWaiters();
         }
       } catch (error) {
-        if (port) appendConsole(`\n[受信エラー] ${error.message}\n`);
+        if (port) appendConsole(t`\n[受信エラー] ${error.message}\n`);
       } finally {
         reader.releaseLock();
         reader = null;
@@ -1148,7 +1158,7 @@ class SCS009PIO:
   }
 
   async function writeBytes(bytes) {
-    if (!port?.writable) throw new Error("ボードが接続されていません。");
+    if (!port?.writable) throw new Error(t("ボードが接続されていません。"));
     writer = port.writable.getWriter();
     try {
       await writer.write(bytes instanceof Uint8Array ? bytes : encoder.encode(bytes));
@@ -1194,7 +1204,7 @@ class SCS009PIO:
     await waitFor("OK", 3000);
     await waitFor("\u0004>", timeout);
     const result = serialBuffer;
-    if (result.includes("Traceback (most recent call last)")) throw new Error("MicroPythonでエラーが発生しました。シリアル表示を確認してください。");
+    if (result.includes("Traceback (most recent call last)")) throw new Error(t("MicroPythonでエラーが発生しました。シリアル表示を確認してください。"));
     return result;
   }
 
@@ -1210,7 +1220,7 @@ class SCS009PIO:
 
   async function connect() {
     if (!("serial" in navigator)) {
-      showToast("このブラウザーはWeb Serialに対応していません。PC版ChromeまたはEdgeを使用してください。", "error");
+      showToast(t("このブラウザーはWeb Serialに対応していません。PC版ChromeまたはEdgeを使用してください。"), "error");
       return;
     }
     if (port) {
@@ -1222,16 +1232,16 @@ class SCS009PIO:
       await port.open({ baudRate: 115200, bufferSize: 65536 });
       setBoardMode("UNKNOWN");
       readLoopPromise = readLoop();
-      setConnection("online", "接続済み");
-      elements.connect.lastChild.textContent = " 切断する";
-      showToast("RPボードに接続しました。", "success");
-      appendConsole("\n[接続しました]\n");
+      setConnection("online", t("接続済み"));
+      elements.connect.lastChild.textContent = t(" 切断する");
+      showToast(t("RPボードに接続しました。"), "success");
+      appendConsole(t("\n[接続しました]\n"));
       updateControllerConnection();
     } catch (error) {
       port = null;
-      setConnection("offline", "未接続");
+      setConnection("offline", t("未接続"));
       updateControllerConnection();
-      if (error.name !== "NotFoundError") showToast(`接続できませんでした: ${error.message}`, "error");
+      if (error.name !== "NotFoundError") showToast(t`接続できませんでした: ${error.message}`, "error");
     }
   }
 
@@ -1248,9 +1258,9 @@ class SCS009PIO:
       console.warn("Disconnect warning", error);
     }
     readLoopPromise = null;
-    elements.connect.lastChild.textContent = " RPボードを接続";
-    setConnection("offline", "未接続");
-    appendConsole("\n[切断しました]\n");
+    elements.connect.lastChild.textContent = t(" RPボードを接続");
+    setConnection("offline", t("未接続"));
+    appendConsole(t("\n[切断しました]\n"));
     updateControllerConnection();
   }
 
@@ -1259,13 +1269,13 @@ class SCS009PIO:
     if (!validateProgram()) return;
     if (getUartControllerBlock()) {
       if (controllerActive) {
-        showToast("コントローラはすでに動作中です。");
+        showToast(t("コントローラはすでに動作中です。"));
         return;
       }
       await connectController();
       return;
     }
-    setBusy(true, "実行中…");
+    setBusy(true, t("実行中…"));
     showTab("console");
     try {
       await enterRawRepl();
@@ -1274,7 +1284,7 @@ class SCS009PIO:
       await writeControl(0x04);
       await waitFor("OK", 3000);
       // Do not wait for an infinite user program to exit. Stop remains available.
-      showToast("一時実行を開始しました。保存内容は変更していません。", "success");
+      showToast(t("一時実行を開始しました。保存内容は変更していません。"), "success");
     } catch (error) {
       showToast(error.message, "error");
     } finally {
@@ -1287,25 +1297,25 @@ class SCS009PIO:
     if (!validateProgram()) return;
     controllerActive = false;
     updateControllerConnection();
-    setBusy(true, "保存中…");
+    setBusy(true, t("保存中…"));
     showTab("console");
     try {
       const source = generatePython();
       const saveCommand = PicoBoot.saveCommand(source, bytesLiteral);
       await executeRaw(saveCommand, 12000);
-      if (!serialBuffer.includes("PICOBLOCKS_SAVED")) throw new Error("保存完了を確認できませんでした。");
+      if (!serialBuffer.includes("PICOBLOCKS_SAVED")) throw new Error(t("保存完了を確認できませんでした。"));
       serialBuffer = "";
       setBoardMode("BOOT");
       await writeControl(0x02, 0x04);
       await waitFor("PICOBLOCKS_MODE ", 10000);
       if (serialBuffer.includes("PICOBLOCKS_MODE WRITE")) {
-        showToast("保存済みです。今回は書き込み待機に入りました。");
+        showToast(t("保存済みです。今回は書き込み待機に入りました。"));
       } else {
         if (getUartControllerBlock()) {
           await waitFor("PICOBLOCKS_READY", 15000);
           controllerActive = true;
         }
-        showToast("保存して起動しました。外部給電があればUSBを抜いても動作します。", "success");
+        showToast(t("保存して起動しました。外部給電があればUSBを抜いても動作します。"), "success");
       }
     } catch (error) {
       showToast(error.message, "error");
@@ -1319,8 +1329,8 @@ class SCS009PIO:
     try {
       await writeControl(0x03, 0x03, 0x02);
       setBoardMode("STOPPED");
-      appendConsole("\n[停止しました]\n");
-      showToast("プログラムを停止しました。");
+      appendConsole(t("\n[停止しました]\n"));
+      showToast(t("プログラムを停止しました。"));
       controllerActive = false;
       updateControllerConnection();
     } catch (error) {
@@ -1331,13 +1341,13 @@ class SCS009PIO:
   async function enterWriteMode() {
     if (!port || isBusy) return;
     controllerActive = false;
-    setBusy(true, "書き込み待機へ…");
+    setBusy(true, t("書き込み待機へ…"));
     showTab("console");
     try {
       await enterRawRepl();
       await writeControl(0x02);
       setBoardMode("WRITE");
-      showToast("書き込み待機に入りました。保存プログラムは残っています。");
+      showToast(t("書き込み待機に入りました。保存プログラムは残っています。"));
     } catch (error) {
       setBoardMode("UNKNOWN");
       showToast(error.message, "error");
@@ -1369,7 +1379,7 @@ class SCS009PIO:
   elements.consoleTab.addEventListener("click", () => showTab("console"));
   elements.copy.addEventListener("click", async () => {
     await navigator.clipboard.writeText(elements.pythonCode.textContent);
-    showToast("Pythonコードをコピーしました。", "success");
+    showToast(t("Pythonコードをコピーしました。"), "success");
   });
   elements.clearConsole.addEventListener("click", () => {
     elements.serialConsole.textContent = "";
@@ -1427,7 +1437,7 @@ class SCS009PIO:
   }
   function refreshExchangePrompt() {
     const board = BOARD_PROFILES[selectedBoard];
-    $("#exchangeBoard").textContent = `選択中: ${board.name}`;
+    $("#exchangeBoard").textContent = t`選択中: ${board.name}`;
     $("#promptText").value = BlockExchange.prompt(selectedBoard, board, boardCatalog(selectedBoard));
   }
   $("#exchangeMenuItem").addEventListener("click", () => {
@@ -1441,15 +1451,15 @@ class SCS009PIO:
   $("#copyPrompt").addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText($("#promptText").value);
-      exchangeStatus("依頼文をコピーしました。対話ツールへ貼り付け、作りたい動きを書いてください。");
+      exchangeStatus(t("依頼文をコピーしました。対話ツールへ貼り付け、作りたい動きを書いてください。"));
     } catch {
       $("#promptText").closest("details").open = true;
       $("#promptText").focus(); $("#promptText").select();
-      exchangeStatus("自動コピーが許可されませんでした。選択した依頼文を手動でコピーしてください。", true);
+      exchangeStatus(t("自動コピーが許可されませんでした。選択した依頼文を手動でコピーしてください。"), true);
     }
   });
   function replaceFromExchange(data, restoring = false) {
-    if (isBusy || controllerActive) throw new Error("実行・操作を停止してから取り込んでください。");
+    if (isBusy || controllerActive) throw new Error(t("実行・操作を停止してから取り込んでください。"));
     const previous = {board: selectedBoard, workspace: Blockly.serialization.workspaces.save(workspace)};
     const scratch = new Blockly.Workspace();
     let replaced = false;
@@ -1458,7 +1468,7 @@ class SCS009PIO:
       selectedBoard = data.board;
       Blockly.serialization.workspaces.load(data.workspace, scratch);
       // Reject Blockly's silent disconnection/repair before touching the user's work.
-      if (!restoring && (scratch.getTopBlocks(false).length !== 1 || scratch.getAllBlocks(false).length !== data.count)) throw new Error("ブロックの接続を読み込めません。JSONのinputsとnextを確認してください。");
+      if (!restoring && (scratch.getTopBlocks(false).length !== 1 || scratch.getAllBlocks(false).length !== data.count)) throw new Error(t("ブロックの接続を読み込めません。JSONのinputsとnextを確認してください。"));
       replaced = true;
       Blockly.serialization.workspaces.load(data.workspace, workspace);
       normalizeWorkspace();
@@ -1489,16 +1499,16 @@ class SCS009PIO:
       const data = BlockExchange.parse($("#importText").value, BOARD_PROFILES, boardCatalog);
       replaceFromExchange(data);
       refreshExchangePrompt();
-      exchangeStatus(`${BOARD_PROFILES[data.board].name}に${data.count}個のブロックを取り込みました。閉じて配線・位置範囲・生成コードを確認してから実行してください。`);
+      exchangeStatus(t`${BOARD_PROFILES[data.board].name}に${data.count}個のブロックを取り込みました。閉じて配線・位置範囲・生成コードを確認してから実行してください。`);
     } catch (error) { exchangeStatus(error.message, true); }
   });
   $("#restoreImport").addEventListener("click", () => {
     try {
       const previous = JSON.parse(localStorage.getItem(backupKey));
-      if (!previous || !BOARD_PROFILES[previous.board]) throw new Error("取り込み前の保存がありません。");
+      if (!previous || !BOARD_PROFILES[previous.board]) throw new Error(t("取り込み前の保存がありません。"));
       replaceFromExchange(previous, true);
       refreshExchangePrompt();
-      exchangeStatus("取り込み前のブロックとボード選択に戻しました。");
+      exchangeStatus(t("取り込み前のブロックとボード選択に戻しました。"));
     } catch (error) { exchangeStatus(error.message, true); }
   });
   elements.controllerMenuItem.addEventListener("click", openController);
@@ -1532,6 +1542,44 @@ class SCS009PIO:
   });
 
   window.addEventListener("resize", () => Blockly.svgResize(workspace));
+  // Redraw only the editor. No USB reconnect, device command, or program upload.
+  function changeLanguage(language) {
+    if (isBusy || language === PicoI18n.language) return;
+    const state = Blockly.serialization.workspaces.save(workspace);
+    const undo = [...workspace.getUndoStack()], redo = [...workspace.getRedoStack()];
+    const view = {x: workspace.scrollX, y: workspace.scrollY, scale: workspace.scale};
+    const selectedId = Blockly.getSelected()?.id;
+    Blockly.Events.disable();
+    try {
+      PicoI18n.setLanguage(language);
+      workspace.getInjectionDiv().setAttribute("aria-label", Blockly.Msg.WORKSPACE_ARIA_LABEL);
+      Object.assign(BOARD_PROFILES, createBoardProfiles());
+      registerBlocks();
+      workspace.updateToolbox(buildToolbox());
+      workspace.getToolbox()?.clearSelection();
+      workspace.getFlyout()?.hide();
+      Blockly.serialization.workspaces.load(state, workspace);
+      normalizeWorkspace();
+      workspace.getUndoStack().splice(0, Infinity, ...undo);
+      workspace.getRedoStack().splice(0, Infinity, ...redo);
+      workspace.setScale(view.scale);
+      workspace.scroll(view.x, view.y);
+      if (selectedId) workspace.getBlockById(selectedId)?.select();
+    } finally { Blockly.Events.enable(); }
+    PicoI18n.renderDocument(document);
+    updateBoardUi();
+    setWiringCollapsed(elements.appShell.classList.contains("wiring-collapsed"));
+    setBoardMode(boardMode);
+    setConnection(port ? "online" : "offline", port ? t("接続済み") : t("未接続"));
+    elements.connect.lastChild.textContent = port ? t(" 切断する") : t(" RPボードを接続");
+    updateControllerConnection();
+    updateControllerUi();
+    refreshExchangePrompt();
+    elements.pythonCode.textContent = generatePython();
+    localStorage.setItem("picoblocks-workspace-v1", JSON.stringify(state));
+    Blockly.svgResize(workspace);
+  }
+  $("#languageSelect").addEventListener("change", event => changeLanguage(event.target.value));
   window.addEventListener("beforeunload", () => {
     localStorage.setItem("picoblocks-workspace-v1", JSON.stringify(Blockly.serialization.workspaces.save(workspace)));
   });
@@ -1541,7 +1589,7 @@ class SCS009PIO:
   validateSCS009Pins();
   updateBoardUi();
   elements.pythonCode.textContent = generatePython();
-  setConnection("offline", "未接続");
+  setConnection("offline", t("未接続"));
   updateControllerConnection();
   updateControllerUi();
 })();
