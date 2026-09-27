@@ -24,7 +24,7 @@ for (const [source, translation] of Object.entries(en)) {
   assert.deepEqual(placeholders(translation), placeholders(source), 'Placeholders: '+source);
 }
 // Every Japanese source literal is intentionally wrapped; every key is covered.
-for (const file of ['app.js','basic.js','advanced.js','gcode.js','servo.js','display.js','wiring.js','exchange.js','jog.js','wifi.js','samples.js']) {
+for (const file of ['app.js','basic.js','advanced.js','gcode.js','shield.js','servo.js','display.js','wiring.js','exchange.js','jog.js','wifi.js','samples.js']) {
   const source=fs.readFileSync(file,'utf8');
   function walk(node,parent) {
     if(!node || typeof node!=='object') return;

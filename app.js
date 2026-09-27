@@ -90,6 +90,7 @@
       boot: t("USBを外し、XIAO本体のBOOTボタンを押したままUSB接続し、ボタンを離します。接続済みならBOOTを押しながらRESETを押して離し、最後にBOOTを離します。"),
     };
   }
+  Object.assign(BOARD_PROFILES, BasicBlocks.shield.profiles(BOARD_PROFILES));
   return BOARD_PROFILES;
   }
   const BOARD_PROFILES = createBoardProfiles();
@@ -97,7 +98,12 @@
   if (!BOARD_PROFILES[selectedBoard]) selectedBoard = "pico";
   const pinLabel = pin => BOARD_PROFILES[selectedBoard].pinLabels?.[pin] || `GP${pin}`;
   const pinOptions = () => BOARD_PROFILES[selectedBoard].pins.map(pin => [pinLabel(pin), String(pin)]);
-  const adcOptions = () => pinOptions().filter(([, pin]) => BOARD_PROFILES[selectedBoard].adcPins?.includes(Number(pin)) ?? (Number(pin) >= 26 && Number(pin) <= 29));
+  const adcOptions = () => {
+    const options=pinOptions().filter(([, pin]) => BOARD_PROFILES[selectedBoard].adcPins?.includes(Number(pin)) ?? (Number(pin) >= 26 && Number(pin) <= 29));
+    // Keep an imported ADC block editable after switching to a board without ADC.
+    // The sentinel is never allowed by validateProgram.
+    return options.length?options:[[t('使用可能なADC端子なし'),'-1']];
+  };
 
   const elements = {
     connect: $("#connectButton"),
@@ -352,7 +358,7 @@
           ...GeekDisplay.toolbox(selectedBoard),
         ],
       },
-      BasicBlocks.advancedToolbox(),
+      BasicBlocks.advancedToolbox(BOARD_PROFILES[selectedBoard]),
       {
         kind: "category",
         name: "UART",
@@ -744,6 +750,18 @@ class SCS009PIO:
   function renderWiringDiagram() {
     const profile = BOARD_PROFILES[selectedBoard];
     const blocks = workspace.getAllBlocks(false);
+    if(profile.shield) {
+      const diagram=BasicBlocks.shield.render(profile,blocks);
+      elements.wiringDiagram.classList.remove('is-board-only');
+      elements.wiringDiagram.innerHTML=`<svg viewBox="0 0 ${diagram.width} ${diagram.height}" xmlns="http://www.w3.org/2000/svg">${diagram.content}</svg>`;
+      elements.wiringSummary.textContent=t('Motor Shield v0.7：StepStickを2台装着。J7は12 V、J8は安定化5 V。コントローラはUSB給電。実機未検証。');
+      for(const id of ['wiringDevice','atomPullupGuide','signalLevelNote']) $('#'+id).hidden=true;
+      $('#signalLegend').replaceChildren();
+      elements.scsWiringDetails.hidden=true; elements.scsHelp.hidden=true; elements.boardPinHint.hidden=true;
+      elements.pinoutLink.href=profile.pinoutUrl;
+      elements.pinoutLink.textContent=t('シールドの設計資料・ピン配置');
+      return;
+    }
     const groups = ServoWiring.groups(blocks, getUartControllerBlock() ? getJogAxes() : {});
     const deviceSelect = $("#wiringDevice");
     const group = groups.find(g => g.key === deviceSelect.value);
@@ -826,7 +844,9 @@ class SCS009PIO:
       : t("再起動してから3秒以内にBOOTを押します。押したまま再起動すると初期ファーム用のモードになるので注意。");
     if (profile.experimental) $("#resetHint").textContent = t("電源の入れ直しで再起動します。USB接続中は「書き込み待機」ボタンも使えます。");
     elements.boardSelect.value = selectedBoard;
-    PicoWifi.configure(selectedBoard, !!profile.wifi);
+    PicoWifi.configure(profile.baseBoard || selectedBoard, !!profile.wifi);
+    $('#shieldBoardNote').hidden=!profile.shield;
+    $('#shieldCameraNote').hidden=profile.shield!=='touch2';
     $("#wifiHelp").hidden = !profile.wifi;
     $("#lcdHelp").hidden = !GeekDisplay.supported(selectedBoard);
     elements.boardPinHint.textContent = t`接続で選べる端子: ${profile.pins.map(pinLabel).join(" · ")}${profile.layout === "xiao" ? t("。今回は両側のD0〜D10端子に対応（背面パッドは対象外）。") : ""}`;
@@ -959,7 +979,7 @@ class SCS009PIO:
     const pwmSetups = setups.filter(b => b.type === "pwm_setup");
     const hardware = blocks.filter(b => /^(basic_(adc|read|write)|gpio_write)$/.test(b.type));
     for (const b of [...setups, ...hardware]) {
-      const allowed = b.type === "basic_adc" ? adcOptions().map(([, pin]) => Number(pin)) : BOARD_PROFILES[selectedBoard].pins;
+      const allowed = b.type === "basic_adc" ? (BOARD_PROFILES[selectedBoard].adcPins ?? BOARD_PROFILES[selectedBoard].pins.filter(p=>p>=26&&p<=29)) : BOARD_PROFILES[selectedBoard].pins;
       if (!allowed.includes(Number(b.getFieldValue("PIN")))) error = t("このボードでは使えないGPIOが指定されています。ピンを選び直してください。");
     }
     for (const b of hardware) {
@@ -1581,6 +1601,11 @@ class SCS009PIO:
   function refreshSamples() {
     const profile = BOARD_PROFILES[selectedBoard];
     const model = $("#sampleModel").value;
+    $('#loadSample').disabled=!!profile.shield;
+    $('#loadSample').hidden=!!profile.shield;
+    $('#servoSampleSection').hidden=!!profile.shield;
+    $('#shieldSampleNote').hidden=!profile.shield;
+    if(profile.shield) $('#gcodeSampleBoard').value=selectedBoard;
     $("#sampleBoard").textContent = t`選択中: ${profile.name}`;
     $("#sampleTransport option[value=wifi]").disabled = !profile.wifi;
     if (!profile.wifi) $("#sampleTransport").value = "usb";

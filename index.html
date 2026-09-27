@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css?v=samples1" />
+    <link rel="stylesheet" href="./styles.css?v=shield1" />
   </head>
   <body>
     <header class="topbar">
@@ -135,6 +135,14 @@
               <option value="picow">Raspberry Pi Pico W</option>
               <option value="pico2">Raspberry Pi Pico 2</option>
               <option value="pico2w">Raspberry Pi Pico 2 W</option>
+              <optgroup label="PlotterFlow Motor Shield v0.7">
+                <option value="shield_pico">Motor Shield · Pico</option>
+                <option value="shield_picow">Motor Shield · Pico W</option>
+                <option value="shield_pico2">Motor Shield · Pico 2</option>
+                <option value="shield_pico2w">Motor Shield · Pico 2 W</option>
+                <option value="shield_lcd147a">Motor Shield · RP2350-LCD-1.47-A</option>
+                <option value="shield_touch2">Motor Shield · RP2350-Touch-LCD-2 / -C</option>
+              </optgroup>
               <option value="rp2350_geek">Waveshare RP2350-GEEK</option>
               <option value="rp2040_geek">Waveshare RP2040-GEEK</option>
               <option value="xiao_rp2040">Seeed Studio XIAO RP2040</option>
@@ -144,6 +152,8 @@
           </label>
           <label id="wifiTransport" class="board-field" for="transportSelect" hidden><span>書き込みの接続方法</span><select id="transportSelect"><option value="usb">USB（標準）</option><option value="wifi">Wi-Fi（試験対応）</option></select></label>
           <p id="boardDevelopment" class="action-hint" hidden>開発中・動作未確認：ATOM Lite（ESP32-PICO-D4）。AtomS3は対象外です。接続条件はHELPをご確認ください。</p>
+          <p id="shieldBoardNote" class="action-hint" hidden>Motor Shield v0.7：試作・実機未検証。メニューのGcodeサンプルから開始してください。StepStickの電流設定は別途必要です。LCD・タッチ・リミットによる停止は未実装です。</p>
+          <p id="shieldCameraNote" class="action-hint" hidden>Touch-LCD-2 / -C：カメラとFPCを外してから使用してください。カメラとモータのGPIOを共用しています。</p>
           <div class="run-actions">
             <button id="runButton" class="button button-primary" type="button" disabled>
               <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6V6Z"/></svg>
@@ -336,6 +346,10 @@
         <p>USB用UART0は予約し、シリアルサーボは合計2種類まで。GPIOは19・21・22・23・25・26・32・33、ADCはWi-Fiと共存できる32・33のみ。ADCの電圧表示は概算です。LEDブロックは内蔵RGB LEDの白色点灯・消灯です。配線図はコネクタ別の模式図で、実物の位置・向きは公式ピン情報をご確認ください。</p>
       </details>
       <details id="gcodeHelp" class="help-card"><summary>Gcode / PlotterFlow（試験対応）</summary>
+        <p>Motor Shield v0.7は右側のボード選択とサンプルの両方に追加しています。Pico / Pico W / Pico 2 / Pico 2 W、RP2350-LCD-1.47-A、RP2350-Touch-LCD-2 / -Cに対応。Zero系は対象外です。初期ファームはコントローラに対応したものを使います。</p>
+        <p>シールド用接続ブロック：X STEP GP2・DIR GP4、Y STEP GP3・DIR GP5、EN GP7（Low有効）。PWMペンはPico系GP12、LCD/Touch系GP9。コントローラとブロックの種類を合わせてください。Touch系は必ずカメラ/FPCを外します。</p>
+        <p>下面のU1/X・U2/Yへ互換StepStickを2台装着し、J5/X・J6/Yへモータを接続。J7は外部12 V、J8は外部安定化5 V、J9はPWMペンです。USBからモータを給電しません。J13はシリアルサーボ専用電源で、PWMペンだけなら使用しません。全GND共通、各電源の＋は別系統です。</p>
+        <p>TMC2209の電流・マイクロステップ・UART設定と読戻し確認は別途必要です。このサンプルはTMC初期化、原点復帰、リミット停止、LCD表示を実装していません。80 step/mmは仮値です。ジャンパ・電流・倍率を実機に合わせるまでM17を送らないでください。基板上にヒューズ・逆接保護はないため外部保護が必要です。コントローラは1枚だけ装着します。</p>
         <p>「高度なブロック」の一番下にGcodeがあります。XYのstep/mm、外付けSTEP/DIRドライバ、PWMペンを設定してからGcode処理を開始し、USBの1行受信 → 実行した応答 → USBへ表示をくり返します。解析だけのブロックはcommandとwordsの辞書を返します。</p>
         <p>ステッピングモータはGPIOに直結できません。各軸にTMC2209などの3.3 V対応STEP/DIRドライバとモータ用外部電源が必要です。TMCのUART通信・電流・マイクロステップの設定は行いません。キャリア基板の説明書で設定し、step/mmと合わせてください。</p>
         <p>左の図は機能端子の接続例で、製品の端子順ではありません。X STEP=GP2、Y STEP=GP3、X DIR=GP4、Y DIR=GP5、共通EN=GP7、PWMペン=GP12がサンプルの初期値です。STEPの2本は連続番号。ENの有効レベルを合わせ、VMは定格に合う外部電源へ、GNDは共通、VIOは対応基板のみ3.3 Vへ。モータやペンをPicoから給電しないでください。</p>
@@ -370,6 +384,7 @@
     <dialog id="sampleDialog" class="exchange-dialog sample-dialog" aria-labelledby="sampleTitle">
       <div class="exchange-heading"><div><small>START WITH AN EXAMPLE</small><h2 id="sampleTitle">サンプル</h2></div><button id="sampleClose" type="button" aria-label="閉じる">×</button></div>
       <p id="sampleBoard"></p>
+      <div id="servoSampleSection">
       <div class="sample-selectors">
         <label for="sampleModel">サーボの種類<select id="sampleModel"><option value="pwm">PWMサーボ</option><option value="scs009">SCS009</option><option value="xl330">XL330</option><option value="sts3215">STS3215</option><option value="sts3235">STS3235</option></select></label>
         <label for="sampleTransport">操作方法<select id="sampleTransport"><option value="usb">USB JOG</option><option value="wifi">Wi-Fi JOG</option></select></label>
@@ -390,12 +405,14 @@
       <p id="sampleUsbSteps">USBで実行した後、メニューの「コントローラ」を開いて接続します。</p>
       <p id="sampleWifiSteps">初回はUSBから実行します。Wi-Fi名「PicoBlocks-JOG」／仮パスワード「picoblocks」をブロックで変更してください。スマホをそのWi-Fiへ接続し、シリアル欄に出るURLを開きます。家庭のWi-Fiへの接続ではなく、ボードが親機になるJOG用です。USB JOGでも操作できます。</p>
       <p class="sample-caution">初回JOGやSpaceで中央付近へ大きく動く場合があります。負荷を外し、中央位置と増減幅を確認してから操作してください。</p>
+      </div>
       <p class="exchange-note">今のブロックを置き換え、読み込み前の状態を1件保存します。自動で実行・書き込みはしません。</p>
       <div class="exchange-actions"><button id="loadSample" class="button button-primary" type="button">このサンプルに置き換える</button><button id="restoreSample" class="button button-secondary" type="button">読み込み前に戻す</button></div>
       <section id="gcodeSampleSection">
         <h3>PlotterFlow / Gcode受信</h3>
         <p>STEP/DIR式XY＋PWMペン。外付けステッパドライバ2台（TMCなど）と外部電源が必要です。実機未検証・F速度制御なし・移動中の即時停止なし。配線と制約はHELPのGcodeを確認してください。</p>
-        <label for="gcodeSampleBoard">サンプルのボード<select id="gcodeSampleBoard"><option value="pico2">Pico 2</option><option value="pico2w">Pico 2 W</option></select></label>
+        <p id="shieldSampleNote" hidden>Motor Shieldでは下のGcodeサンプルを使用してください。</p>
+        <label for="gcodeSampleBoard">サンプルのボード<select id="gcodeSampleBoard"><option value="pico2">Pico 2</option><option value="pico2w">Pico 2 W</option><optgroup label="PlotterFlow Motor Shield v0.7"><option value="shield_pico">Motor Shield · Pico</option><option value="shield_picow">Motor Shield · Pico W</option><option value="shield_pico2">Motor Shield · Pico 2</option><option value="shield_pico2w">Motor Shield · Pico 2 W</option><option value="shield_lcd147a">Motor Shield · RP2350-LCD-1.47-A</option><option value="shield_touch2">Motor Shield · RP2350-Touch-LCD-2 / -C</option></optgroup></select></label>
         <p>選んだボードとブロックに置き換えます。元の設定とUSB受信ループを再現し、自動実行はしません。</p>
         <button id="loadGcodeSample" class="button button-secondary" type="button">Gcodeサンプルに置き換える</button>
       </section>
@@ -405,7 +422,7 @@
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
     <script src="https://unpkg.com/@blockly/field-multilineinput@5.0.17/dist/index.js"></script>
-    <script src="./i18n.en.js?v=series220"></script>
+    <script src="./i18n.en.js?v=shield1"></script>
     <script src="./i18n.js?v=gcode1"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
     <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
@@ -414,15 +431,16 @@
     <script src="./servo.js?v=jog3"></script>
     <script src="./jog.js?v=i18n1"></script>
     <script src="./gcode-runtime.js?v=gcode1"></script>
-    <script src="./gcode.js?v=gcode1"></script>
-    <script src="./advanced.js?v=gcode1"></script>
-    <script src="./basic.js?v=advanced1"></script>
+    <script src="./shield.js?v=shield1"></script>
+    <script src="./gcode.js?v=shield1"></script>
+    <script src="./advanced.js?v=shield1"></script>
+    <script src="./basic.js?v=shield1"></script>
     <script src="./wiring.js?v=series220"></script>
     <script src="./exchange.js?v=python1"></script>
     <script src="./boot.js?v=atom1"></script>
     <script src="./wifi.js?v=atom1"></script>
     <script src="./display.js?v=i18n1"></script>
-    <script src="./samples.js?v=gcode1"></script>
-    <script src="./app.js?v=gcode1"></script>
+    <script src="./samples.js?v=shield1"></script>
+    <script src="./app.js?v=shield1"></script>
   </body>
 </html>

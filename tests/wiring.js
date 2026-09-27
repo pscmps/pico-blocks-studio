@@ -66,13 +66,14 @@ const fs=require('node:fs'), vm=require('node:vm');
 const app=fs.readFileSync('app.js','utf8');
 const page=new JSDOM(fs.readFileSync('index.html','utf8')).window.document;
 const $=selector=>page.querySelector(selector);
-const context=vm.createContext({ServoWiring:W, document:page, $, localStorage:{getItem:()=> 'pico'},
+const context=vm.createContext({BasicBlocks:require('../basic.js'),ServoWiring:W, document:page, $, localStorage:{getItem:()=> 'pico'},
   getUartControllerBlock:()=>null,
   elements:Object.fromEntries(['pinoutLink','wiringDiagram','scsWiringDetails','scsHelp','boardPinHint','wiringSummary'].map(id=>[id,$('#'+id)]))});
 vm.runInContext(app.slice(app.indexOf('  const PICO_PINS'),app.indexOf('  const elements')),context);
 vm.runInContext(app.slice(app.indexOf('  const PICO_LEFT_PINS'),app.indexOf('  function updateBoardUi')),context);
 const profiles=vm.runInContext('BOARD_PROFILES',context);
 for (const [key, profile] of Object.entries(profiles)) {
+  if(profile.shield)continue; // Dedicated shield diagram covered in tests/gcode.js.
   context.key=key; vm.runInContext('selectedBoard=key',context);
   context.workspace={getAllBlocks:()=>[block('pwm_setup',{CHANNEL:1,PIN:profile.pins[0]}),block('pwm_setup',{CHANNEL:2,PIN:profile.pins[1]})]};
   vm.runInContext('renderWiringDiagram()',context);

@@ -4,6 +4,26 @@
 
 「高度なブロック」の一番下の **Gcode** に9ブロックを用意しています。XY倍率、STEP/DIR、PWMペン、受信制御の開始、USBの1行受信、実行結果、起動メッセージ、解析、状態です。メニュー → サンプル → PlotterFlow / Gcode受信からPico 2 / Pico 2 Wのプログラムを読み込めます。読み込みは現在のブロックとボード選択を置き換え、元に戻せます。自動実行はしません。
 
+## PlotterFlow Motor Shield v0.7
+
+右側の「使用するボード」で **Motor Shield · コントローラ名** を選び、メニュー → サンプル → PlotterFlow / Gcode受信から同じ構成を読み込みます。「高度なブロック → Gcode」のシールド専用接続ブロックは、STEP/DIRとPWMペンをまとめて初期化します。従来の裸のPico用サンプルはそのまま残しています。
+
+| コントローラ | ソケット | X STEP / DIR | Y STEP / DIR | EN | PWMペン | 初期ファーム |
+|---|---|---|---|---|---|---|
+| Pico / Pico W / Pico 2 / Pico 2 W | J1 | GP2 / GP4 | GP3 / GP5 | GP7、Low有効 | GP12 | 各機種の公式MicroPython |
+| RP2350-LCD-1.47-A | J2 | GP2 / GP4 | GP3 / GP5 | GP7、Low有効 | GP9 | Waveshare RP2350A |
+| RP2350-Touch-LCD-2 / -C | J3 | GP2 / GP4 | GP3 / GP5 | GP7、Low有効 | GP9 | Waveshare RP2350A |
+
+Touch系は**カメラとFPCを外した構成のみ**。LCD/SD等の予約GPIOは候補から除外し、Touchでは利用可能なADC端子がないためADCブロックを非表示にします。Zero系は対象外です。Pico W / Pico 2 WのWi-Fi書き込みは本体の既存機能を使用できますが、Gcode受信はUSBです。
+
+左の図は寸法・面・取り付け向きを再現するCAD図ではなく、端子番号付きの機能図です。J5/J6はX/YモータのA1/A2/B1/B2、U1/U2は下面に挿す互換StepStickです。PWMペンはJ9（1=GND、2=+5V、3=PWM）、信号には基板上のR14 220Ωが入ります。J12は1=GND、2=VCC、3=DATAでR20 220Ωを内蔵し、電源はJ13です。これらの抵抗を外付けで重ねて追加する図ではありません。
+
+J7=外部12V、J8=外部安定化5V、J13=シリアルサーボ定格の専用電源。**各＋端子は別系統、全GND共通**。PWMだけのGcodeサンプルはJ12/J13を使いません。コントローラはUSB給電し、常に1枚だけ装着します。基板上のヒューズ・逆接保護はなく、外部保護が必要です。
+
+**試作・実機未検証です。TMCの設定はこのサンプルに含みません。** TMC2209（基準BTT V1.2）は設計資料どおりのジャンパ、GP0 TX / GP1 RX、アドレスX=0/Y=1。電流・マイクロステップ・UART設定と読戻しを別途確認してください。80 step/mmは仮値なので機構とマイクロステップに合わせます。これらを確認するまではM17を送らないでください。原点復帰、リミット停止、ボタン処理、LCD/タッチ表示も未実装です。既存Gcodeの送り速度・即時停止の制約は下記のままです。
+
+参照：[シールドのGPIO定義](https://github.com/pscmps/plotterflow-motor-shield/blob/25aed4887b741969eb9d3d8ba8d62d9c550b7a4b/firmware/board-mappings.json)、[電源・UART](https://github.com/pscmps/plotterflow-motor-shield/blob/25aed4887b741969eb9d3d8ba8d62d9c550b7a4b/docs/power-and-uart.md)、[ジャンパ](https://github.com/pscmps/plotterflow-motor-shield/blob/25aed4887b741969eb9d3d8ba8d62d9c550b7a4b/docs/jumper-settings.md)。閲覧には元リポジトリの権限が必要な場合があります。元の基板・図面ファイルは複製していません。ファーム配布元：[LCD-1.47-A公式Wiki](https://www.waveshare.com/wiki/RP2350-LCD-1.47-A)、[Touch-LCD-2公式Wiki](https://www.waveshare.com/wiki/RP2350-Touch-LCD-2)。
+
 ## 必要な外部回路
 
 ステッピングモータはGPIOに直結できません。**各軸に外付けSTEP/DIRドライバ（TMC2209などの対応キャリア基板）と、モータ仕様に合う外部電源が必要**です。

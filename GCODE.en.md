@@ -4,6 +4,26 @@
 
 Nine blocks at the bottom of **Advanced blocks → Gcode** cover XY steps/mm, STEP/DIR drivers, PWM pen, controller initialization, USB line input, execute-and-reply, startup message, parsing and modal state. **Menu → Samples → PlotterFlow / Gcode receiver** loads the Pico 2 or Pico 2 W example. This replaces the board selection and blocks, keeps one restorable backup and does not run automatically.
 
+## PlotterFlow Motor Shield v0.7
+
+Select **Motor Shield · controller name** on the right, then load the matching **Menu → Samples → PlotterFlow / Gcode receiver** example. The shield-specific block under **Advanced blocks → Gcode** initializes both STEP/DIR and the PWM pen. The original bare-Pico examples remain available.
+
+| Controller | Socket | X STEP / DIR | Y STEP / DIR | EN | PWM pen | Initial firmware |
+|---|---|---|---|---|---|---|
+| Pico / Pico W / Pico 2 / Pico 2 W | J1 | GP2 / GP4 | GP3 / GP5 | GP7, active low | GP12 | Official MicroPython for each model |
+| RP2350-LCD-1.47-A | J2 | GP2 / GP4 | GP3 / GP5 | GP7, active low | GP9 | Waveshare RP2350A |
+| RP2350-Touch-LCD-2 / -C | J3 | GP2 / GP4 | GP3 / GP5 | GP7, active low | GP9 | Waveshare RP2350A |
+
+Touch boards require **removing the camera and FPC**. Reserved LCD/SD pins are excluded. Touch has no available ADC pins in this configuration, so the ADC block is hidden. Zero boards are not supported. Pico W / Pico 2 W retain their existing Wi-Fi upload feature; Gcode reception is via USB.
+
+The left diagram is a functional sketch, not a dimensioned or side-correct CAD/assembly drawing. J5/J6 carry X/Y motor A1/A2/B1/B2; compatible StepSticks fit underside U1/U2. J9 PWM pen: 1=GND, 2=+5V, 3=PWM, through onboard R14 220 ohms. J12 serial servo: 1=GND, 2=VCC, 3=DATA, through onboard R20 220 ohms, with supply from J13. These are onboard resistors, not additional external parts.
+
+J7 takes external 12 V, J8 regulated external 5 V, J13 the serial servo's rated supply. **All grounds are common; positive supplies remain separate.** The PWM-only Gcode example does not use J12/J13. Power the controller via USB and install only one controller. External protection is required: no onboard fuse or reverse-polarity protection.
+
+**Prototype; hardware untested. TMC setup is not included.** For TMC2209 (reference: BTT V1.2), follow the design's jumper settings, GP0 TX / GP1 RX and addresses X=0/Y=1. Configure current, microsteps and UART, and verify readback separately. 80 step/mm is a placeholder; match it to the mechanics and microsteps. Do not send M17 until these checks are complete. Homing, limit-stop, buttons, LCD and touch support are not implemented. The feed-rate and real-time-stop limitations below still apply.
+
+Sources: [GPIO definitions](https://github.com/pscmps/plotterflow-motor-shield/blob/25aed4887b741969eb9d3d8ba8d62d9c550b7a4b/firmware/board-mappings.json), [power / UART](https://github.com/pscmps/plotterflow-motor-shield/blob/25aed4887b741969eb9d3d8ba8d62d9c550b7a4b/docs/power-and-uart.md), [jumpers](https://github.com/pscmps/plotterflow-motor-shield/blob/25aed4887b741969eb9d3d8ba8d62d9c550b7a4b/docs/jumper-settings.md). Source-repository access may be required. Original PCB/schematic files are not bundled. Firmware references: [LCD-1.47-A official wiki](https://www.waveshare.com/wiki/RP2350-LCD-1.47-A), [Touch-LCD-2 official wiki](https://www.waveshare.com/wiki/RP2350-Touch-LCD-2).
+
 ## External hardware is required
 
 **Never connect stepper motors directly to GPIO. Each axis needs an external STEP/DIR driver (such as a suitable TMC2209 carrier) and a rated external motor supply.**

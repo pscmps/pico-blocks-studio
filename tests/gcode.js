@@ -28,6 +28,31 @@ for(const board of ['pico2','pico2w']) {
   programs.push({board,code});
   const saved=Blockly.serialization.workspaces.save(workspace);Blockly.serialization.workspaces.load(saved,workspace);assert.equal(valid(),true);
 }
+for(const board of Gcode.shield.boardKeys) {
+  const blocks=load(board),profile=profiles[board],preset=blocks.find(b=>b.type==='gcode_shield');
+  assert.equal(valid(),true,board);
+  assert.equal(preset.getFieldValue('CARRIER'),profile.shield);
+  const code=vm.runInContext('generatePython()',context),pin=board.startsWith('shield_pico')?12:9;
+  assert.ok(code.includes('StepperPIO(2, 3, 4, 5, 7, True)'));
+  assert.ok(code.includes(`Pen(${pin}, 50, 1000, 1800)`));
+  assert.ok(code.includes('_pf_stepper.close()')&&code.includes('_pf_pen.close()'));
+  assert.ok(code.includes(`board=${board}-stepdir`));
+  programs.push({board,code});
+  assert.equal(!!profile.wifi,['shield_picow','shield_pico2w'].includes(board));
+  assert.ok(profile.firmwareUrl.includes(board.startsWith('shield_pico')?'micropython.org':'WAVESHARE-RP2350A'));
+  const saved=Blockly.serialization.workspaces.save(workspace);Blockly.serialization.workspaces.load(saved,workspace);assert.equal(valid(),true);
+  const restored=workspace.getAllBlocks().find(b=>b.type==='gcode_shield');
+  restored.setFieldValue(profile.shield==='pico'?'lcd147a':'pico','CARRIER');assert.equal(valid(),false,'carrier mismatch');
+  load(board);workspace.newBlock('gcode_shield');assert.equal(valid(),false,'duplicate preset');
+  load(board);workspace.newBlock('gcode_pen');assert.equal(valid(),false,'duplicate pen');
+  load(board);workspace.newBlock('gcode_stepper');assert.equal(valid(),false,'duplicate stepper');
+  load(board);const gpio=workspace.newBlock('basic_write');gpio.setFieldValue(String(pin),'PIN');assert.equal(valid(),false,'preset reserves PWM pin');
+  load(board);const p=workspace.getAllBlocks().find(b=>b.type==='gcode_shield');p.setFieldValue(400,'FREQ');p.setFieldValue(3000,'UP');assert.equal(valid(),false,'period safety');
+  load(board);workspace.getAllBlocks().find(b=>b.type==='gcode_shield').unplug(true);assert.equal(valid(),false,'setup must be in main chain');
+}
+load();workspace.newBlock('gcode_shield');assert.equal(valid(),false,'shield setup on plain board');
+load('shield_touch2');const unavailableAdc=workspace.newBlock('basic_adc');
+assert.equal(unavailableAdc.getFieldValue('PIN'),'-1');assert.equal(valid(),false,'ADC sentinel cannot execute');
 let blocks=load(),step=blocks.find(b=>b.type==='gcode_stepper'),pen=blocks.find(b=>b.type==='gcode_pen');
 step.setFieldValue('4','Y_STEP');assert.equal(valid(),false);step.setFieldValue('3','Y_STEP');
 pen.setFieldValue('2','PIN');assert.equal(valid(),false);pen.setFieldValue('12','PIN');
@@ -48,6 +73,22 @@ workspace.clear();const p=workspace.newBlock('gcode_parse');assert.equal(Gcode.v
 assert.equal(Gcode.expression(p,()=>"'G1 X2'"),"_pf_parse_dict('G1 X2')");
 // Wiring tracks edits and has separate supplies, two drivers, four coil wires per axis.
 const W=require('../wiring.js'),{JSDOM}=require('jsdom');blocks=load();
+for(const board of Gcode.shield.boardKeys) {
+  const profile=profiles[board],blocks=load(board),diagram=Gcode.shield.render(profile,blocks);
+  const d=new JSDOM('<svg>'+diagram.content+'</svg>').window.document;
+  assert.equal(d.querySelectorAll('[data-shield-driver]').length,2);
+  assert.equal(d.querySelectorAll('[data-shield-connector]').length,9);
+  assert.equal(d.querySelectorAll('[data-shield-coil]').length,8);
+  assert.equal(d.querySelectorAll('[data-shield-gpio]').length,14);
+  for(const ref of ['J5','J6','J7','J8','J9'])assert.equal(d.querySelector(`[data-shield-connector="${ref}"]`).getAttribute('data-active'),'true');
+  for(const ref of ['J10','J11','J12','J13'])assert.equal(d.querySelector(`[data-shield-connector="${ref}"]`).getAttribute('data-active'),'false');
+  const expected=profile.shield==='pico'?[4,5,6,7,10,9,11,16,12,14,15,1,2,17]:profile.shield==='lcd147a'?[15,16,17,18,2,1,3,4,5,6,7,13,14,9]:[7,9,11,19,28,20,26,27,12,21,25,10,8,24];
+  assert.deepEqual(Gcode.shield.signals(profile.shield).map(p=>p.pin),expected);
+  assert.ok(!diagram.content.includes('undefined'));
+  const empty=new JSDOM('<svg>'+Gcode.shield.render(profile,[]).content+'</svg>').window.document;
+  assert.equal(empty.querySelectorAll('[data-active="true"]').length,0);
+}
+blocks=load();
 const draw=pin=>({layout:'pico',board:'<rect/>',dataPoint:{x:50,y:42+Number(pin)*5},groundPoint:{x:50,y:64},logicPowerPoint:{x:210,y:84}});
 let drawing=W.renderPlotterflow(blocks,draw,p=>'GP'+p),dom=new JSDOM('<svg>'+drawing.content+'</svg>').window.document;
 assert.equal(dom.querySelectorAll('[data-gcode-driver]').length,2);

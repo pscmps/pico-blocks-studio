@@ -12,6 +12,7 @@ function catalog(board) {
   return Exchange.catalog(Blockly,vm.runInContext('buildToolbox()',context));
 }
 for(const [board,profile] of Object.entries(profiles)) {
+  if(profile.shield) {assert.throws(()=>Samples.create(board,profile,'pwm','usb'));continue;}
   const schema=catalog(board);
   for(const model of Samples.models) for(const transport of ['usb','wifi']) {
     if(transport==='wifi'&&!profile.wifi) {
@@ -69,6 +70,15 @@ assert.equal($('#sampleStatus').dataset.error,'false',$('#sampleStatus').textCon
 assert.equal(JSON.stringify(JSON.parse(storage.get('picoblocks-sample-backup-v1')).workspace),original);
 assert.ok(!storage.has('chat-backup'));
 $('#restoreSample').click();assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
+context.board='shield_touch2';vm.runInContext('selectedBoard=board',context);$('#samplesMenuItem').click();
+assert.equal($('#servoSampleSection').hidden,true);assert.equal($('#loadSample').hidden,true);
+assert.equal($('#gcodeSampleBoard').value,'shield_touch2');
+$('#loadGcodeSample').click();assert.equal($('#sampleStatus').dataset.error,'false',$('#sampleStatus').textContent);
+assert.ok(workspace.getAllBlocks().some(b=>b.type==='gcode_shield'));
+$('#restoreSample').click();assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
+assert.equal($('#servoSampleSection').hidden,true); // Restores the pre-load shield board, too.
+context.board='pico';vm.runInContext('selectedBoard=board',context);$('#samplesMenuItem').click();
+assert.equal($('#servoSampleSection').hidden,false);
 context.isBusy=true;$('#loadSample').click();assert.equal($('#sampleStatus').dataset.error,'true');
 assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);context.isBusy=false;
 context.controllerActive=true;$('#loadSample').click();assert.equal($('#sampleStatus').dataset.error,'true');context.controllerActive=false;

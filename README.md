@@ -2,6 +2,8 @@
 
 ## Gcode / PlotterFlow
 
+**Motor Shield v0.7**：Pico / Pico W / Pico 2 / Pico 2 W、RP2350-LCD-1.47-A、RP2350-Touch-LCD-2 / -C（カメラ/FPC取り外し）の6構成を追加。基板選択・専用接続ブロック・端子番号付き簡略図・USB Gcodeサンプルを用意しています。Zero系は対象外。TMC初期化・原点復帰・リミット停止・LCDは未実装、実機未検証です。[ピン・電源・使い方](GCODE.md#plotterflow-motor-shield-v07)。
+
 「高度なブロック → Gcode」と、メニュー → サンプルにPlotterFlow受信プログラムを追加しています。Pico 2 / Pico 2 WのSTEP/DIR式XY＋PWMペンを、設定・USBの1行受信・Gコード実行・返信のブロックで再現します。各軸の外付けドライバ（TMCなど）と外部電源が必須で、左の図にも表示します。TMC UART設定は含みません。
 
 元ファームとの比較テスト済み、実機未検証。Fによる速度制御や即時STOPは未実装です。元ファームからの互換性・安全面の修正と使い方は [GCODE.md](GCODE.md) を参照してください。

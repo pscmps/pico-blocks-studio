@@ -126,11 +126,11 @@ try:
             try: exec(compile(sample['code'],'<generated-sample>','exec'),scope)
             except EndOfTest: pass
         result=out.getvalue().splitlines()
-        assert result[0]=='PlotterFlow MicroPython RP ready; board='+('pico2w-stepdir' if sample['board']=='pico2w' else 'pico2-stepdir'),result
+        assert result[0]=='PlotterFlow MicroPython RP ready; board='+sample['board']+'-stepdir',result
         assert result[1]==old.execute('M115')
         assert result[2:]==['error:motors_disabled','ok','ok','ok'],result
         assert scope['_pf_stepper'].sm.events==[3]*8
         assert not scope['_pf_stepper'].enabled and scope['_pf_pen'].pwm.closed
 finally:
     sys.stdin=stdin;sys.modules['time']=real_time
-print('PASS: 1012 parser cases, 1000 XY paths, source command/state/mask parity, EN/FIFO/cleanup and two full generated receiver loops (stub hardware)')
+print('PASS: 1012 parser cases, 1000 XY paths, source command/state/mask parity, EN/FIFO/cleanup and all generated receiver loops (stub hardware)')

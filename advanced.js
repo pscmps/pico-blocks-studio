@@ -103,7 +103,7 @@ globalThis.AdvancedBlocks = (() => {
   const shadow = n => ({shadow:{type:"basic_number",fields:{NUM:n}}});
   const txt = text => ({shadow:{type:"basic_text",fields:{TEXT:text}}});
   const item = (type,inputs={}) => ({kind:"block",type:"adv_"+type,inputs});
-  function toolbox() {
+  function toolbox(profile={}) {
     const category = (name,colour,contents)=>({kind:"category",name,colour,contents});
     return {kind:"category",name:t("高度なブロック"),colour:"#63728e",contents:[
       category(t("ブロック作成（Python）"),"#7184a2",[item("python_function"),{...item("call",{ARG:shadow(0)}),fields:{NAME:"custom"}},{...item("call_do",{ARG:shadow(0)}),fields:{NAME:"custom"}}]),
@@ -116,7 +116,7 @@ globalThis.AdvancedBlocks = (() => {
       category(t("汎用PWM"),"#b59458",[item("pwm",{DUTY:shadow(32768)}),item("pwm_stop")]),
       category("I2C / SPI","#61979b",[item("i2c_setup"),item("i2c_scan"),item("i2c_read"),item("i2c_write"),item("spi_setup"),item("spi_transfer")]),
       category(t("時間・メモリ"),"#6b8b9a",[item("ticks_us"),item("elapsed_us"),item("mem_free"),item("gc")]),
-      gcode.toolbox(),
+      gcode.toolbox(profile),
     ]};
   }
   function expression(block,expression) {
@@ -353,6 +353,6 @@ def _adv_wait(ms):
             time.sleep_ms(1)
         remaining -= chunk
 `;
-  return {register,toolbox,expression,statement,runtime,definitions,wrap,validate,hasEvents};
+  return {register,toolbox,expression,statement,runtime,definitions,wrap,validate,hasEvents,shield:gcode.shield};
 })();
 if(typeof module!=="undefined")module.exports=globalThis.AdvancedBlocks;
