@@ -335,11 +335,6 @@
   registerBlocks();
 
   function buildToolbox() {
-    const motionBlocks = [
-      ...(BOARD_PROFILES[selectedBoard].ledPin === null ? [] : [{ kind: "block", type: "pico_led" }]),
-      { kind: "block", type: "gpio_write" },
-      { kind: "block", type: "wait_ms" },
-    ];
     return {
     kind: "categoryToolbox",
     contents: [
@@ -353,16 +348,11 @@
         colour: "#27b7a7",
         expanded: true,
         contents: [
-          {
-            kind: "category",
-            name: t("うごき"),
-            colour: "#f0a65a",
-            contents: motionBlocks,
-          },
-          ...BasicBlocks.toolbox(),
+          ...BasicBlocks.toolbox(BOARD_PROFILES[selectedBoard]),
           ...GeekDisplay.toolbox(selectedBoard),
         ],
       },
+      BasicBlocks.advancedToolbox(),
       {
         kind: "category",
         name: "UART",
@@ -551,6 +541,7 @@ class SCS009PIO:
 
   function chainToPython(block, level = 0) {
     let code = "";
+    const events = BasicBlocks.hasEvents(workspace.getAllBlocks(false));
     let current = block;
     while (current) {
       let piece = "";
@@ -567,7 +558,7 @@ class SCS009PIO:
           break;
         }
         case "wait_ms":
-          piece = `time.sleep_ms(${Math.max(0, Number(current.getFieldValue("MS")) || 0)})\n`;
+          piece = `${events ? "_adv_wait" : "time.sleep_ms"}(${Math.max(0, Number(current.getFieldValue("MS")) || 0)})\n`;
           break;
         case "print_text":
           piece = `print(${pyString(current.getFieldValue("TEXT"))})\n`;
@@ -594,18 +585,19 @@ class SCS009PIO:
         case "repeat_times": {
           const times = Math.max(0, Math.floor(Number(current.getFieldValue("TIMES")) || 0));
           const body = chainToPython(current.getInputTargetBlock("DO"), level + 1);
-          piece = `for _ in range(${times}):\n${body ? indent(body) : "    pass\n"}`;
+          piece = `for _ in range(${times}):\n${events?"    _adv_poll()\n":""}${body ? indent(body) : "    pass\n"}`;
           break;
         }
         case "forever_loop": {
           const body = chainToPython(current.getInputTargetBlock("DO"), level + 1);
-          piece = `while True:\n${getUartControllerBlock() ? "    _controller_poll()\n    time.sleep_ms(5)\n" : ""}${body ? indent(body) : "    pass\n"}`;
+          piece = `while True:\n${events ? "    _adv_poll()\n    time.sleep_ms(1)\n" : getUartControllerBlock() ? "    _controller_poll()\n    time.sleep_ms(5)\n" : ""}${body ? indent(body) : "    pass\n"}`;
           break;
         }
         default:
-          piece = GeekDisplay.statement(current, BasicBlocks.expression, workspace.getAllBlocks(false)) || BasicBlocks.statement(current, chainToPython, indent, Boolean(getUartControllerBlock())) || ServoBlocks.statement(current) || t`pass  # 未対応のブロック: ${current.type}\n`;
+          piece = GeekDisplay.statement(current, BasicBlocks.expression, workspace.getAllBlocks(false)) || BasicBlocks.statement(current, chainToPython, indent, Boolean(getUartControllerBlock()), events) || ServoBlocks.statement(current) || t`pass  # 未対応のブロック: ${current.type}\n`;
       }
       code += piece;
+      if(events && piece)code += "_adv_poll()\n";
       current = current.getNextBlock();
     }
     return code;
@@ -638,10 +630,12 @@ class SCS009PIO:
       } : null);
       body = body.replace(/time\.sleep_ms\((\d+)\)/g, "_controller_wait($1)");
       body = 'print("PICOBLOCKS_READY")\n' + body;
-      body += t`\n# PCからのJOG指令を待ちます\nwhile True:\n    _controller_poll()\n    time.sleep_ms(5)\n`;
+      if(!BasicBlocks.hasEvents(allBlocks))body += t`\n# PCからのJOG指令を待ちます\nwhile True:\n    _controller_poll()\n    time.sleep_ms(5)\n`;
     }
     const serialImports = uartSetup ? "\nimport sys\nimport select\nimport json" : "";
-    return t`# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks, profile)}${BasicBlocks.runtime(allBlocks, profile)}${GeekDisplay.runtime(allBlocks)}${ledCode}${uartCode}\n${body}`;
+    const advancedCode = BasicBlocks.advancedDefinitions(allBlocks,chainToPython,indent);
+    body = BasicBlocks.wrapAdvanced(body,allBlocks,indent);
+    return t`# PicoBlocks Studio が生成しました\n# Board: ${profile.name}\nfrom machine import Pin\nimport time${serialImports}\n${scsCode}${ServoBlocks.runtime(allBlocks, profile)}${BasicBlocks.runtime(allBlocks, profile, Boolean(uartSetup))}${GeekDisplay.runtime(allBlocks)}${ledCode}${uartCode}${advancedCode}\n${body}`;
   }
 
   const PICO_LEFT_PINS = ["GP0", "GP1", "GND", "GP2", "GP3", "GP4", "GP5", "GND", "GP6", "GP7", "GP8", "GP9", "GND", "GP10", "GP11", "GP12", "GP13", "GND", "GP14", "GP15"];
@@ -973,6 +967,7 @@ class SCS009PIO:
       if (b.type === "pwm_setup" && Number(b.getFieldValue("MIN_US")) >= Number(b.getFieldValue("MAX_US"))) error = t("PWMの0°パルス幅は180°より小さくしてください。");
       if (b.type !== "pwm_setup" && !channels.includes(b.getFieldValue(b.type === "pwm_bind" ? "ID" : "CHANNEL"))) error = t("この番号のPWMサーボ接続ブロックを追加してください。");
     }
+    error = BasicBlocks.validate(blocks,BOARD_PROFILES[selectedBoard]) || error;
     if (error && throwOnError) throw new Error(error);
     if (error) showToast(error, "error");
     return !error;

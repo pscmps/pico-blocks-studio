@@ -298,6 +298,17 @@
         <p>受信は接続キーで保護し、128 KiBまでを分割転送・SHA-256検証後に置換します。転送途中の失敗では旧プログラムが残ります。保存完了の応答が途切れた場合は新旧どちらか不明なので、待機へ戻して再送してください。通信は暗号化されないため信頼できるLANだけで使い、キーは秘密にしてください。</p>
         <p>接続できなくてもUSBで再設定・書き込みできます。受信機能は別ファイルなので、このサイトからのUSB保存でも残ります。他のツールでmain.pyを置き換えた場合は初回設定をやり直してください。実機・Android端末での動作検証は未実施です。</p>
       </details>
+      <details id="advancedHelp" class="help-card"><summary>基本ブロックの整理と高度なブロック</summary>
+        <p>「うごき」は廃止し、本体LEDとGPIO出力は「基本 → 入力・出力」、待ちは「時間・くり返し」に統一しました。古い保存データのGPIO出力・waitも読み込めます。</p>
+        <p>「基本」の下の「高度なブロック」に45種類を追加。配列・辞書、関数、割り込み・ソフトタイマー、文字列・型変換・JSON、ビット演算・数学、汎用PWM、I2C/SPI、時間・メモリを扱えます。MicroPythonの全APIを網羅するものではありません。</p>
+        <p>配列の番号は0から。配列・辞書は変数へ入れてから使い、範囲外の番号や空配列の取り出しはエラーになります。関数は引数1個と戻り値に対応し、変数はプログラム全体で共有します。</p>
+        <p>関数・割り込み・タイマー・I2C/SPIの開始は「プログラム開始」の直下へ。関数定義は先頭へまとめ、それ以外の開始ブロックは並べた順に実行します。I2C/SPIは使用する処理より前に接続してください。</p>
+        <p>割り込みは変化を記録するだけで、中のブロックは通常の実行側で動きます。ソフトタイマーも同じ実行側で動きます。複数イベントはまとめられ、通信・長い処理・別のイベント処理中は遅れます。高速計数・精密周期・安全装置には使わないでください。</p>
+        <p>割り込み・タイマーを置くと末尾に待受ループを自動生成します。USB／Wi-Fi JOGと共存し、通常の待ちブロック中も処理します。「停止」や未処理エラーでは割り込みを解除します。イベントの中で長時間待たないでください。</p>
+        <p>I2C/SPIはソフトウェア方式で、外部に出たGPIOから選べます。信号は3.3 V、I2Cには3.3 Vへのプルアップが必要。I2Cレジスタは8ビット、SPIは8ビット・MSB先頭・Low有効CSです。汎用PWMとサーボPWMのピン・共有スライスは競合検査します。周辺機器の仕様を確認してください。</p>
+        <p>初期ファームの再書き込みは不要です。追加処理は生成Pythonへ含まれます。実機での割り込み応答時間・周辺機器通信・PWM波形は未検証です。</p>
+        <p><a href="https://docs.micropython.org/en/v1.29.0/reference/isr_rules.html" target="_blank" rel="noopener">MicroPython: Interrupt handlers</a> · <a href="https://docs.micropython.org/en/v1.29.0/library/machine.I2C.html" target="_blank" rel="noopener">I2C</a> · <a href="https://docs.micropython.org/en/v1.29.0/library/machine.SPI.html" target="_blank" rel="noopener">SPI</a></p>
+      </details>
       <details id="signalLevelHelp" class="help-card"><summary>サーボの信号レベル</summary>
         <p>SCS009（資料名SCS0009）・STS3215・STS3235：メーカー資料はHigh 2〜5 V、Low 0〜0.45 V。送信側・受信側を分けた規格や内部プルアップ電圧は明記されておらず、返答が常に3.3 V以下とは保証できません。</p>
         <p>XL330：ROBOTIS公式は3.3 Vロジック・5 V互換。これはサーボ側の仕様で、ESP32の5 V耐性を意味しません。</p>
@@ -338,7 +349,7 @@
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
-    <script src="./i18n.en.js?v=jog3"></script>
+    <script src="./i18n.en.js?v=advanced1"></script>
     <script src="./i18n.js?v=i18n1"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
     <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
@@ -346,12 +357,13 @@
     <script>PicoI18n.captureBlockly("ja", Blockly.Msg); PicoI18n.setLanguage(PicoI18n.language); PicoI18n.bindDocument(document);</script>
     <script src="./servo.js?v=jog3"></script>
     <script src="./jog.js?v=i18n1"></script>
-    <script src="./basic.js?v=atom1"></script>
+    <script src="./advanced.js?v=advanced1"></script>
+    <script src="./basic.js?v=advanced1"></script>
     <script src="./wiring.js?v=jog3"></script>
-    <script src="./exchange.js?v=atom1"></script>
+    <script src="./exchange.js?v=advanced1"></script>
     <script src="./boot.js?v=atom1"></script>
     <script src="./wifi.js?v=atom1"></script>
     <script src="./display.js?v=i18n1"></script>
-    <script src="./app.js?v=jog3"></script>
+    <script src="./app.js?v=advanced1"></script>
   </body>
 </html>

@@ -1,5 +1,6 @@
 /* Small, explicit block vocabulary, also usable by external chat tools. */
 const BasicBlocks = (() => {
+  const advanced = typeof module !== "undefined" ? require("./advanced.js") : globalThis.AdvancedBlocks;
   const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw: args[0]}, ...args.slice(1));
 
   const number = (name, value) => ({type:"field_number", name, value});
@@ -36,7 +37,7 @@ const BasicBlocks = (() => {
     Blockly.defineBlocksWithJsonArray(definitions());
     for (const kind of ["adc", "read", "write"]) {
       Blockly.Blocks["basic_"+kind] = {init() {
-        this.appendDummyInput().appendField(kind === "adc" ? "ADC" : "GPIO").appendField(new Blockly.FieldDropdown(kind === "adc" ? adcOptions : pinOptions),"PIN");
+        if (kind !== "write") this.appendDummyInput().appendField(kind === "adc" ? "ADC" : "GPIO").appendField(new Blockly.FieldDropdown(kind === "adc" ? adcOptions : pinOptions),"PIN");
         if (kind === "adc") {
           this.appendDummyInput().appendField(new Blockly.FieldDropdown([[t("値 0〜65535"),"RAW"],[t("電圧（V）"),"VOLT"]]),"MODE");
           this.setOutput(true,"Number");
@@ -45,7 +46,8 @@ const BasicBlocks = (() => {
           this.appendDummyInput().appendField(t("を読む")).appendField(new Blockly.FieldDropdown([[t("プルアップ"),"UP"],[t("プルダウン"),"DOWN"],[t("なし"),"NONE"]]),"PULL");
           this.setOutput(true,"Number");
         } else {
-          this.appendValueInput("VALUE").setCheck(["Number","Boolean"]).appendField(t("に出力（0/1）"));
+          this.appendValueInput("VALUE").setCheck(["Number","Boolean"]).appendField("GPIO").appendField(new Blockly.FieldDropdown(pinOptions),"PIN").appendField(t("に出力（0/1）"));
+          this.setInputsInline(true);
           this.setPreviousStatement(true); this.setNextStatement(true);
         }
         this.setColour(39);
@@ -55,13 +57,14 @@ const BasicBlocks = (() => {
       const isPwm = model === "pwm";
       Blockly.defineBlocksWithJsonArray([stmt(model+"_value", t`${isPwm ? t("PWMサーボ") : model.toUpperCase()} ${isPwm ? t("番号") : "ID"} %1 を %2 ${isPwm ? t("°へ") : t("の位置へ")}`, [{type:"field_number",name:isPwm?"CHANNEL":"ID",value:1,min:isPwm?1:0,max:isPwm?16:model==="xl330"?252:253,precision:1},value("VALUE")],{colour:isPwm?42:14,tooltip:t("計算・変数・ADCの値をつなげます。サーボの接続・トルク設定は別ブロックです。")})]);
     }
+    advanced.register(Blockly,pinOptions);
   }
   const shadow = n => ({shadow:{type:"basic_number",fields:{NUM:n}}});
   const entry = (type, inputs={}) => ({kind:"block",type,inputs});
-  function toolbox() {
+  function toolbox(profile = {}) {
     const category = (name, colour, contents) => ({kind:"category",name,colour,contents});
     return [
-      category(t("入力・出力"), "#bd903c", [entry("basic_adc"),entry("basic_read"),entry("basic_write",{VALUE:shadow(1)})]),
+      category(t("入力・出力"), "#bd903c", [...(profile.ledPin === null ? [] : [entry("pico_led")]),entry("basic_adc"),entry("basic_read"),entry("basic_write",{VALUE:shadow(1)})]),
       category(t("計算"), "#527baa", [entry("basic_number"),entry("basic_math",{A:shadow(1),B:shadow(2)}),entry("basic_unary",{VALUE:shadow(-10)}),entry("basic_limit",{VALUE:shadow(90),MIN:shadow(0),MAX:shadow(180)}),entry("basic_map",{VALUE:shadow(0),IN_MIN:shadow(0),IN_MAX:shadow(65535),OUT_MIN:shadow(0),OUT_MAX:shadow(180)}),entry("basic_random",{MIN:shadow(0),MAX:shadow(100)})]),
       category(t("条件・論理"), "#6885b2", [entry("basic_if"),entry("basic_compare",{A:shadow(0),B:shadow(100)}),entry("basic_boolean"),entry("basic_logic"),entry("basic_not")]),
       category(t("変数"), "#ac71a3", [entry("basic_set",{VALUE:shadow(0)}),entry("basic_get"),entry("basic_change",{VALUE:shadow(1)})]),
@@ -93,10 +96,14 @@ const BasicBlocks = (() => {
       case "basic_read": return `_input_${f("PIN")}.value()`;
       case "basic_text": return JSON.stringify(String(f("TEXT")));
       case "basic_join": return `(str(${input("A","''")}) + str(${input("B","''")}))`;
-      default: throw new Error(t("値として使えないブロック: ") + block.type);
+      default: {
+        const code = advanced.expression(block,expression);
+        if(code !== null)return code;
+        throw new Error(t("値として使えないブロック: ") + block.type);
+      }
     }
   }
-  function statement(block, chain, indent, jog) {
+  function statement(block, chain, indent, jog, events=false) {
     const f = n => block.getFieldValue(n);
     const input = (n,d="0") => expression(block.getInputTargetBlock(n),d);
     const body = n => indent(chain(block.getInputTargetBlock(n))) || "    pass\n";
@@ -105,19 +112,19 @@ const BasicBlocks = (() => {
       case "basic_change": return `${variableName(f("NAME"))} += ${input("VALUE","1")}\n`;
       case "basic_write": return `_output_${f("PIN")}.value(1 if ${input("VALUE")} else 0)\n`;
       case "basic_print": return `print(${input("VALUE","''")})\n`;
-      case "basic_wait": return `${jog ? "_controller_wait" : "time.sleep_ms"}(max(0, int(${input("MS","100")})))\n`;
+      case "basic_wait": return `${events ? "_adv_wait" : jog ? "_controller_wait" : "time.sleep_ms"}(max(0, int(${input("MS","100")})))\n`;
       case "basic_if": return `if ${input("IF","False")}:\n${body("DO")}else:\n${body("ELSE")}`;
-      case "basic_repeat": return `for _ in range(max(0, int(${input("TIMES","10")}))):\n${jog?"    _controller_poll()\n":""}${body("DO")}`;
-      case "basic_while": return `while ${input("IF","False")}:\n${jog?"    _controller_poll()\n":""}    time.sleep_ms(1)\n${body("DO")}`;
+      case "basic_repeat": return `for _ in range(max(0, int(${input("TIMES","10")}))):\n${events?"    _adv_poll()\n":jog?"    _controller_poll()\n":""}${body("DO")}`;
+      case "basic_while": return `while ${input("IF","False")}:\n${events?"    _adv_poll()\n":jog?"    _controller_poll()\n":""}    time.sleep_ms(1)\n${body("DO")}`;
       case "pwm_value": return `pwm_servos[${Number(f("CHANNEL"))}].angle(${input("VALUE","90")})\n`;
       case "scs009_value": return `scs009.move(${Number(f("ID"))}, int(${input("VALUE","511")}), 0, 500)\n`;
       case "xl330_value": return `xl330.move(${Number(f("ID"))}, int(${input("VALUE","2048")}), 20, 20)\n`;
       case "sts3215_value": return `sts3215.move(${Number(f("ID"))}, int(${input("VALUE","2048")}), 500, 20)\n`;
       case "sts3235_value": return `sts3235.move(${Number(f("ID"))}, int(${input("VALUE","2048")}), 500, 20)\n`;
-      default: return null;
+      default: return advanced.statement(block,expression,chain,indent,variableName,jog,events);
     }
   }
-  function runtime(blocks, profile = {}) {
+  function runtime(blocks, profile = {}, jog=false) {
     let code = "";
     const types = new Set(blocks.map(b=>b.type));
     if (types.has("basic_unary")) code += "import math\n";
@@ -130,7 +137,7 @@ const BasicBlocks = (() => {
       if (b.type === "basic_adc" && profile.platform === "esp32") lines.add(`_adc_${pin}.atten(ADC.ATTN_11DB)`);
       if (b.type === "basic_read") lines.add(`_input_${pin} = Pin(${pin}, Pin.IN${({UP:", Pin.PULL_UP",DOWN:", Pin.PULL_DOWN",NONE:""})[b.getFieldValue("PULL")]})`);
       if (b.type === "basic_write") lines.add(`_output_${pin} = Pin(${pin}, Pin.OUT, value=0)`);
-      if (["basic_get","basic_set","basic_change"].includes(b.type)) lines.add(`${variableName(b.getFieldValue("NAME"))} = 0`);
+      if (["basic_get","basic_set","basic_change","adv_for_each"].includes(b.type)) lines.add(`${variableName(b.getFieldValue("NAME"))} = 0`);
     }
     code += [...lines].join("\n") + "\n";
     if (types.has("basic_map")) code += `
@@ -140,8 +147,11 @@ def _map_range(value, in_min, in_max, out_min, out_max):
     ratio = max(0, min(1, (value - in_min) / (in_max - in_min)))
     return out_min + ratio * (out_max - out_min)
 `;
-    return code;
+    return code + advanced.runtime(blocks,profile,jog);
   }
-  return {register,toolbox,expression,statement,runtime,variableName};
+  return {register,toolbox,expression,statement,runtime,variableName,
+    advancedToolbox:advanced.toolbox, hasEvents:advanced.hasEvents, validate:advanced.validate,
+    advancedDefinitions:(blocks,chain,indent)=>advanced.definitions(blocks,chain,indent,expression,variableName),
+    wrapAdvanced:advanced.wrap};
 })();
 if (typeof module !== "undefined") module.exports = BasicBlocks;

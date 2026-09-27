@@ -1,5 +1,32 @@
 # PicoBlocks Studio
 
+## 基本の整理・高度なブロック（2026-09-27）
+
+「うごき」を廃止し、本体LED・GPIO出力を「基本 → 入力・出力」、waitを「時間・くり返し」に統一。新規GPIO出力は一行の `basic_write`、待ちは `basic_wait` を使います。旧 `gpio_write` / `wait_ms` の保存データはそのまま読み込めます。
+
+「基本」のすぐ下の「高度なブロック」に45種類を追加しました。
+
+- 配列（リスト）・数値型配列・バイト列・辞書
+- 引数1個と戻り値のある関数、要素ごとの反復、break / continue、try / except / finally
+- GPIO割り込みとソフトタイマー（停止・デバウンス対応）
+- 型変換、文字列分割・置換、JSON、ビット演算、三角関数
+- 汎用PWM、ソフトI2Cのスキャン・8ビットレジスタ読書き、ソフトSPI転送
+- マイクロ秒カウンタ・差分、空きメモリ・GC
+
+初期ファームの入れ直しは不要。追加処理を生成Pythonへ含めます。既存9ボードの外部GPIO候補に合わせ、ピンの競合・RPのPWMスライス競合・関数や制御ブロックの配置を検査します。サーボ配線図は従来どおりで、I2C/SPI周辺機器の結線図はまだありません。
+
+### 割り込み・タイマーの実行方式
+
+GPIOの `Pin.irq(hard=False)` はフラグを立てるだけです。中に置いたブロックは通常の実行側のディスパッチャーが実行し、IRQ内でサーボ通信・メモリ確保・待ちを行いません。ソフトタイマーは `ticks_ms/ticks_diff/ticks_add` による協調実行で、ハードウェアTimerではありません。待ち・ループ・文の間でイベントとJOGを処理し、プログラム末尾には待受ループを自動生成。終了時はfinallyでIRQを解除します。
+
+イベントは同時実行せず、長い処理や別のハンドラー中は遅延します。IRQの連続変化や過ぎたタイマー周期を厳密には数えず、まとめます。高速計数・精密周期・安全装置用ではありません。ハンドラー内の無限ループや長い待ちは避けてください。
+
+配列は0始まり、型・範囲違いはPythonの例外です。I2C/SPIは3.3 V信号専用で、I2Cには3.3 Vへのプルアップが必要です。周辺機器の仕様を確認してください。GPIO/I2C/SPI/PWMの接続は本体・サーボの使用ピンと共用しません。**MicroPythonの全APIではなく、主要機能のたたきです。実機の遅延・通信・波形は未検証です。** ファイル操作・RTC設定・スリープ・WDT・スレッド・asyncio・任意PIOは含めていません。
+
+根拠：[割り込みの制約](https://docs.micropython.org/en/v1.29.0/reference/isr_rules.html)、[Pin](https://docs.micropython.org/en/v1.29.0/library/machine.Pin.html)、[I2C](https://docs.micropython.org/en/v1.29.0/library/machine.I2C.html)、[SPI](https://docs.micropython.org/en/v1.29.0/library/machine.SPI.html)、[PWM](https://docs.micropython.org/en/v1.29.0/library/machine.PWM.html)、[array](https://docs.micropython.org/en/v1.29.0/library/array.html)。
+
+検査：`node tests/advanced.js` と `python tests/advanced_runtime.py`。45ブロック・9ボードの生成と検査、78プログラムの構文、配列・辞書・関数、IRQ/タイマーの模擬動作・終了時解除、SPIエラー時CS復帰などを確認します。
+
 日本語 · [English](README.en.md) · [エディターを開く](https://pscmps.github.io/pico-blocks-studio/)
 
 RP2040 / RP2350 + MicroPython向けの、ブラウザーだけで使えるブロックプログラミング環境のプロトタイプです。

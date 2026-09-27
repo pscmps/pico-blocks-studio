@@ -1,5 +1,131 @@
 # PicoBlocks Studio — 対話AI向けブロックJSONガイド v1
 
+## 高度なブロック
+
+新規では `basic_write` / `basic_wait` を使用。`gpio_write` / `wait_ms` は旧データ読込み用でツリーには出しません。本体LEDは入出力へ移しました。
+
+`adv_function` / `adv_irq` / `adv_timer` / `adv_i2c_setup` / `adv_spi_setup` は `program_start.next` の直列へ置き、関数・条件・ループの中に入れないでください。関数名、同じ種類のタイマー番号・バス番号は重複不可。関数定義は先頭へまとめますが、接続・タイマー開始は配置順に実行します。関数内で使う場合も先にバスを接続してください。名前付き変数は全体で共有・初期値0。「引数の値」は呼出しごとの値です。
+
+配列は0始まり。配列・辞書は変数へ代入後に操作します。型や範囲の違いはPython例外になります。I2Cは8ビットレジスタ、SPIは8ビット・MSB先頭・Low有効CS、最大4096バイト転送。数値フィールドは10進数、GPIOは文字列。タイマーPERIODとDEBOUNCEはmsです。表は共通入力名をまとめたもので、各ブロックに存在する項目は依頼文のカタログを優先してください。
+
+イベント待受ループは自動生成されるので、そのための無限ループは追加不要。ハンドラーは遅延・協調実行で同時実行やリアルタイムを保証せず、長い待ちや無限ループは避けます。制限・実機状況はREADMEを参照。
+
+| type | fields | inputs |
+|---|---|---|
+| adv_list_empty / adv_list_new | — | A, B, C (new) |
+| adv_list_get / adv_list_set / adv_list_append / adv_list_pop | — | LIST, INDEX, VALUE |
+| adv_length / adv_contains / adv_slice | — | VALUE, ITEM, START, END |
+| adv_for_each | NAME | LIST, DO |
+| adv_array / adv_bytes | TYPE: B/h/i/f (array) | LIST |
+| adv_dict_empty / adv_dict_keys | — | DICT (keys) |
+| adv_dict_set / adv_dict_get | — | DICT, KEY, VALUE / DEFAULT |
+| adv_function | NAME | DO, RETURN |
+| adv_arg | — | — |
+| adv_call / adv_call_do | NAME | ARG |
+| adv_flow | ACTION: BREAK/CONTINUE | — |
+| adv_try | — | DO, EXCEPT, FINALLY |
+| adv_convert | TYPE: int/float/str/bool | VALUE |
+| adv_split / adv_replace | — | TEXT, SEP / OLD, NEW |
+| adv_json_encode / adv_json_decode | — | VALUE / TEXT |
+| adv_bitwise | OP: AND/OR/XOR/SHL/SHR | A, B |
+| adv_math | OP: sin/cos/tan/log/exp/radians/degrees | VALUE |
+| adv_irq | PIN, EDGE: FALLING/RISING/BOTH, PULL: UP/DOWN/NONE, DEBOUNCE: 0–5000 | DO |
+| adv_irq_stop | PIN | — |
+| adv_timer | TIMER: 1–8, PERIOD: 1–86400000, MODE: REPEAT/ONCE | DO |
+| adv_timer_stop | TIMER | — |
+| adv_pwm / adv_pwm_stop | PIN, FREQ: 1–100000 (pwm) | DUTY: 0–65535 (pwm) |
+| adv_i2c_setup | BUS: 1–2, SCL, SDA, FREQ: 1000–400000 | — |
+| adv_i2c_scan | BUS | — |
+| adv_i2c_read / adv_i2c_write | BUS, ADDRESS: 8–119, REGISTER: 0–255, SIZE: 1–256 (read) | DATA (write) |
+| adv_spi_setup | BUS: 1–2, SCK, MOSI, MISO, CS, FREQ: 1000–1000000, POLARITY/PHASE: 0/1 | — |
+| adv_spi_transfer | BUS | DATA |
+| adv_ticks_us / adv_elapsed_us | — | START, END (elapsed) |
+| adv_mem_free / adv_gc | — | — |
+
+### 例：ボタン回数を数え、1秒ごとに表示
+
+GP0とGNDの間にボタンを接続し、GP0へ外部電圧を入れません。プルアップ・30 msの連続反応抑制を選択。IRQは集約されるため厳密なパルス計数用途ではありません。タイマーはソフトウェア方式です。
+
+```json
+{
+  "format": "picoblocks",
+  "version": 1,
+  "board": "pico",
+  "workspace": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "program_start",
+          "next": {
+            "block": {
+              "type": "adv_irq",
+              "fields": {
+                "PIN": "0",
+                "EDGE": "FALLING",
+                "PULL": "UP",
+                "DEBOUNCE": 30
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "basic_change",
+                    "fields": {
+                      "NAME": "count"
+                    },
+                    "inputs": {
+                      "VALUE": {
+                        "block": {
+                          "type": "basic_number",
+                          "fields": {
+                            "NUM": 1
+                          },
+                          "inputs": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "adv_timer",
+                  "fields": {
+                    "TIMER": 1,
+                    "PERIOD": 1000,
+                    "MODE": "REPEAT"
+                  },
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "basic_print",
+                        "fields": {},
+                        "inputs": {
+                          "VALUE": {
+                            "block": {
+                              "type": "basic_get",
+                              "fields": {
+                                "NAME": "count"
+                              },
+                              "inputs": {}
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+
 JOGの割り当てブロックでは`SPEED`は非表示の互換フィールドです。新規JSONでは省略して既定値を使用し、ユーザーに生の速度値を尋ねないでください。過去の値は保持できます。信号レベルとプルアップの条件は[README](README.md)を参照し、「抵抗で5 Vを3.3 Vに変換できる」と説明しないでください。STS3235・XL330の直結動作実績はユーザー申告で、全条件の保証ではありません。
 
 日本語 · [English](AI_GUIDE.en.md) · [README](README.md)

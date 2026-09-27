@@ -1,5 +1,32 @@
 # PicoBlocks Studio
 
+## Consolidated basic tools and advanced blocks (2026-09-27)
+
+Removed Motion: board LED and GPIO output now live under Basic → Input / output; waits live under Time / loops. Use the single-line `basic_write` and `basic_wait` in new programs. Saved `gpio_write` / `wait_ms` blocks remain importable.
+
+Advanced blocks appears directly below Basic and adds 45 blocks:
+
+- Lists, typed numeric arrays, bytes and dictionaries
+- One-argument functions with return values; for-each, break/continue, try/except/finally
+- GPIO interrupts and software timers, including stop/debounce
+- Type conversion, text split/replace, JSON, bit operations and trigonometry
+- General PWM; software I2C scan and 8-bit register access; software SPI transfer
+- Microsecond ticks/differences, free memory and garbage collection
+
+No initial firmware reinstall is needed; helpers are included in generated Python. Exposed GPIO choices follow all nine boards. Validation checks GPIO conflicts, RP PWM slice conflicts, and function/control-block placement. The existing servo wiring diagram does not yet draw I2C/SPI peripherals.
+
+### Event execution
+
+`Pin.irq(hard=False)` only sets a flag. Nested blocks execute in the main dispatcher, not within the IRQ: servo I/O, allocations and waits do not run in the interrupt handler. Software timers use `ticks_ms/ticks_diff/ticks_add`, not hardware Timer objects. Waits, loops and statement boundaries dispatch events and JOG. An event loop is appended automatically; finally detaches IRQs on exit.
+
+Handlers are serialized. Long operations or another handler delay dispatch. Bursts of edges and missed timer intervals are coalesced, not counted exactly. Not for high-speed counting, precise periodic output or safety systems. Avoid long waits and infinite loops inside handlers.
+
+List indexes start at zero; invalid types/ranges raise Python exceptions. I2C/SPI require 3.3 V signals; I2C needs pull-ups to 3.3 V. Check peripheral specifications and keep GPIO/I2C/SPI/PWM pins separate from board/servo uses. **This is a prototype of common features, not the entire MicroPython API. Hardware timing, communication and waveforms remain untested.** File operations, RTC setting, sleep, WDT, threads, asyncio and arbitrary PIO are not included.
+
+Sources: [IRQ constraints](https://docs.micropython.org/en/v1.29.0/reference/isr_rules.html), [Pin](https://docs.micropython.org/en/v1.29.0/library/machine.Pin.html), [I2C](https://docs.micropython.org/en/v1.29.0/library/machine.I2C.html), [SPI](https://docs.micropython.org/en/v1.29.0/library/machine.SPI.html), [PWM](https://docs.micropython.org/en/v1.29.0/library/machine.PWM.html), [array](https://docs.micropython.org/en/v1.29.0/library/array.html).
+
+Tests: `node tests/advanced.js`, `python tests/advanced_runtime.py`. Cover 45 blocks, nine board catalogs, 78 compiled programs, collections/functions, simulated IRQ/timer dispatch and cleanup, and SPI CS release on errors.
+
 [日本語](README.md) · English · [Open the editor](https://pscmps.github.io/pico-blocks-studio/)
 
 A browser-based block programming prototype for RP2040 / RP2350 boards running MicroPython.
