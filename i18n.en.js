@@ -1,5 +1,11 @@
 /* English translations. Japanese source strings are stable lookup keys. */
 const PicoEnglish = {
+"開発中の項目を表示":"Show features in development",
+"Motor Shieldのボード・専用ブロック・サンプルを表示します。初期状態はOFF。このブラウザに設定を保存します。":"Show Motor Shield boards, dedicated blocks and samples. Off by default. This preference is saved in this browser.",
+"OFFにしても作成済みのブロックは消しません。再編集・書き込みにはONへ戻してください。実行中の機器を停止する機能ではありません。":"Turning this off does not delete existing blocks. Turn it back on to resume editing or uploading. This setting does not stop a running device.",
+"保存したシールドの設定は保持しています。HELPで「開発中の項目を表示」をONにすると再開できます。":"Your saved shield setup is preserved. Enable Show features in development in HELP to resume.",
+"開発中のボード（表示OFF）":"Development board (hidden)",
+"このプログラムは開発中の項目を使っています。HELPの一番下で「開発中の項目を表示」をONにしてください。":"This program uses features in development. Enable Show features in development at the bottom of HELP.",
 "コントローラ %1":"Controller %1",
 "EN GP7（Low有効）":"EN GP7 (active low)",
 "PWMペン %1 Hz":"PWM pen %1 Hz",

@@ -94,6 +94,9 @@
   return BOARD_PROFILES;
   }
   const BOARD_PROFILES = createBoardProfiles();
+  const developmentKey = 'picoblocks-show-development-v1';
+  const developmentEnabled = () => localStorage.getItem(developmentKey) === '1';
+  const developmentBoardHidden = board => !!BOARD_PROFILES[board]?.shield && !developmentEnabled();
   let selectedBoard = localStorage.getItem("picoblocks-board-v1");
   if (!BOARD_PROFILES[selectedBoard]) selectedBoard = "pico";
   const pinLabel = pin => BOARD_PROFILES[selectedBoard].pinLabels?.[pin] || `GP${pin}`;
@@ -358,7 +361,7 @@
           ...GeekDisplay.toolbox(selectedBoard),
         ],
       },
-      BasicBlocks.advancedToolbox(BOARD_PROFILES[selectedBoard]),
+      BasicBlocks.advancedToolbox(developmentBoardHidden(selectedBoard) ? {...BOARD_PROFILES[selectedBoard],shield:null} : BOARD_PROFILES[selectedBoard]),
       {
         kind: "category",
         name: "UART",
@@ -750,6 +753,16 @@ class SCS009PIO:
   function renderWiringDiagram() {
     const profile = BOARD_PROFILES[selectedBoard];
     const blocks = workspace.getAllBlocks(false);
+    if(developmentBoardHidden(selectedBoard)) {
+      elements.wiringSummary.textContent=t('保存したシールドの設定は保持しています。HELPで「開発中の項目を表示」をONにすると再開できます。');
+      elements.wiringDiagram.replaceChildren();
+      $('#signalLegend').replaceChildren();
+      for(const id of ['wiringDevice','atomPullupGuide','signalLevelNote']) $('#'+id).hidden=true;
+      elements.pinoutLink.hidden=true;
+      elements.scsWiringDetails.hidden=true; elements.scsHelp.hidden=true; elements.boardPinHint.hidden=true;
+      return;
+    }
+    elements.pinoutLink.hidden=false;
     if(profile.shield) {
       const diagram=BasicBlocks.shield.render(profile,blocks);
       elements.wiringDiagram.classList.remove('is-board-only');
@@ -833,6 +846,7 @@ class SCS009PIO:
   }
 
   function updateBoardUi() {
+    updateDevelopmentUi();
     $("#resetHint").textContent = BOARD_PROFILES[selectedBoard].layout === "pico"
       ? t("純正Pico系にRSTボタンはありません。電源の入れ直し、またはRUN–GNDへ追加したリセットボタンを使います。")
       : t("この基板ではRST／RESETボタン、または電源の入れ直しを使います。BOOT判定には対応するMicroPythonが必要です。");
@@ -843,10 +857,10 @@ class SCS009PIO:
       ? t("ATOM Liteは電源を入れ直してから3秒以内に正面ボタンを押します（GPIO39）。初期ファーム書き込み用ではありません。")
       : t("再起動してから3秒以内にBOOTを押します。押したまま再起動すると初期ファーム用のモードになるので注意。");
     if (profile.experimental) $("#resetHint").textContent = t("電源の入れ直しで再起動します。USB接続中は「書き込み待機」ボタンも使えます。");
-    elements.boardSelect.value = selectedBoard;
+    elements.boardSelect.value = developmentBoardHidden(selectedBoard) ? '' : selectedBoard;
     PicoWifi.configure(profile.baseBoard || selectedBoard, !!profile.wifi);
-    $('#shieldBoardNote').hidden=!profile.shield;
-    $('#shieldCameraNote').hidden=profile.shield!=='touch2';
+    $('#shieldBoardNote').hidden=!profile.shield || !developmentEnabled();
+    $('#shieldCameraNote').hidden=profile.shield!=='touch2' || !developmentEnabled();
     $("#wifiHelp").hidden = !profile.wifi;
     $("#lcdHelp").hidden = !GeekDisplay.supported(selectedBoard);
     elements.boardPinHint.textContent = t`接続で選べる端子: ${profile.pins.map(pinLabel).join(" · ")}${profile.layout === "xiao" ? t("。今回は両側のD0〜D10端子に対応（背面パッドは対象外）。") : ""}`;
@@ -890,6 +904,7 @@ class SCS009PIO:
 
   function selectBoard(boardId) {
     if (!BOARD_PROFILES[boardId]) return;
+    if(developmentBoardHidden(boardId))return;
     selectedBoard = boardId;
     localStorage.setItem("picoblocks-board-v1", selectedBoard);
     workspace.updateToolbox(buildToolbox());
@@ -899,6 +914,44 @@ class SCS009PIO:
     updateBoardUi();
     elements.pythonCode.textContent = generatePython();
     updateControllerUi();
+  }
+
+  function updateDevelopmentUi() {
+    const enabled=developmentEnabled();
+    $('#showDevelopment').checked=enabled;
+    $('#shieldHelpContent').hidden=!enabled;
+    for(const id of ['boardSelect','gcodeSampleBoard']) {
+      const select=$('#'+id), previous=select.value;
+      select.querySelectorAll('[data-development]').forEach(node=>node.remove());
+      if(enabled) {
+        const group=document.createElement('optgroup');
+        group.label='PlotterFlow Motor Shield v0.7';group.dataset.development='boards';
+        for(const [key,profile] of Object.entries(BOARD_PROFILES).filter(([,p])=>p.shield)) {
+          const option=document.createElement('option');option.value=key;option.textContent=profile.name;
+          group.appendChild(option);
+        }
+        select.appendChild(group);
+      } else if(id==='boardSelect' && developmentBoardHidden(selectedBoard)) {
+        const placeholder=document.createElement('option');placeholder.value='';placeholder.disabled=true;
+        placeholder.dataset.development='placeholder';placeholder.textContent=t('開発中のボード（表示OFF）');
+        select.appendChild(placeholder);
+      }
+      if(id==='boardSelect')select.value=developmentBoardHidden(selectedBoard)?'':selectedBoard;
+      else select.value=[...select.options].some(o=>o.value===previous)?previous:'pico2';
+    }
+  }
+  function changeDevelopmentVisibility(event) {
+    if(isBusy || controllerActive) {
+      event.target.checked=developmentEnabled();
+      showToast(t('実行・操作を停止してから取り込んでください。'),'error');
+      return;
+    }
+    localStorage.setItem(developmentKey,event.target.checked?'1':'0');
+    // Visibility is a preference, not a board/program change or a device stop.
+    workspace.updateToolbox(buildToolbox());
+    workspace.getToolbox()?.clearSelection();workspace.getFlyout()?.hide();
+    updateBoardUi();updateControllerUi();
+    if(sampleDialog.open)refreshSamples();
   }
 
   function setWiringCollapsed(collapsed) {
@@ -958,6 +1011,11 @@ class SCS009PIO:
 
   function validateProgram({throwOnError = false} = {}) {
     const blocks = workspace.getAllBlocks(false);
+    if(!developmentEnabled() && (BOARD_PROFILES[selectedBoard].shield || blocks.some(b=>b.type==='gcode_shield'))) {
+      const message=t('このプログラムは開発中の項目を使っています。HELPの一番下で「開発中の項目を表示」をONにしてください。');
+      if(throwOnError)throw new Error(message);
+      showToast(message,'error');return false;
+    }
     const wifi = blocks.filter(block => block.type === "wifi_jog_setup");
     let error = "";
     if (GeekDisplay.uses(blocks) && !GeekDisplay.supported(selectedBoard)) error = t("LCD文字表示はRP2040-GEEK / RP2350-GEEK専用です。ボードを選び直すかLCDブロックを外してください。");
@@ -1462,6 +1520,7 @@ class SCS009PIO:
   elements.stop.addEventListener("click", stopProgram);
   elements.writeMode.addEventListener("click", enterWriteMode);
   elements.boardSelect.addEventListener("change", () => selectBoard(elements.boardSelect.value));
+  $('#showDevelopment').addEventListener('change',changeDevelopmentVisibility);
   elements.wiringToggle.addEventListener("click", () => setWiringCollapsed(!elements.appShell.classList.contains("wiring-collapsed")));
   elements.undo.addEventListener("click", () => workspace.undo(false));
   elements.redo.addEventListener("click", () => workspace.undo(true));
@@ -1550,6 +1609,7 @@ class SCS009PIO:
   });
   function replaceFromExchange(data, restoring = false, targetBackupKey = backupKey) {
     if (isBusy || controllerActive) throw new Error(t("実行・操作を停止してから取り込んでください。"));
+    if(developmentBoardHidden(data.board))throw new Error(t('このプログラムは開発中の項目を使っています。HELPの一番下で「開発中の項目を表示」をONにしてください。'));
     const previous = {board: selectedBoard, workspace: Blockly.serialization.workspaces.save(workspace)};
     const scratch = new Blockly.Workspace();
     let replaced = false;
@@ -1605,7 +1665,7 @@ class SCS009PIO:
     $('#loadSample').hidden=!!profile.shield;
     $('#servoSampleSection').hidden=!!profile.shield;
     $('#shieldSampleNote').hidden=!profile.shield;
-    if(profile.shield) $('#gcodeSampleBoard').value=selectedBoard;
+    if(profile.shield && developmentEnabled()) $('#gcodeSampleBoard').value=selectedBoard;
     $("#sampleBoard").textContent = t`選択中: ${profile.name}`;
     $("#sampleTransport option[value=wifi]").disabled = !profile.wifi;
     if (!profile.wifi) $("#sampleTransport").value = "usb";

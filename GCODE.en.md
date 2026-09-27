@@ -6,6 +6,8 @@ Nine blocks at the bottom of **Advanced blocks → Gcode** cover XY steps/mm, ST
 
 ## PlotterFlow Motor Shield v0.7
 
+Enable **Show features in development at the bottom of HELP** to select the six new board configurations, dedicated blocks and samples. Off by default; the preference is stored in this browser. Turning it off preserves saved blocks and the board setting, but re-enable it before resuming or uploading. This display preference does not stop a running device.
+
 Select **Motor Shield · controller name** on the right, then load the matching **Menu → Samples → PlotterFlow / Gcode receiver** example. The shield-specific block under **Advanced blocks → Gcode** initializes both STEP/DIR and the PWM pen. The original bare-Pico examples remain available.
 
 | Controller | Socket | X STEP / DIR | Y STEP / DIR | EN | PWM pen | Initial firmware |

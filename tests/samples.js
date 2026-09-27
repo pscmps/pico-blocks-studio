@@ -57,7 +57,9 @@ context.$=$;context.PicoSamples=Samples;context.BlockExchange=Exchange;
 context.Blockly={...Blockly,svgResize:()=>{}};
 context.localStorage={getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)};
 context.elements={pythonCode:$('#pythonCode')};context.normalizeWorkspace=()=>{};
-context.updateBoardUi=()=>{};context.updateControllerUi=()=>{};context.setMenuOpen=()=>{};
+context.document=dom.window.document;
+vm.runInContext(app.slice(app.indexOf('  function updateDevelopmentUi()'),app.indexOf('  function changeDevelopmentVisibility')),context);
+context.updateBoardUi=()=>vm.runInContext('updateDevelopmentUi()',context);context.updateControllerUi=()=>{};context.setMenuOpen=()=>{};
 context.boardCatalog=catalog;context.isBusy=false;context.controllerActive=false;context.backupKey='chat-backup';
 vm.runInContext(app.slice(app.indexOf('  function replaceFromExchange'),app.indexOf('  $("#importBlocks").addEventListener')),context);
 vm.runInContext(app.slice(app.indexOf('  const sampleDialog ='),app.indexOf('  $("#restoreImport").addEventListener')),context);
@@ -70,6 +72,7 @@ assert.equal($('#sampleStatus').dataset.error,'false',$('#sampleStatus').textCon
 assert.equal(JSON.stringify(JSON.parse(storage.get('picoblocks-sample-backup-v1')).workspace),original);
 assert.ok(!storage.has('chat-backup'));
 $('#restoreSample').click();assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
+storage.set('picoblocks-show-development-v1','1');context.updateBoardUi();
 context.board='shield_touch2';vm.runInContext('selectedBoard=board',context);$('#samplesMenuItem').click();
 assert.equal($('#servoSampleSection').hidden,true);assert.equal($('#loadSample').hidden,true);
 assert.equal($('#gcodeSampleBoard').value,'shield_touch2');

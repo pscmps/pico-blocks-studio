@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const Blockly=require('blockly'),Basic=require('../basic.js'),Exchange=require('../exchange.js');
 const app=fs.readFileSync('app.js','utf8'),workspace=new Blockly.Workspace();
-const context=vm.createContext({Blockly,BasicBlocks:Basic,ServoBlocks:require('../servo.js'),PicoJog:require('../jog.js'),GeekDisplay:require('../display.js'),workspace,localStorage:{getItem:()=> 'pico'},encoder:new TextEncoder(),showToast:()=>{}});
+const context=vm.createContext({Blockly,BasicBlocks:Basic,ServoBlocks:require('../servo.js'),PicoJog:require('../jog.js'),GeekDisplay:require('../display.js'),workspace,localStorage:{getItem:key=>key==='picoblocks-show-development-v1'?'1':'pico'},encoder:new TextEncoder(),showToast:()=>{}});
 vm.runInContext(app.slice(app.indexOf('  const PICO_PINS'),app.indexOf('  const elements')),context);
 vm.runInContext(app.slice(app.indexOf('  const theme'),app.indexOf('  const workspace')),context);
 vm.runInContext(app.slice(app.indexOf('  function pyString'),app.indexOf('  const PICO_LEFT_PINS')),context);
