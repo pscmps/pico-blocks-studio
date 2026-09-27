@@ -1,5 +1,15 @@
 # PicoBlocks Studio
 
+## Create a block with Python
+
+**Advanced blocks → Create blocks (Python)** contains a function definition with a multiline code field. Connect it directly under Program start and enter a name and body, without `def`. Read the argument as `arg`, return a result with `return`, and call it from a same-name function-result or function-run block. For example, `return arg * 2` returns 6 when passed 3.
+
+Enter inserts a newline, Tab adds four spaces, and Ctrl+Enter or clicking outside commits. Bodies allow 16384 characters and survive duplication, saving, language changes and JSON import. For multiple arguments, pass a list or dictionary. Local variables are separate from block variable names; place necessary imports in the body.
+
+Definitions do not run by themselves; calls execute on the board. This is neither a browser Python interpreter nor an entire Python-file-to-block converter. Body syntax and GPIO conflicts cannot be checked automatically; syntax errors appear in the serial console at execution time. Use only trusted code. Long operations and infinite loops can block JOG and timers.
+
+The field uses the official Blockly [@blockly/field-multilineinput](https://www.npmjs.com/package/@blockly/field-multilineinput) 5.0.17 plugin (Apache-2.0), pinned for Blockly 11.2.2 compatibility.
+
 ## Sample programs
 
 Open **Samples** in the menu to load a USB JOG example for three matching PWM, SCS009, XL330, STS3215 or STS3235 servos. Wi-Fi JOG is also available on Pico W, Pico 2 W and ATOM Lite. GPIOs follow the selected board; GEEK samples add LCD model/key labels, not measured positions.

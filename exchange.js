@@ -1,4 +1,4 @@
-/* Declarative block exchange only. Never evaluates pasted JavaScript or Python. */
+/* Block JSON exchange. Python body fields are text, never evaluated here. */
 const BlockExchange = (() => {
   const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw: args[0]}, ...args.slice(1));
 
@@ -26,7 +26,10 @@ const BlockExchange = (() => {
               if (Number.isFinite(field.getMin())) entry.min = field.getMin();
               if (Number.isFinite(field.getMax())) entry.max = field.getMax();
               if (field.getPrecision()) entry.precision = field.getPrecision();
-            } else entry.text = true;
+            } else {
+              entry.text = true;
+              if(type === "adv_python_function" && field.name === "CODE") entry.maxLength = 16384;
+            }
             fields[field.name] = entry;
           }
           if (input.connection) inputs[input.name] = {kind: input.type === Blockly.inputs.inputTypes.STATEMENT ? "statement" : "value", check: input.connection.getCheck()};
@@ -65,7 +68,7 @@ const BlockExchange = (() => {
           const field = spec.fields[name];
           if (field.number) {
             if (typeof value !== "number" || !Number.isFinite(value) || value < (field.min ?? -Infinity) || value > (field.max ?? Infinity) || (field.precision && Math.abs(value / field.precision - Math.round(value / field.precision)) > 1e-8)) fail(raw.type + ": " + name + t(" の数値・範囲を確認してください。"));
-          } else if (typeof value !== "string" || value.length > 2000 || (field.options && !field.options.includes(value))) fail(raw.type + ": " + name + t(" の選択値を確認してください。"));
+          } else if (typeof value !== "string" || value.length > (field.maxLength || 2000) || (field.options && !field.options.includes(value))) fail(raw.type + ": " + name + t(" の選択値を確認してください。"));
           out.fields[name] = value;
         }
       }
@@ -95,9 +98,12 @@ const BlockExchange = (() => {
     const state = {blocks: {languageVersion: 0, blocks: [node(roots[0], 0, true)]}};
     return {board: data.board, workspace: state, count};
   }
-  function prompt(boardId, board, schema) {
+  function basePrompt(boardId, board, schema) {
     const guideUrl = `https://raw.githubusercontent.com/pscmps/pico-blocks-studio/main/AI_GUIDE${globalThis.PicoI18n?.language === "en" ? ".en" : ""}.md`;
     return t`PicoBlocks Studio用のプログラムを作ってください。出力はPythonではなく、下記仕様のブロックJSONです。\nアプリ: ${siteUrl}\n仕様: ${guideUrl}\n仕様を開けない場合も、このプロンプト内のカタログに従ってください。\n\n【作りたい動き】\n（ここに目的、配線、サーボの種類・ID、動作範囲を書いてください）\n\nボード: ${board.name}\nboard ID: ${boardId}\nGPIO番号: ${board.pins.join(", ")}\nADC用GPIO: ${(board.adcPins || board.pins.filter(pin => pin >= 26 && pin <= 29)).join(", ")}（0〜3.3 V、5 V不可）\n\n返答はJSONコードブロック1つだけ。外部スクリプト、Python、XMLは不可。format="picoblocks", version=1, board="${boardId}"。workspace.blocks.languageVersion=0、workspace.blocks.blocksはprogram_start 1個のみ。処理はnext.blockで直列にし、値や条件やループ内処理はinputs.入力名.blockで入れる。数値フィールドは数値、選択フィールドはoptionsと同じ文字列。不要なid/extraState/mutation/enabled等は出さない。型の合うブロックのみ接続し、500個・深さ80段以内。\n接続ブロックはプログラム直下に置く。各バスサーボは接続1個、シリアル通信は最大2種類、PWMの番号とGPIOは重複不可。サーボとADC/GPIOのピンは共用しない。サーボは外部電源と共通GNDが必要。接続だけで動作を始めないようにし、トルクONや位置指令の必要性を検討する。角度と生位置の単位を混同しない。SCS009は0〜1023（約300度）、XL330/STS3215は0〜4095、PWMは0〜180度。\n変数はNAMEの文字列を一致させる。basic_mapは入力範囲を出力範囲へ変換し上下限で制限する。Wi-Fiのパスワードは実際の秘密情報を要求せず仮値にする。\n\n最小例:\n${JSON.stringify({format:"picoblocks",version:1,board:boardId,workspace:{blocks:{languageVersion:0,blocks:[{type:"program_start",next:{block:{type:"basic_wait",inputs:{MS:{block:{type:"basic_number",fields:{NUM:500}}}}}}}]}}},null,2)}\n\n使用可能なブロック（fieldsはdefault/範囲/選択肢、inputsは名前/接続種別/型、outputは値型。defaultは省略時の値）:\n${JSON.stringify(schema,null,2)}` + t("\n\n新規プログラムはGPIO出力にbasic_write、待ちにbasic_waitを使う。gpio_writeとwait_msは旧形式の読み込み用。高度なブロックの配列番号は0始まり。配列・辞書は変数へ保存して使う。関数はadv_functionで定義しadv_argで引数を参照する。変数は全体で共有。adv_function/adv_irq/adv_timer/adv_i2c_setup/adv_spi_setupはprogram_startの直下のnext列に置く。割り込み・タイマーの待受ループは自動生成される。イベント内で長い待ちや無限ループを作らず、GPIOの共用を避ける。I2C/SPIは使用前に接続する。高度なブロックは試験実装で実機未検証。");
+  }
+  function prompt(...args) {
+    return basePrompt(...args) + t("\n\nPython直書きが必要な場合はadv_python_functionを使えます。返答全体は引き続きJSONのみです。Pythonはfields.CODEの文字列内だけに書き、def行を含めず、引数argとreturnを使います。CODEは16384文字以内で、JSONの改行は\\nにします。NAMEは通常のadv_functionを含めて一意にし、program_start直下につなぎ、adv_callまたはadv_call_doで同名を呼び出します。定義だけでは実行しません。raw Python内の文法・GPIO競合・無限ループは自動検査されません。信頼できるコードだけを含めてください。");
   }
   return {catalog, parse, prompt, guideUrl};
 })();

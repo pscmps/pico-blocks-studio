@@ -312,6 +312,13 @@
         <p>必要な処理は生成Pythonに含まれます。実機での割り込み応答時間・周辺機器通信・PWM波形は未検証です。</p>
         <p><a href="https://docs.micropython.org/en/v1.29.0/reference/isr_rules.html" target="_blank" rel="noopener">MicroPython: Interrupt handlers</a> · <a href="https://docs.micropython.org/en/v1.29.0/library/machine.I2C.html" target="_blank" rel="noopener">I2C</a> · <a href="https://docs.micropython.org/en/v1.29.0/library/machine.SPI.html" target="_blank" rel="noopener">SPI</a></p>
       </details>
+      <details id="pythonBlockHelp" class="help-card"><summary>Pythonでブロックを作る</summary>
+        <p>「高度なブロック → ブロック作成（Python）」の「Pythonで関数を作る」をプログラム開始の直下へつなぎ、関数名と本文を書きます。def行は不要です。引数はarg、戻り値はreturnで指定します。</p>
+        <p>例：return arg * 2 と書き、同じ名前の「関数の結果」に引数3を渡すと6になります。「関数を実行」では戻り値を使わずに呼び出せます。引数を複数渡すには配列や辞書を使います。</p>
+        <p>コード欄をクリックして編集。Enterで改行、Tabで4スペース、Ctrl+Enterまたは欄の外をクリックして確定します。本文は16384文字まで。関数内の変数はローカルで、ブロックの変数名とは別です。必要なimportは本文に書いてください。</p>
+        <p>定義しただけでは動かず、呼び出したときにボード上で実行します。ブラウザー内ではPythonを実行しません。本文の文法・GPIO競合・安全性は自動検査できません。信頼できるコードだけを使い、生成Pythonを確認してください。長い処理や無限ループはJOG・タイマーを止める場合があります。</p>
+        <p>本文は複製・保存・言語切替・ブロックJSONの取り込みでも保持されます。Pythonファイル全体から通常のブロックへの変換機能ではありません。</p>
+      </details>
       <details id="signalLevelHelp" class="help-card"><summary>サーボの信号レベル</summary>
         <p>SCS009（資料名SCS0009）・STS3215・STS3235：メーカー資料はHigh 2〜5 V、Low 0〜0.45 V。送信側・受信側を分けた規格や内部プルアップ電圧は明記されておらず、返答が常に3.3 V以下とは保証できません。</p>
         <p>XL330：ROBOTIS公式は3.3 Vロジック・5 V互換。これはサーボ側の仕様で、ESP32の5 V耐性を意味しません。</p>
@@ -344,7 +351,7 @@
       <section>
         <h3>2. 返ってきたJSONを貼り付け</h3>
         <textarea id="importText" aria-label="取り込むブロックJSON" placeholder='{"format":"picoblocks","version":1,...}' spellcheck="false"></textarea>
-        <p class="exchange-note">今のブロックを置き換えます。直前の状態を1件保存します。自動で実行・書き込みはしません。Pythonそのものの貼り付けには未対応です。</p>
+        <p class="exchange-note">今のブロックを置き換えます。直前の状態を1件保存します。自動で実行・書き込みはしません。Python本文を含むJSONはコードの内容も確認してください。Pythonファイル全体を直接取り込むことはできません。</p>
         <div class="exchange-actions"><button id="importBlocks" class="button button-primary" type="button">ブロックへ取り込む（置換）</button><button id="restoreImport" class="button button-secondary" type="button">取り込み前に戻す</button></div>
         <p id="exchangeStatus" role="status" aria-live="polite"></p>
       </section>
@@ -379,7 +386,8 @@
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
-    <script src="./i18n.en.js?v=controller2"></script>
+    <script src="https://unpkg.com/@blockly/field-multilineinput@5.0.17/dist/index.js"></script>
+    <script src="./i18n.en.js?v=python1"></script>
     <script src="./i18n.js?v=i18n1"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
     <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
@@ -387,10 +395,10 @@
     <script>PicoI18n.captureBlockly("ja", Blockly.Msg); PicoI18n.setLanguage(PicoI18n.language); PicoI18n.bindDocument(document);</script>
     <script src="./servo.js?v=jog3"></script>
     <script src="./jog.js?v=i18n1"></script>
-    <script src="./advanced.js?v=advanced1"></script>
+    <script src="./advanced.js?v=python1"></script>
     <script src="./basic.js?v=advanced1"></script>
     <script src="./wiring.js?v=jog3"></script>
-    <script src="./exchange.js?v=advanced1"></script>
+    <script src="./exchange.js?v=python1"></script>
     <script src="./boot.js?v=atom1"></script>
     <script src="./wifi.js?v=atom1"></script>
     <script src="./display.js?v=i18n1"></script>

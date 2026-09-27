@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import types
+import time as host_time
 
 data = json.loads(subprocess.check_output(['node', 'tests/advanced.js', '--json'], text=True, encoding='utf-8'))
 for index, source in enumerate(data['sources']):
@@ -90,6 +91,11 @@ except ValueError:
     pass
 
 # Execute full generated IRQ/timer program, then interrupt it as USB Stop would.
+# A raised KeyboardInterrupt leaves Windows CPython's CTRL_C exit status set,
+# even when caught. Use the same BaseException cleanup path without that flag.
+class SimulatedStop(BaseException):
+    pass
+
 clock = types.ModuleType('time')
 clock.absolute = 0
 clock.ticks_ms = lambda: clock.absolute % 1024
@@ -100,13 +106,13 @@ def sleep(ms):
     if clock.absolute in (1, 2, 4, 12) and Pin.pins[0].handler:
         Pin.pins[0].handler(Pin.pins[0])
     if clock.absolute >= 20:
-        raise KeyboardInterrupt()
+        raise SimulatedStop()
 clock.sleep_ms = sleep
 sys.modules['time'] = clock
 scope = {}
 try:
     exec(data['eventProgram'], scope)
-except KeyboardInterrupt:
+except SimulatedStop:
     pass
 def user(name):
     return 'user_' + '_'.join(format(ord(c), 'x') for c in name)
@@ -162,4 +168,5 @@ scope = {'time':clock,'machine':machine,'_controller_poll':lambda:jog_hits.appen
 exec(compile(ast.Module(body=jog_helpers,type_ignores=[]),'jog_dispatch','exec'),scope)
 scope['_adv_poll']()
 assert jog_hits == [1]
+sys.modules['time'] = host_time
 print(f"PASS: {len(data['sources'])} generated programs compile; collections/functions, SPI cleanup, I2C, PWM limits, deferred IRQ, debounce, timer wrap/coalescing, JOG dispatch and Stop cleanup")

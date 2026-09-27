@@ -1,4 +1,4 @@
-/* Portable MicroPython building blocks. No arbitrary code/eval inputs. */
+/* Portable MicroPython blocks, including explicit device-side Python bodies. */
 globalThis.AdvancedBlocks = (() => {
   const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw:args[0]}, ...args.slice(1));
   const val = (name, check=null) => ({type:"input_value",name,...(check?{check}:{})});
@@ -11,7 +11,33 @@ globalThis.AdvancedBlocks = (() => {
   const ident = value => "adv_fn_" + Array.from(String(value)).map(c=>c.codePointAt(0).toString(16)).join("_");
   const eventTypes = new Set(["adv_irq","adv_timer"]);
   const hasEvents = blocks => blocks.some(b=>eventTypes.has(b.type));
+  let pythonFieldRegistered = false;
+  const pythonBody = value => String(value ?? "").replace(/\r\n?/g,"\n");
   function register(Blockly,pinOptions) {
+    if (!pythonFieldRegistered) {
+      const Multiline = typeof module !== "undefined" ? require("@blockly/field-multilineinput").FieldMultilineInput : globalThis.FieldMultilineInput;
+      class PythonBodyField extends Multiline {
+        widgetCreate_() {
+          const input = super.widgetCreate_();
+          input.setAttribute("aria-label", t("Python関数の本文"));
+          input.setAttribute("autocapitalize", "off");
+          input.setAttribute("autocomplete", "off");
+          input.spellcheck = false;
+          return input;
+        }
+        onHtmlInputKeyDown_(event) {
+          if (event.key === "Tab" && !event.shiftKey) {
+            event.preventDefault(); event.stopPropagation();
+            this.htmlInput_.setRangeText("    ",this.htmlInput_.selectionStart,this.htmlInput_.selectionEnd,"end");
+            this.htmlInput_.dispatchEvent(new Event("input",{bubbles:true}));
+          } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault(); event.stopPropagation(); Blockly.WidgetDiv.hide();
+          } else super.onHtmlInputKeyDown_(event);
+        }
+      }
+      Blockly.fieldRegistry.register("field_python_body", PythonBodyField);
+      pythonFieldRegistered = true;
+    }
     const pin = field => ({type:"field_dropdown",name:field,options:pinOptions});
     const bus = () => num("BUS",1,1,2);
     const defs = [
@@ -32,6 +58,7 @@ globalThis.AdvancedBlocks = (() => {
       expr("dict_get",t("辞書 %1 のキー %2（なければ %3）"),[val("DICT","Dictionary"),val("KEY"),val("DEFAULT")]),
       expr("dict_keys",t("辞書 %1 のキー一覧"),[val("DICT","Dictionary")],"Array"),
       stmt("function",t("関数 %1 を定義（引数は「引数の値」）"),[name()],{message1:"%1",args1:[body("DO")],message2:t("戻り値 %1"),args2:[val("RETURN")],inputsInline:false}),
+      stmt("python_function",t("Pythonで関数 %1 を作る"),[{type:"field_input",name:"NAME",text:"custom"}],{message1:t("引数 arg ／ 戻り値 return"),message2:"%1",args2:[{type:"field_python_body",name:"CODE",text:"result = arg * 2\nreturn result",maxLines:10,spellcheck:false}],inputsInline:false,tooltip:t("関数の本文だけを書きます。def行は不要。プログラム開始の直下に置き、同じ名前の関数呼び出しブロックから使います。Enterで改行、Tabで4スペース、Ctrl+Enterで確定。コードはボード上で実行され、配線・文法は自動検査しません。")}),
       expr("arg",t("引数の値")),
       expr("call",t("関数 %1（引数 %2）の結果"),[name(),val("ARG")]),
       stmt("call_do",t("関数 %1 を実行（引数 %2）"),[name(),val("ARG")]),
@@ -77,6 +104,7 @@ globalThis.AdvancedBlocks = (() => {
   function toolbox() {
     const category = (name,colour,contents)=>({kind:"category",name,colour,contents});
     return {kind:"category",name:t("高度なブロック"),colour:"#63728e",contents:[
+      category(t("ブロック作成（Python）"),"#7184a2",[item("python_function"),{...item("call",{ARG:shadow(0)}),fields:{NAME:"custom"}},{...item("call_do",{ARG:shadow(0)}),fields:{NAME:"custom"}}]),
       category(t("配列・辞書"),"#8174aa",[
         item("list_empty"),item("list_new",{A:shadow(1),B:shadow(2),C:shadow(3)}),item("list_get",{INDEX:shadow(0)}),item("list_set",{INDEX:shadow(0),VALUE:shadow(0)}),item("list_append",{VALUE:shadow(0)}),item("list_pop"),item("length"),item("contains"),item("slice",{START:shadow(0),END:shadow(3)}),item("for_each"),item("array"),item("bytes"),item("dict_empty"),item("dict_set",{KEY:txt("key"),VALUE:shadow(0)}),item("dict_get",{KEY:txt("key"),DEFAULT:shadow(0)}),item("dict_keys")]),
       category(t("関数・処理の制御"),"#7d86ac",[item("function",{RETURN:shadow(0)}),item("arg"),item("call",{ARG:shadow(0)}),item("call_do",{ARG:shadow(0)}),item("flow"),item("try")]),
@@ -130,6 +158,7 @@ globalThis.AdvancedBlocks = (() => {
       case "adv_dict_set":return `(${v("DICT","{}")})[${v("KEY","''")}] = ${v("VALUE")}\n`;
       case "adv_for_each":return `for ${variableName(f("NAME"))} in ${v("LIST","[]")}:\n${events?"    _adv_poll()\n":jog?"    _controller_poll()\n":""}${body("DO")}`;
       case "adv_function":return "pass\n";
+      case "adv_python_function":return "pass\n";
       case "adv_call_do":return `${ident(f("NAME"))}(${v("ARG")})\n`;
       case "adv_flow":return f("ACTION")==="BREAK" ? "break\n":"continue\n";
       case "adv_try":return `try:\n${body("DO")}except Exception:\n${body("EXCEPT")}finally:\n${body("FINALLY")}`;
@@ -168,6 +197,12 @@ globalThis.AdvancedBlocks = (() => {
     const globals=names.length?`    global ${names.join(", ")}\n`:"";
     let code="";
     for(const b of blocks) {
+      if (b.type === "adv_python_function") {
+        // Indent only; never evaluate pasted code in the browser. Appending
+        // pass also makes an empty or comment-only body a valid definition.
+        code += `\ndef ${ident(b.getFieldValue("NAME"))}(arg):\n${indent(pythonBody(b.getFieldValue("CODE")))}\n    pass\n`;
+        continue;
+      }
       if(!eventTypes.has(b.type)&&b.type!=="adv_function")continue;
       const f=n=>b.getFieldValue(n), fn=b.type==="adv_function"?ident(f("NAME")):b.type==="adv_irq"?"_adv_irq_body_"+Number(f("PIN")):"_adv_timer_body_"+Number(f("TIMER"));
       code+=`\ndef ${fn}(${b.type==="adv_function"?"_adv_arg":""}):\n${globals}${indent(chain(b.getInputTargetBlock("DO")))||"    pass\n"}`;
@@ -181,7 +216,7 @@ globalThis.AdvancedBlocks = (() => {
     return `try:\n${indent(code)}    while True:\n        _adv_poll()\n        time.sleep_ms(1)\nfinally:\n    for _pin in list(_adv_irq_pins):\n        _adv_stop_irq(_pin)\n    _adv_timers.clear()\n`;
   }
   function validate(blocks,profile) {
-    const setups=blocks.filter(b=>["adv_function","adv_irq","adv_timer","adv_i2c_setup","adv_spi_setup"].includes(b.type));
+    const setups=blocks.filter(b=>["adv_function","adv_python_function","adv_irq","adv_timer","adv_i2c_setup","adv_spi_setup"].includes(b.type));
     const starts=blocks.filter(b=>b.type==="program_start"), top=new Set();
     for(const start of starts)for(let b=start;b;b=b.getNextBlock())top.add(b);
     if(setups.some(b=>!top.has(b)))return t("関数・割り込み・タイマー・I2C/SPIの開始は、プログラム開始の直下につないでください。");
@@ -189,7 +224,14 @@ globalThis.AdvancedBlocks = (() => {
       const values=setups.filter(b=>b.type===type).map(b=>String(b.getFieldValue(field)));
       if(new Set(values).size!==values.length)return t("高度なブロックの名前・番号・割り込みGPIOが重複しています。");
     }
-    const functions=new Set(setups.filter(b=>b.type==="adv_function").map(b=>b.getFieldValue("NAME")));
+    const functionNames=setups.filter(b=>["adv_function","adv_python_function"].includes(b.type)).map(b=>b.getFieldValue("NAME"));
+    if(new Set(functionNames).size!==functionNames.length)return t("関数名が重複しています。Python関数と通常の関数には別の名前を付けてください。");
+    for(const b of setups.filter(b=>b.type==="adv_python_function")) {
+      if(!String(b.getFieldValue("NAME")).trim())return t("Python関数に名前を付けてください。");
+      const code=pythonBody(b.getFieldValue("CODE"));
+      if(code.length>16384 || code.includes("\0"))return t("Python本文は16384文字以内にし、NUL文字を含めないでください。");
+    }
+    const functions=new Set(functionNames);
     if(blocks.some(b=>["adv_call","adv_call_do"].includes(b.type)&&!functions.has(b.getFieldValue("NAME"))))return t("呼び出す名前の関数定義を追加してください。");
     for(const b of blocks) {
       if(b.type==="adv_arg"||b.type==="adv_flow") {
