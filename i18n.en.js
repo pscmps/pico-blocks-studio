@@ -1,5 +1,15 @@
 /* English translations. Japanese source strings are stable lookup keys. */
 const PicoEnglish = {
+"基本・高度なブロックの使い方": "Using basic and advanced blocks",
+"本体LEDとGPIO入出力は「基本 → 入力・出力」、待ち時間は「基本 → 時間・くり返し」から選びます。": "Find the board LED and GPIO input/output under Basics → Input / output, and delays under Basics → Time / loops.",
+"「高度なブロック」では、配列・辞書、関数、割り込み・ソフトタイマー、文字列・型変換・JSON、ビット演算・数学、汎用PWM、I2C/SPI、時間・メモリを扱えます。": "Advanced blocks cover lists/dictionaries, functions, interrupts/software timers, text/types/JSON, bits/math, general PWM, I2C/SPI, time and memory.",
+"必要な処理は生成Pythonに含まれます。実機での割り込み応答時間・周辺機器通信・PWM波形は未検証です。": "The generated Python includes the required routines. Interrupt latency, peripheral communication and PWM waveforms have not been verified on hardware.",
+"直結できるかは、ボードとサーボ双方の信号電圧・配線・通信速度で判断してください。別の構成での動作例だけでは安全を保証できません。": "Decide whether direct wiring is suitable from both devices' signal voltages, wiring and baud rate. Success with a different setup does not guarantee safety.",
+"JOGは中央と増減幅を設定します。PWMは角度、それ以外はサーボの位置値で指定します。": "Set the JOG center and step. Use degrees for PWM and servo position units for other models.",
+"UARTまたはWi-Fi JOGの開始ブロックを置くと、メニューからコントローラを開けます。このサイトのコントローラ操作はUSB接続を使います。スマホからの無線操作は「スマホでWi-Fi JOG」の手順を参照してください。Wi-Fi非対応ボードを選んでいる場合は、コントローラ内の案内に従って選び直します。": "Add a UART or Wi-Fi JOG start block to open Controller from the menu. This site's controller uses USB. For wireless phone control, follow Phone Wi-Fi JOG. If a non-Wi-Fi board is selected, follow the guidance inside Controller to select a compatible board.",
+"「保存して実行」で保存したプログラムは、通常起動では3秒後に動きます。起動後3秒以内にBOOTを押すと書き込み待機になります。": "Programs saved with Save & run start 3 seconds after normal power-on. Press BOOT within those 3 seconds to enter write mode.",
+"Wi-Fi対応ボードを選んでください": "Select a Wi-Fi-capable board",
+"Wi-Fi JOGを使うには、右のボード選択をPico W / Pico 2 W / ATOM Liteに合わせてください。Wi-Fiを使わない場合はWi-Fi JOGブロックを外し、「PCからUART値を受信」を置きます。": "For Wi-Fi JOG, select Pico W, Pico 2 W or ATOM Lite in the board selector on the right. For USB-only use, remove the Wi-Fi JOG block and add Receive UART values from PC.",
 "サンプルから始める": "Start from a sample",
 "メニューの「サンプル」でサーボの種類とUSB / Wi-Fi JOGを選ぶと、選択ボードに合う3台分のブロックを読み込めます。上下＝1、左右＝2、W/S＝3、Space＝中央です。GEEKはLCDに機種名とキー割り当ても表示します。": "Choose Samples from the menu, then select a servo type and USB / Wi-Fi JOG to load three-servo blocks for your board. Up/down = 1, left/right = 2, W/S = 3, Space = center. GEEK LCDs also show the model and key assignments.",
 "読み込みは今のブロックを置き換えます。「読み込み前に戻す」で直前の状態を復元できます。自動実行はしません。配線・電源・ID・通信速度・中央位置を確認してください。Wi-Fi版はボードが親機になる方式で、サンプル画面に接続手順を表示します。": "Loading replaces your blocks. Restore previous blocks brings back the state before the last sample load. Nothing runs automatically. Check wiring, power, IDs, baud rates and centers. Wi-Fi samples use a board-hosted access point; connection steps are shown in the sample dialog.",

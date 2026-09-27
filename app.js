@@ -885,10 +885,10 @@ class SCS009PIO:
   let saveTimer = null;
   workspace.addChangeListener((event) => {
     if (event.isUiEvent) return;
+    updateControllerUi();
     const code = generatePython();
     elements.pythonCode.textContent = code;
     renderWiringDiagram();
-    updateControllerUi();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       localStorage.setItem("picoblocks-workspace-v1", JSON.stringify(Blockly.serialization.workspaces.save(workspace)));
@@ -977,9 +977,11 @@ class SCS009PIO:
   }
 
   function getUartControllerConfig() {
-    const block = getUartControllerBlock();
-    if (!block) return null;
-    return { transport: "usb-serial" };
+    // Viewing the controller is separate from whether this board can run it.
+    const blocks = workspace.getAllBlocks(false);
+    const wifi = blocks.some(block => block.type === "wifi_jog_setup");
+    if (!wifi && !blocks.some(block => block.type === "uart_controller_setup")) return null;
+    return { transport: "usb-serial", unsupportedWifi: wifi && !BOARD_PROFILES[selectedBoard].wifi };
   }
 
   function updateControllerUi() {
@@ -989,7 +991,13 @@ class SCS009PIO:
     elements.run.lastChild.textContent = hasController ? (controllerActive ? t(" 操作中") : t(" コントローラを開始")) : t(" 今すぐ実行");
     elements.run.disabled = !port || isBusy || controllerActive;
     const menuHelp = elements.controllerMenuItem.querySelector("small");
-    menuHelp.textContent = hasController ? t("矢印・WASDで4軸を操作") : t("UART / Wi-Fi JOGブロックで有効");
+    menuHelp.textContent = config?.unsupportedWifi ? t("Wi-Fi対応ボードを選んでください") : hasController ? t("矢印・WASDで4軸を操作") : t("UART / Wi-Fi JOGブロックで有効");
+    $("#controllerSetupHint").hidden = !config?.unsupportedWifi;
+    const canOperate = hasController && !config.unsupportedWifi;
+    const enabled = canOperate && controllerActive && !isBusy;
+    elements.controllerConnect.disabled = isBusy || (!controllerActive && !canOperate);
+    for (const button of document.querySelectorAll("[data-jog-axis]")) button.disabled = !enabled;
+    elements.jogCenter.disabled = !enabled;
 
     if (!hasController && elements.controllerDrawer.getAttribute("aria-hidden") === "false") closeController();
     if (!config) return;
@@ -1013,12 +1021,13 @@ class SCS009PIO:
   }
 
   function setMenuOpen(open) {
+    if (open) updateControllerUi();
     elements.appMenu.hidden = !open;
     elements.menuButton.setAttribute("aria-expanded", String(open));
   }
 
   function openController() {
-    if (!getUartControllerBlock()) return;
+    if (!getUartControllerConfig()) return;
     setMenuOpen(false);
     updateControllerUi();
     elements.controllerDrawer.setAttribute("aria-hidden", "false");
@@ -1036,24 +1045,20 @@ class SCS009PIO:
       ? t("コントローラを停止")
       : port ? t("コントローラを開始") : t("ボードを接続");
     elements.controllerConnect.classList.toggle("is-connected", controllerActive);
-    const enabled = controllerActive && !isBusy;
-    elements.controllerConnect.disabled = isBusy;
-    for (const button of document.querySelectorAll("[data-jog-axis]")) button.disabled = !enabled;
-    elements.jogCenter.disabled = !enabled;
     updateControllerUi();
   }
 
   async function connectController() {
     if (isBusy) return;
-    if (!validateProgram()) return;
-    if (!port) {
-      await connect();
-      return;
-    }
     if (controllerActive) {
       await stopProgram();
       controllerActive = false;
       updateControllerConnection();
+      return;
+    }
+    if (!getUartControllerConfig() || !validateProgram()) return;
+    if (!port) {
+      await connect();
       return;
     }
     try {
@@ -1088,6 +1093,8 @@ class SCS009PIO:
   let jogSending = false;
   async function sendJogCommand(command) {
     if (!controllerActive || !port || isBusy || jogSending) return;
+    const config = getUartControllerConfig();
+    if (!config || config.unsupportedWifi) return;
     jogSending = true;
     try { await writeBytes(command); }
     catch (error) { controllerActive = false; updateControllerConnection(); showToast(error.message, "error"); }
