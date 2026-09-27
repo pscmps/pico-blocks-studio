@@ -133,7 +133,10 @@ const ServoWiring = (() => {
     const box=(x,y,w,h)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" class="device-box"/>`;
     const ground='#64748b',power='#e5484d',logic='#0f766e';
     const g=base.groundPoint;
-    wires+=line(`M${g.x+shift} ${g.y} ${base.layout==='geek'?'V278 H337':g.x<130?'H3 V278 H337':'H337'} V${step?(pen?1067:875):475}`,ground,'data-gcode-ground="board"');
+    const lastDriverY=cursor+72+250,penY=cursor+(step?590:0);
+    // End each supply rail at its last connected terminal, never below it.
+    const groundEnd=pen?penY+31:step?lastDriverY+61:278;
+    wires+=line(`M${g.x+shift} ${g.y} ${base.layout==='geek'?'V278 H337':g.x<130?'H3 V278 H337':'H337'} V${groundEnd}`,ground,'data-gcode-ground="board"');
     const signal=(pin,y,colour,key)=>{
       const p=drawPin(pin).dataPoint;if(!p)return;
       const rail=p.x<130?8+(index++)*7:330-(index++)*7;
@@ -143,10 +146,10 @@ const ServoWiring = (() => {
     if(step) {
       boxes+=box(105,cursor,195,44);
       labels+=text(115,cursor+16,t('モータ用外部電源'),'board-title')+text(117,cursor+34,'VM +')+text(248,cursor+34,'GND');
-      wires+=line(`M155 ${cursor+31} V${cursor+51} H324 V825`,power,'data-gcode-supply="motor"')+line(`M290 ${cursor+31} H337`,ground);
+      wires+=line(`M155 ${cursor+31} V${cursor+51} H324 V${lastDriverY+85}`,power,'data-gcode-supply="motor"')+line(`M290 ${cursor+31} H337`,ground);
       labels+=dot(155,cursor+31,power)+dot(290,cursor+31,ground);
       const p=base.logicPowerPoint;
-      if(p)wires+=line(`M${p.x+shift} ${p.y} H315 V805`,logic,'data-gcode-vio="3v3"');
+      if(p)wires+=line(`M${p.x+shift} ${p.y} H315 V${lastDriverY+37}`,logic,'data-gcode-vio="3v3"');
       for(const [i,axis] of ['X','Y'].entries()) {
         const y=cursor+72+i*250,colour=i?'#0891b2':'#7c3aed',dir=i?'#0284c7':'#a855f7';
         boxes+=box(122,y,178,154)+box(122,y+182,178,42);
@@ -155,7 +158,7 @@ const ServoWiring = (() => {
         entries.forEach(([label,field,c],j)=>{const py=y+37+j*24,pin=Number(step.getFieldValue(field));signal(pin,py,c,axis+'-'+label);labels+=text(132,py+3,`${label} · ${pinLabel(pin)}`);});
         labels+=text(132,y+111,t('外付けドライバ必須'),'caption')+text(132,y+126,Number(step.getFieldValue('ACTIVE_LOW'))?'EN: Low active':'EN: High active','caption');
         for(const [j,label,c,rail] of [[0,'VIO',logic,315],[1,'GND',ground,337],[2,'VM',power,324]]) {
-          const py=y+37+j*24;wires+=line(`M${rail} ${py} H300`,c);labels+=dot(300,py,c)+text(270,py-5,label);
+          const py=y+37+j*24;wires+=line(`M${rail} ${py} H300`,c,`data-gcode-terminal="${axis}-${label}"`);labels+=`<circle cx="${rail}" cy="${py}" r="2.5" fill="${c}"/>`+dot(300,py,c)+text(270,py-5,label);
         }
         ['A+','A−','B+','B−'].forEach((label,j)=>{const x=143+j*44;wires+=line(`M${x} ${y+154} V${y+182}`,j<2?'#ea580c':'#be185d',`data-gcode-coil="${axis}-${j}"`);labels+=text(x-7,y+147,label,'caption')+dot(x,y+154,ground)+dot(x,y+182,ground);});
         labels+=text(142,y+205,`${axis} · ${t('ステッピングモータ')}`,'board-title')+'</g>';

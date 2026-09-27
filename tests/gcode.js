@@ -55,6 +55,16 @@ assert.equal(dom.querySelectorAll('[data-gcode-coil]').length,8);
 assert.equal(dom.querySelectorAll('[data-gcode-signal]').length,7);
 assert.equal(dom.querySelectorAll('[data-gcode-supply]').length,2);
 assert.match(dom.querySelector('[data-gcode-supply="motor"]').getAttribute('d'),/^M155 341 V361 H324/,'Motor positive must not overlap the GND supply lead');
+// Rails must end exactly on their last branch, without dangling extensions.
+for(const [selector,terminal] of [['[data-gcode-supply="motor"]','Y-VM'],['[data-gcode-vio="3v3"]','Y-VIO']]) {
+  const branch=dom.querySelector(`[data-gcode-terminal="${terminal}"]`).getAttribute('d').match(/^M(\d+) (\d+) H300$/);
+  assert.ok(dom.querySelector(selector).getAttribute('d').endsWith(`H${branch[1]} V${branch[2]}`),terminal);
+}
+assert.ok(dom.querySelector('[data-gcode-ground="board"]').getAttribute('d').endsWith('V931'),'Shared GND joins the pen supply');
+for(const [type,end] of [['gcode_stepper',693],['gcode_pen',341]]) {
+  const only=new JSDOM('<svg>'+W.renderPlotterflow(blocks.filter(b=>b.type===type),draw,p=>'GP'+p).content+'</svg>').window.document;
+  assert.ok(only.querySelector('[data-gcode-ground="board"]').getAttribute('d').endsWith('V'+end),'GND endpoint: '+type);
+}
 assert.equal(dom.querySelector('[data-gcode-signal="X-STEP"]').getAttribute('data-pin'),'2');
 assert.equal(dom.querySelector('[data-gcode-signal="PEN"]').getAttribute('data-pin'),'12');
 assert.notEqual(dom.querySelector('[data-gcode-signal="X-STEP"]').getAttribute('stroke'),dom.querySelector('[data-gcode-signal="Y-STEP"]').getAttribute('stroke'));
