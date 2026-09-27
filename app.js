@@ -665,7 +665,7 @@ class SCS009PIO:
       <text x="130" y="124" text-anchor="middle" class="board-title">${profile.name.replace("Raspberry Pi ", "").toUpperCase()}</text>
       <text x="130" y="139" text-anchor="middle" class="board-subtitle">RP GPIO / PIO</text>
       ${makeSide(PICO_LEFT_PINS, 50, "left")}${makeSide(PICO_RIGHT_PINS, 210, "right")}`;
-    return { board, dataPoint, groundPoint };
+    return { board, dataPoint, groundPoint, logicPowerPoint:{x:210,y:84} };
   }
 
   function xiaoBoardDrawing(profile, selectedPin) {
@@ -684,7 +684,7 @@ class SCS009PIO:
       <text x="130" y="135" text-anchor="middle" class="board-subtitle">${profile.name.includes("2350") ? "RP2350" : "RP2040"}</text>
       ${side(left, 38, true)}${side(right, 222, false)}
       <text x="130" y="260" text-anchor="middle" class="caption">表面 / USB-Cを上 · 両側の14端子</text>`;
-    return { dataPoint, groundPoint: { x: 222, y: 93 }, board };
+    return { dataPoint, groundPoint: { x: 222, y: 93 }, logicPowerPoint:{x:222,y:116}, board };
   }
 
   function geekBoardDrawing(profile, selectedPin) {
@@ -720,7 +720,7 @@ class SCS009PIO:
       <rect x="88" y="149" width="84" height="32" rx="7" class="chip"/>
       <text x="130" y="168" text-anchor="middle" class="board-subtitle">EXTERNAL CONNECTORS</text>
       ${connectors}`;
-    return { board, dataPoint, groundPoint };
+    return { board, dataPoint, groundPoint, logicPowerPoint:{x:173,y:218} };
   }
 
   function atomBoardDrawing(profile, selectedPin) {
@@ -786,6 +786,14 @@ class SCS009PIO:
     })));
     const diagramStyle = `
       .board-body{fill:#edf4f7;stroke:#78909c;stroke-width:2}.usb{fill:#c7ced6;stroke:#87929e}.chip{fill:#334155;stroke:#172033}.lcd{fill:#e7f6f4;stroke:#0f766e;stroke-width:1.5}.button-mark{fill:#fff;stroke:#8796a8}.board-pin{fill:#fff;stroke:#64748b;stroke-width:1}.board-pin.active{fill:#fbbf24;stroke:#b45309;stroke-width:2}.board-pin.ground{fill:#cbd5e1}.board-pin.power{fill:#fda4af}.pin-label{fill:#475467;font:6.5px Inter,sans-serif}.pin-label.active{fill:#9a3412;font-weight:800}.pin-number{fill:#667085;font:6.2px Inter,sans-serif}.board-title{fill:#172033;font:700 10px Inter,sans-serif}.board-subtitle,.tiny-label{fill:#667085;font:6.5px Inter,sans-serif}.connector-group{fill:#fff;stroke:#cbd5e1}.connector-title{fill:#344054;font:700 6px Inter,sans-serif}.device-box{fill:#fff;stroke:#b8c2cf;stroke-width:1.5}.terminal{fill:#f8fafc;stroke:#667085}.terminal-label{fill:#344054;font:700 8px Inter,sans-serif}.caption{fill:#667085;font:7px Inter,sans-serif}.data-wire{fill:none;stroke:#d69e00;stroke-width:3}.power-wire{fill:none;stroke:#e5484d;stroke-width:3}.ground-wire{fill:none;stroke:#64748b;stroke-width:3}.pin-hit{cursor:help}`;
+    if (blocks.some(b=>['gcode_stepper','gcode_pen'].includes(b.type))) {
+      deviceSelect.hidden=true;
+      elements.wiringDiagram.classList.remove('is-board-only');
+      elements.wiringSummary.textContent=t('外付けSTEP/DIRドライバが各軸に必要です。モータ直結は禁止。VM・ペンは外部給電、GND共通。TMCの電流・マイクロステップ設定は別途行います。');
+      const diagram=ServoWiring.renderPlotterflow(blocks,drawPin,pinLabel);
+      elements.wiringDiagram.innerHTML=`<svg viewBox="0 0 ${diagram.width} ${diagram.height}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><style>${diagramStyle}</style><title>PlotterFlow STEP/DIR + PWM</title>${diagram.content}</svg>`;
+      return;
+    }
     if (!setup) {
       elements.wiringSummary.textContent = t`${profile.name}の端子配置です。各端子へカーソルを合わせると番号を確認できます。`;
       elements.wiringDiagram.innerHTML = t`
@@ -1612,6 +1620,14 @@ class SCS009PIO:
       replaceFromExchange(previous, true); refreshSamples();
       sampleStatus(t("サンプルを読み込む前のブロックとボード選択に戻しました。"));
     } catch (error) {sampleStatus(error.message, true);}
+  });
+  $("#loadGcodeSample").addEventListener("click", () => {
+    try {
+      const json=PicoSamples.plotterflow($("#gcodeSampleBoard").value);
+      replaceFromExchange(BlockExchange.parse(JSON.stringify(json),BOARD_PROFILES,boardCatalog),false,sampleBackupKey);
+      refreshSamples();
+      sampleStatus(t("PlotterFlowサンプルを読み込みました。外付けドライバ・電源・ピン・ペンの可動範囲を確認してください。自動実行はしていません。"));
+    } catch(error) {sampleStatus(error.message,true);}
   });
   $("#restoreImport").addEventListener("click", () => {
     try {

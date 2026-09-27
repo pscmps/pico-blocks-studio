@@ -123,6 +123,61 @@ const ServoWiring = (() => {
     };
     return notes[model] ? notes[model] + " " + t("プルアップは電圧変換・5 V保護ではありません。詳細はHELP「サーボの信号レベル」へ。") : "";
   }
-  return {groups, render, signalNote};
+  function renderPlotterflow(blocks,drawPin,pinLabel) {
+    const step=blocks.find(b=>b.type==='gcode_stepper'),pen=blocks.find(b=>b.type==='gcode_pen');
+    const base=drawPin(null),shift=40,width=340;
+    let boxes='',wires='',labels='',index=0,cursor=310;
+    const line=(d,c,attrs='')=>`<path d="${d}" stroke="${c}" stroke-width="2" fill="none" ${attrs}/>`;
+    const text=(x,y,s,cls='terminal-label')=>`<text x="${x}" y="${y}" class="${cls}">${s}</text>`;
+    const dot=(x,y,c)=>`<circle cx="${x}" cy="${y}" r="3" fill="white" stroke="${c}" stroke-width="1.5"/>`;
+    const box=(x,y,w,h)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" class="device-box"/>`;
+    const ground='#64748b',power='#e5484d',logic='#0f766e';
+    const g=base.groundPoint;
+    wires+=line(`M${g.x+shift} ${g.y} ${base.layout==='geek'?'V278 H337':g.x<130?'H3 V278 H337':'H337'} V${step?(pen?1067:875):475}`,ground,'data-gcode-ground="board"');
+    const signal=(pin,y,colour,key)=>{
+      const p=drawPin(pin).dataPoint;if(!p)return;
+      const rail=p.x<130?8+(index++)*7:330-(index++)*7;
+      wires+=line(`M${p.x+shift} ${p.y} ${base.layout==='geek'?`V${265+index*3} H${rail}`:`H${rail}`} V${y} H122`,colour,`data-gcode-signal="${key}" data-pin="${pin}"`);
+      labels+=dot(p.x+shift,p.y,colour)+dot(122,y,colour);
+    };
+    if(step) {
+      boxes+=box(105,cursor,195,44);
+      labels+=text(115,cursor+16,t('モータ用外部電源'),'board-title')+text(117,cursor+34,'VM +')+text(248,cursor+34,'GND');
+      wires+=line(`M155 ${cursor+31} V${cursor+51} H324 V825`,power,'data-gcode-supply="motor"')+line(`M290 ${cursor+31} H337`,ground);
+      labels+=dot(155,cursor+31,power)+dot(290,cursor+31,ground);
+      const p=base.logicPowerPoint;
+      if(p)wires+=line(`M${p.x+shift} ${p.y} H315 V805`,logic,'data-gcode-vio="3v3"');
+      for(const [i,axis] of ['X','Y'].entries()) {
+        const y=cursor+72+i*250,colour=i?'#0891b2':'#7c3aed',dir=i?'#0284c7':'#a855f7';
+        boxes+=box(122,y,178,154)+box(122,y+182,178,42);
+        labels+=`<g data-gcode-driver="${axis}">`+text(132,y+17,`${axis} · TMC / STEP-DIR`,'board-title');
+        const entries=[['STEP',axis+'_STEP',colour],['DIR',axis+'_DIR',dir],['EN','ENABLE','#b07800']];
+        entries.forEach(([label,field,c],j)=>{const py=y+37+j*24,pin=Number(step.getFieldValue(field));signal(pin,py,c,axis+'-'+label);labels+=text(132,py+3,`${label} · ${pinLabel(pin)}`);});
+        labels+=text(132,y+111,t('外付けドライバ必須'),'caption')+text(132,y+126,Number(step.getFieldValue('ACTIVE_LOW'))?'EN: Low active':'EN: High active','caption');
+        for(const [j,label,c,rail] of [[0,'VIO',logic,315],[1,'GND',ground,337],[2,'VM',power,324]]) {
+          const py=y+37+j*24;wires+=line(`M${rail} ${py} H300`,c);labels+=dot(300,py,c)+text(270,py-5,label);
+        }
+        ['A+','A−','B+','B−'].forEach((label,j)=>{const x=143+j*44;wires+=line(`M${x} ${y+154} V${y+182}`,j<2?'#ea580c':'#be185d',`data-gcode-coil="${axis}-${j}"`);labels+=text(x-7,y+147,label,'caption')+dot(x,y+154,ground)+dot(x,y+182,ground);});
+        labels+=text(142,y+205,`${axis} · ${t('ステッピングモータ')}`,'board-title')+'</g>';
+      }
+      cursor+=590;
+    }
+    if(pen) {
+      const pin=Number(pen.getFieldValue('PIN')),y=cursor;
+      boxes+=box(105,y,195,44)+box(122,y+72,178,100);
+      labels+=text(115,y+16,t('ペン用外部電源'),'board-title')+text(118,y+34,'V+')+text(248,y+34,'GND');
+      labels+=`<g data-gcode-pen="${pin}">`+text(132,y+91,'PWM PEN','board-title');
+      signal(pin,y+112,'#2479bf','PEN');
+      labels+=text(132,y+115,`SIGNAL · ${pinLabel(pin)}`)+text(132,y+139,'V+')+text(132,y+160,'GND')+'</g>';
+      wires+=line(`M148 ${y+31} H98 V${y+136} H122`,power,'data-gcode-supply="pen"')+line(`M289 ${y+31} H337 V${y+180} H110 V${y+157} H122`,ground);
+      labels+=dot(148,y+31,power)+dot(289,y+31,ground)+dot(122,y+136,power)+dot(122,y+157,ground);
+      cursor+=190;
+    }
+    labels+=text(50,cursor+10,t('VIO: 対応基板のみ3.3 V。VMと接続しない'),'caption');
+    labels+=text(50,cursor+24,t('定格・電流・マイクロステップは基板の説明書で設定'),'caption');
+    labels+=text(50,cursor+38,t('機能図：実物の端子順・モータの線色ではありません'),'caption');
+    return {width,height:cursor+52,content:`<g transform="translate(${shift} 0)">${base.board}</g>`+boxes+wires+labels};
+  }
+  return {groups, render, signalNote, renderPlotterflow};
 })();
 if (typeof module !== "undefined") module.exports = ServoWiring;

@@ -1,5 +1,11 @@
 # PicoBlocks Studio
 
+## Gcode / PlotterFlow
+
+**Advanced blocks → Gcode** and **Menu → Samples** provide a PlotterFlow STEP/DIR XY + PWM pen receiver for Pico 2 / Pico 2 W. Settings, USB line input, Gcode execution and replies are editable blocks. External drivers (e.g. TMC) for both axes and external supplies are required and shown in the left wiring guide. TMC UART configuration is not included.
+
+Compared against the pinned source with host tests; hardware untested. F speed control and immediate STOP are not implemented. See [GCODE.en.md](GCODE.en.md) for setup, intentional compatibility/safety fixes and limitations.
+
 ## Create a block with Python
 
 **Advanced blocks → Create blocks (Python)** contains a function definition with a multiline code field. Connect it directly under Program start and enter a name and body, without `def`. Read the argument as `arg`, return a result with `return`, and call it from a same-name function-result or function-run block. For example, `return arg * 2` returns 6 when passed 3.

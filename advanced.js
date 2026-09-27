@@ -1,5 +1,6 @@
 /* Portable MicroPython blocks, including explicit device-side Python bodies. */
 globalThis.AdvancedBlocks = (() => {
+  const gcode = typeof module !== 'undefined' ? require('./gcode.js') : globalThis.GcodeBlocks;
   const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw:args[0]}, ...args.slice(1));
   const val = (name, check=null) => ({type:"input_value",name,...(check?{check}:{})});
   const num = (name,value,min=0,max=65535) => ({type:"field_number",name,value,min,max,precision:1});
@@ -14,6 +15,7 @@ globalThis.AdvancedBlocks = (() => {
   let pythonFieldRegistered = false;
   const pythonBody = value => String(value ?? "").replace(/\r\n?/g,"\n");
   function register(Blockly,pinOptions) {
+    gcode.register(Blockly,pinOptions);
     if (!pythonFieldRegistered) {
       const Multiline = typeof module !== "undefined" ? require("@blockly/field-multilineinput").FieldMultilineInput : globalThis.FieldMultilineInput;
       class PythonBodyField extends Multiline {
@@ -114,6 +116,7 @@ globalThis.AdvancedBlocks = (() => {
       category(t("汎用PWM"),"#b59458",[item("pwm",{DUTY:shadow(32768)}),item("pwm_stop")]),
       category("I2C / SPI","#61979b",[item("i2c_setup"),item("i2c_scan"),item("i2c_read"),item("i2c_write"),item("spi_setup"),item("spi_transfer")]),
       category(t("時間・メモリ"),"#6b8b9a",[item("ticks_us"),item("elapsed_us"),item("mem_free"),item("gc")]),
+      gcode.toolbox(),
     ]};
   }
   function expression(block,expression) {
@@ -146,7 +149,7 @@ globalThis.AdvancedBlocks = (() => {
       case "adv_i2c_scan":return `_adv_i2c[${Number(f("BUS"))}].scan()`;
       case "adv_i2c_read":return `_adv_i2c[${Number(f("BUS"))}].readfrom_mem(${Number(f("ADDRESS"))}, ${Number(f("REGISTER"))}, ${Number(f("SIZE"))})`;
       case "adv_spi_transfer":return `_adv_spi_transfer(${Number(f("BUS"))}, ${v("DATA","[]")})`;
-      default:return null;
+      default:return gcode.expression(block,expression);
     }
   }
   function statement(block,expression,chain,indent,variableName,jog,events) {
@@ -176,12 +179,12 @@ globalThis.AdvancedBlocks = (() => {
       case "adv_i2c_setup":return `_adv_i2c[${n("BUS")}] = SoftI2C(scl=Pin(${n("SCL")}), sda=Pin(${n("SDA")}), freq=${n("FREQ")})\n`;
       case "adv_i2c_write":return `_adv_i2c[${n("BUS")}].writeto_mem(${n("ADDRESS")}, ${n("REGISTER")}, bytes(${v("DATA","[]")}))\n`;
       case "adv_spi_setup":return `_adv_cs[${n("BUS")}] = Pin(${n("CS")}, Pin.OUT, value=1)\n_adv_spi[${n("BUS")}] = SoftSPI(baudrate=${n("FREQ")}, polarity=${n("POLARITY")}, phase=${n("PHASE")}, bits=8, firstbit=SoftSPI.MSB, sck=Pin(${n("SCK")}), mosi=Pin(${n("MOSI")}), miso=Pin(${n("MISO")}))\n`;
-      default:return null;
+      default:return gcode.statement(block);
     }
   }
   function runtime(blocks,profile,jog) {
     const types=new Set(blocks.map(b=>b.type));
-    let code="";
+    let code=gcode.runtime(blocks);
     if(types.has("adv_array"))code+="import array\n";
     if(types.has("adv_math"))code+="import math\n";
     if(types.has("adv_json_encode")||types.has("adv_json_decode"))code+="import json\n";
@@ -212,10 +215,13 @@ globalThis.AdvancedBlocks = (() => {
     return code;
   }
   function wrap(code,blocks,indent) {
+    code=gcode.wrap(code,blocks,indent);
     if(!hasEvents(blocks))return code;
     return `try:\n${indent(code)}    while True:\n        _adv_poll()\n        time.sleep_ms(1)\nfinally:\n    for _pin in list(_adv_irq_pins):\n        _adv_stop_irq(_pin)\n    _adv_timers.clear()\n`;
   }
   function validate(blocks,profile) {
+    const gcodeError=gcode.validate(blocks,profile);
+    if(gcodeError)return gcodeError;
     const setups=blocks.filter(b=>["adv_function","adv_python_function","adv_irq","adv_timer","adv_i2c_setup","adv_spi_setup"].includes(b.type));
     const starts=blocks.filter(b=>b.type==="program_start"), top=new Set();
     for(const start of starts)for(let b=start;b;b=b.getNextBlock())top.add(b);

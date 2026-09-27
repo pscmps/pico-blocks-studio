@@ -47,7 +47,7 @@
               <span>コントローラ</span>
               <small>UART / Wi-Fi JOGブロックで有効</small>
             </button>
-            <button id="samplesMenuItem" type="button"><span>サンプル</span><small>サーボ3台・USB / Wi-Fi JOG</small></button>
+            <button id="samplesMenuItem" type="button"><span>サンプル</span><small>USB / Wi-Fi JOG · Gcode</small></button>
             <button id="exchangeMenuItem" type="button">
               <span>対話AIとプログラムを作る</span>
               <small>依頼テンプレート・JSON貼り付け</small>
@@ -334,6 +334,16 @@
         <p>サーボは外部電源を使いGNDを共通化。シリアルサーボはオープンドレインUARTでGPIO 1本を共有する試作です。半二重変換ICは使いませんが、DATAのHigh電圧は3.3 V対応が必須です。5 V信号の直結は禁止。信号の立ち上がりが遅い場合は3.3 Vへの外付けプルアップが必要です。1 Mbpsを含む実際の通信品質は未確認です。</p>
         <p>USB用UART0は予約し、シリアルサーボは合計2種類まで。GPIOは19・21・22・23・25・26・32・33、ADCはWi-Fiと共存できる32・33のみ。ADCの電圧表示は概算です。LEDブロックは内蔵RGB LEDの白色点灯・消灯です。配線図はコネクタ別の模式図で、実物の位置・向きは公式ピン情報をご確認ください。</p>
       </details>
+      <details id="gcodeHelp" class="help-card"><summary>Gcode / PlotterFlow（試験対応）</summary>
+        <p>「高度なブロック」の一番下にGcodeがあります。XYのstep/mm、外付けSTEP/DIRドライバ、PWMペンを設定してからGcode処理を開始し、USBの1行受信 → 実行した応答 → USBへ表示をくり返します。解析だけのブロックはcommandとwordsの辞書を返します。</p>
+        <p>ステッピングモータはGPIOに直結できません。各軸にTMC2209などの3.3 V対応STEP/DIRドライバとモータ用外部電源が必要です。TMCのUART通信・電流・マイクロステップの設定は行いません。キャリア基板の説明書で設定し、step/mmと合わせてください。</p>
+        <p>左の図は機能端子の接続例で、製品の端子順ではありません。X STEP=GP2、Y STEP=GP3、X DIR=GP4、Y DIR=GP5、共通EN=GP7、PWMペン=GP12がサンプルの初期値です。STEPの2本は連続番号。ENの有効レベルを合わせ、VMは定格に合う外部電源へ、GNDは共通、VIOは対応基板のみ3.3 Vへ。モータやペンをPicoから給電しないでください。</p>
+        <p>サンプルはPico 2 / Pico 2 W向けのPlotterFlow受信プログラムです。このサイトで「保存して実行」→ USBを切断 → PlotterFlowで同じポートへ接続します。2サイトから同じポートを同時に開けません。JOG・シリアルサーボ・割り込み・タイマーとは別プログラムにしてください。</p>
+        <p>対応：G0/G1、G90/G91、G20/G21、G92、M17/M18、M3/M5、M115。起動時はモータ無効・ペン上。M17でモータ有効、M18で無効です。F値は状態に記録するだけで速度制御しません。加減速・原点復帰・リミット・移動範囲制限は未実装です。</p>
+        <p>元の試作ファームと同じくSTOP（0x85）は行受信側で処理するため、改行待ち・移動中の即時停止を保証しません。okも位置到達の確認ではありません。物理的に駆動電源を遮断できる状態で試験してください。実機・波形・脱調は未検証です。</p>
+        <p>サンプルは元の設定・受信ループ・コマンド応答をブロックで再現します。MicroPython互換の解析、STEP出力・FIFO停止・EN極性、メモリ使用量、終了時の無効化は修正しているため、元ファームのバイト単位の複製ではありません。</p>
+        <p><a href="https://github.com/pscmps/plotterflow-micropython-rp/tree/0e4917ee24309520e9e147308ff75fe1d22e56f1" target="_blank" rel="noopener">PlotterFlow source</a> · <a id="gcodeGuideLink" href="./GCODE.md" target="_blank" rel="noopener">Gcode implementation notes</a></p>
+      </details>
       <footer class="help-credit">made by pscmps</footer>
     </dialog>
 
@@ -381,28 +391,37 @@
       <p class="sample-caution">初回JOGやSpaceで中央付近へ大きく動く場合があります。負荷を外し、中央位置と増減幅を確認してから操作してください。</p>
       <p class="exchange-note">今のブロックを置き換え、読み込み前の状態を1件保存します。自動で実行・書き込みはしません。</p>
       <div class="exchange-actions"><button id="loadSample" class="button button-primary" type="button">このサンプルに置き換える</button><button id="restoreSample" class="button button-secondary" type="button">読み込み前に戻す</button></div>
+      <section id="gcodeSampleSection">
+        <h3>PlotterFlow / Gcode受信</h3>
+        <p>STEP/DIR式XY＋PWMペン。外付けステッパドライバ2台（TMCなど）と外部電源が必要です。実機未検証・F速度制御なし・移動中の即時停止なし。配線と制約はHELPのGcodeを確認してください。</p>
+        <label for="gcodeSampleBoard">サンプルのボード<select id="gcodeSampleBoard"><option value="pico2">Pico 2</option><option value="pico2w">Pico 2 W</option></select></label>
+        <p>選んだボードとブロックに置き換えます。元の設定とUSB受信ループを再現し、自動実行はしません。</p>
+        <button id="loadGcodeSample" class="button button-secondary" type="button">Gcodeサンプルに置き換える</button>
+      </section>
       <p id="sampleStatus" role="status" aria-live="polite"></p>
     </dialog>
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
     <script src="https://unpkg.com/@blockly/field-multilineinput@5.0.17/dist/index.js"></script>
-    <script src="./i18n.en.js?v=python1"></script>
-    <script src="./i18n.js?v=i18n1"></script>
+    <script src="./i18n.en.js?v=gcode1"></script>
+    <script src="./i18n.js?v=gcode1"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
     <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/ja.js"></script>
     <script>PicoI18n.captureBlockly("ja", Blockly.Msg); PicoI18n.setLanguage(PicoI18n.language); PicoI18n.bindDocument(document);</script>
     <script src="./servo.js?v=jog3"></script>
     <script src="./jog.js?v=i18n1"></script>
-    <script src="./advanced.js?v=python1"></script>
+    <script src="./gcode-runtime.js?v=gcode1"></script>
+    <script src="./gcode.js?v=gcode1"></script>
+    <script src="./advanced.js?v=gcode1"></script>
     <script src="./basic.js?v=advanced1"></script>
-    <script src="./wiring.js?v=jog3"></script>
+    <script src="./wiring.js?v=gcode1"></script>
     <script src="./exchange.js?v=python1"></script>
     <script src="./boot.js?v=atom1"></script>
     <script src="./wifi.js?v=atom1"></script>
     <script src="./display.js?v=i18n1"></script>
-    <script src="./samples.js?v=samples1"></script>
-    <script src="./app.js?v=controller2"></script>
+    <script src="./samples.js?v=gcode1"></script>
+    <script src="./app.js?v=gcode1"></script>
   </body>
 </html>

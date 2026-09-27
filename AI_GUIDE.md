@@ -2,6 +2,14 @@
 
 ## 高度なブロック
 
+### Gcode / PlotterFlow
+
+Gcodeは高度なブロックの末尾です。RP2040 / RP2350専用の試作。`gcode_planner`（X/Y step/mm）→ `gcode_stepper`（X_STEP/Y_STEP/X_DIR/Y_DIR/ENABLE/ACTIVE_LOW）→ `gcode_pen`（PIN/FREQ/UP/DOWN）→ `gcode_controller` を開始直下へ各1個接続します。Y_STEP = X_STEP + 1、6端子は重複不可。ATOM非対応。JOG・シリアルサーボ・割り込み・タイマーと混在不可。
+
+`gcode_read` はUSBから改行まで待ち文字列を返します。変数に入れて空でなければ `gcode_reply` の入力LINEへ渡し、その応答文字列を `basic_print` で返信します。`gcode_ready` のBOARDは起動メッセージ用の名前、`gcode_parse` はcommand/wordsの辞書、`gcode_state` のKEYはx/y/z/feed/absolute/mm/enabled/pen_downです。reply/stateはcontrollerより後で使います。
+
+外付けSTEP/DIRドライバ（TMC等）と外部電源が必要。モータ直結不可。TMCのUART・電流・マイクロステップ設定は別途。F速度制御、加減速、原点復帰、リミット、即時停止は未実装です。実機未検証。サンプルと原本との差分は [GCODE.md](GCODE.md)。Python本文1個にファーム全体を隠さず、これらのブロックを使ってください。
+
 ### Python本文から関数ブロックを作る
 
 `adv_python_function`の`fields.NAME`に名前、`fields.CODE`にPython関数の本文を指定できます。`def`行は不要で、引数は`arg`、戻り値は`return`。本文は16384文字まで、JSON文字列内の改行は`\n`です。通常の`adv_function`と名前を重複させず、`program_start`直下のnext列へ置きます。同名の`adv_call`（結果）または`adv_call_do`（実行）から引数を渡します。定義だけでは実行されません。

@@ -2,6 +2,14 @@
 
 ## Advanced blocks
 
+### Gcode / PlotterFlow
+
+Gcode is the last Advanced category: an RP2040 / RP2350 prototype, not ATOM. Connect one each of `gcode_planner` (X/Y steps/mm), `gcode_stepper` (X_STEP/Y_STEP/X_DIR/Y_DIR/ENABLE/ACTIVE_LOW), `gcode_pen` (PIN/FREQ/UP/DOWN), and `gcode_controller` directly in the start chain. Y_STEP must equal X_STEP + 1; all six GPIOs must differ. Do not mix with JOG, serial servos, interrupts or timers.
+
+`gcode_read` waits for a USB newline and returns text. Store it in a variable; if nonempty, pass it to the LINE input of `gcode_reply` and print the reply with `basic_print`. `gcode_ready` uses BOARD for the startup-message name; `gcode_parse` returns command/words; `gcode_state` KEY is x/y/z/feed/absolute/mm/enabled/pen_down. Use reply/state after controller setup.
+
+External STEP/DIR drivers (e.g. TMC) and external supplies are required: never connect motors directly. TMC UART, current and microstep configuration are separate. No F speed control, acceleration, homing, limits or immediate stopping; hardware untested. See [GCODE.en.md](GCODE.en.md) for source differences. Use these blocks rather than hiding the whole firmware in one Python-body block.
+
 ### Functions with a Python body
 
 `adv_python_function` accepts a name in `fields.NAME` and a Python function body in `fields.CODE`. Omit `def`; read the argument as `arg` and return a result with `return`. Maximum 16384 characters; encode JSON string newlines as `\n`. Names must be unique across these and ordinary `adv_function` blocks. Connect directly in the `program_start.next` chain. Use a same-name `adv_call` (value) or `adv_call_do` (statement) to pass an argument. Definitions do not execute on their own.

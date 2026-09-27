@@ -79,6 +79,17 @@ assert.equal($('#sampleWifiSteps').hidden,false);$('#loadSample').click();
 assert.equal($('#sampleStatus').dataset.error,'false',$('#sampleStatus').textContent);assert.ok(workspace.getAllBlocks(false).some(b=>b.type==='wifi_jog_setup'));
 $('#restoreSample').click();assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
 assert.ok(app.includes('|| sampleDialog.open) return;'),'modal suppresses motor keyboard commands');
+for(const board of ['pico2','pico2w']) {
+  $('#gcodeSampleBoard').value=board;$('#loadGcodeSample').click();
+  assert.equal($('#sampleStatus').dataset.error,'false',$('#sampleStatus').textContent);
+  assert.equal(vm.runInContext('selectedBoard',context),board);
+  assert.ok(workspace.getAllBlocks(false).some(b=>b.type==='gcode_stepper'));
+  $('#restoreSample').click();assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
+}
+context.isBusy=true;$('#loadGcodeSample').click();assert.equal($('#sampleStatus').dataset.error,'true');context.isBusy=false;
+assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
+context.controllerActive=true;$('#loadGcodeSample').click();assert.equal($('#sampleStatus').dataset.error,'true');context.controllerActive=false;
+assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
 workspace.dispose();
 if(process.argv.includes('--json'))process.stdout.write(JSON.stringify({programs,jogs}));
 else console.log(`PASS: ${programs.length} samples across 9 boards; 3-servo mapping, Wi-Fi gates, LCD and legacy compatibility`);

@@ -112,3 +112,20 @@ for(const key of ['atom_lite','pico']) {
   }
 }
 console.log('PASS: Grove 26/32 and expansion signal wiring, per-bus optional pull-up to 3V3, no PWM/RP/empty pull-ups');
+for(const key of ['pico','pico2','pico2w','xiao_rp2040','xiao_rp2350','rp2040_geek','rp2350_geek']) {
+  if(!profiles[key])continue;
+  context.key=key;vm.runInContext('selectedBoard=key',context);
+  const pins=profiles[key].pins;
+  const hardware=[block('gcode_stepper',{X_STEP:pins[0],Y_STEP:pins[1],X_DIR:pins[2],Y_DIR:pins[3],ENABLE:pins[4],ACTIVE_LOW:1}),block('gcode_pen',{PIN:pins[5]})];
+  context.workspace={getAllBlocks:()=>hardware};vm.runInContext('renderWiringDiagram()',context);
+  assert.equal($('#wiringDiagram').querySelectorAll('[data-gcode-driver]').length,2);
+  assert.equal($('#wiringDiagram').querySelectorAll('[data-gcode-signal]').length,7);
+  assert.ok($('#wiringDiagram').querySelector('[data-gcode-vio="3v3"]'));
+  assert.ok(!$('#wiringDiagram').classList.contains('is-board-only'));
+  assert.ok($('#wiringSummary').textContent.includes('モータ直結は禁止'));
+  assert.equal($('#signalLevelNote').hidden,true);
+  context.workspace={getAllBlocks:()=>[]};vm.runInContext('renderWiringDiagram()',context);
+  assert.equal($('#wiringDiagram').querySelectorAll('[data-gcode-driver]').length,0);
+  assert.ok($('#wiringDiagram').classList.contains('is-board-only'));
+}
+console.log('PASS: Gcode driver/pen wiring on RP layouts, logic power, warning and removal');

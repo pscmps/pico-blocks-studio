@@ -2,7 +2,7 @@
   "name": "pico-blocks-studio",
   "private": true,
   "scripts": {
-    "test": "node tests/generation.js && node tests/basics.js && node tests/modes.js && node tests/help.js && node tests/wiring.js && node tests/i18n.js && node tests/wifi.js && node tests/atom.js && node tests/jog_ui.js && node tests/advanced.js && node tests/samples.js && node tests/controller_menu.js && node tests/python_blocks.js"
+    "test": "node tests/generation.js && node tests/basics.js && node tests/modes.js && node tests/help.js && node tests/wiring.js && node tests/i18n.js && node tests/wifi.js && node tests/atom.js && node tests/jog_ui.js && node tests/advanced.js && node tests/samples.js && node tests/controller_menu.js && node tests/python_blocks.js && node tests/gcode.js"
   },
   "devDependencies": {
     "@blockly/field-multilineinput": "5.0.17",
