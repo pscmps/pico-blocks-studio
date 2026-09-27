@@ -912,7 +912,10 @@ class SCS009PIO:
   function getJogAxes() {
     const blocks = workspace.getAllBlocks(false);
     const hasScs = blocks.some(block => block.type === "scs009_setup");
-    const config = PicoJog.defaults(hasScs);
+    // Explicit bindings define the connected servos. Do not invent an ID 4
+    // for a three-servo example; keep implicit four-axis mapping for old data.
+    const hasBindings = blocks.some(block => /^(uart_scs|xl330|sts3215|sts3235|pwm)_bind$/.test(block.type));
+    const config = PicoJog.defaults(hasScs && !hasBindings);
     for (const block of blocks.filter(block => /^(uart_scs|xl330|sts3215|sts3235|pwm)_bind$/.test(block.type))) {
       const target = block.type === "uart_scs_bind" ? "scs009" : block.type.split("_")[0];
       const connected = blocks.some(b => b.type === target + "_setup" && (target !== "pwm" || b.getFieldValue("CHANNEL") === block.getFieldValue("ID")));
@@ -1510,7 +1513,7 @@ class SCS009PIO:
       exchangeStatus(t("自動コピーが許可されませんでした。選択した依頼文を手動でコピーしてください。"), true);
     }
   });
-  function replaceFromExchange(data, restoring = false) {
+  function replaceFromExchange(data, restoring = false, targetBackupKey = backupKey) {
     if (isBusy || controllerActive) throw new Error(t("実行・操作を停止してから取り込んでください。"));
     const previous = {board: selectedBoard, workspace: Blockly.serialization.workspaces.save(workspace)};
     const scratch = new Blockly.Workspace();
@@ -1526,7 +1529,7 @@ class SCS009PIO:
       normalizeWorkspace();
       if (!restoring) validateProgram({throwOnError: true});
       const code = generatePython();
-      if (!restoring) localStorage.setItem(backupKey, JSON.stringify(previous));
+      if (!restoring) localStorage.setItem(targetBackupKey, JSON.stringify(previous));
       localStorage.setItem("picoblocks-workspace-v1", JSON.stringify(Blockly.serialization.workspaces.save(workspace)));
       localStorage.setItem("picoblocks-board-v1", selectedBoard);
       elements.pythonCode.textContent = code;
@@ -1554,6 +1557,55 @@ class SCS009PIO:
       exchangeStatus(t`${BOARD_PROFILES[data.board].name}に${data.count}個のブロックを取り込みました。閉じて配線・位置範囲・生成コードを確認してから実行してください。`);
     } catch (error) { exchangeStatus(error.message, true); }
   });
+  const sampleDialog = $("#sampleDialog");
+  const sampleBackupKey = "picoblocks-sample-backup-v1";
+  const sampleStatus = (message, error = false) => {
+    $("#sampleStatus").textContent = message;
+    $("#sampleStatus").dataset.error = String(error);
+  };
+  function refreshSamples() {
+    const profile = BOARD_PROFILES[selectedBoard];
+    const model = $("#sampleModel").value;
+    $("#sampleBoard").textContent = t`選択中: ${profile.name}`;
+    $("#sampleTransport option[value=wifi]").disabled = !profile.wifi;
+    if (!profile.wifi) $("#sampleTransport").value = "usb";
+    const wifi = $("#sampleTransport").value === "wifi";
+    $("#sampleWifiUnavailable").hidden = Boolean(profile.wifi);
+    $("#sampleWifiSteps").hidden = !wifi;
+    $("#sampleUsbSteps").hidden = wifi;
+    $("#sampleLcdNote").hidden = !GeekDisplay.supported(selectedBoard);
+    $("#sampleExperimental").hidden = !profile.experimental;
+    $("#sampleSerialNote").hidden = model === "pwm";
+    $("#samplePwmNote").hidden = model !== "pwm";
+    const pins = PicoSamples.pins(profile).map(pin => profile.pinLabels?.[pin] || `GP${pin}`);
+    $("#sampleWiring").textContent = model === "pwm"
+      ? t`信号線: 1 → ${pins[0]} / 2 → ${pins[1]} / 3 → ${pins[2]}`
+      : t`DATA: ${pins[0]} → ID 1 → ID 2 → ID 3（デイジーチェーン）`;
+    $("#sampleBaud").textContent = model === "pwm" ? "50 Hz / 1000–2000 µs" : model === "xl330" ? "57,600 bps" : "1,000,000 bps";
+    $("#restoreSample").disabled = !localStorage.getItem(sampleBackupKey);
+  }
+  $("#samplesMenuItem").addEventListener("click", () => {
+    setMenuOpen(false);
+    refreshSamples(); sampleStatus(""); sampleDialog.showModal();
+  });
+  $("#sampleClose").addEventListener("click", () => sampleDialog.close());
+  for (const id of ["#sampleModel", "#sampleTransport"]) $(id).addEventListener("change", () => {refreshSamples(); sampleStatus("");});
+  $("#loadSample").addEventListener("click", () => {
+    try {
+      const json = PicoSamples.create(selectedBoard, BOARD_PROFILES[selectedBoard], $("#sampleModel").value, $("#sampleTransport").value);
+      replaceFromExchange(BlockExchange.parse(JSON.stringify(json), BOARD_PROFILES, boardCatalog), false, sampleBackupKey);
+      refreshSamples();
+      sampleStatus(t("サンプルを読み込みました。閉じて配線・ID・中央位置を確認してから実行してください。自動実行はしていません。"));
+    } catch (error) {sampleStatus(error.message, true);}
+  });
+  $("#restoreSample").addEventListener("click", () => {
+    try {
+      const previous = JSON.parse(localStorage.getItem(sampleBackupKey));
+      if (!previous || !BOARD_PROFILES[previous.board]) throw new Error(t("取り込み前の保存がありません。"));
+      replaceFromExchange(previous, true); refreshSamples();
+      sampleStatus(t("サンプルを読み込む前のブロックとボード選択に戻しました。"));
+    } catch (error) {sampleStatus(error.message, true);}
+  });
   $("#restoreImport").addEventListener("click", () => {
     try {
       const previous = JSON.parse(localStorage.getItem(backupKey));
@@ -1574,7 +1626,7 @@ class SCS009PIO:
   let lastJogKey = 0;
   document.addEventListener("keydown", (event) => {
     if ($("#wifiDialog").open) return;
-    if (exchangeDialog.open || helpDialog.open || !firstRunGuide.hidden) return;
+    if (exchangeDialog.open || helpDialog.open || !firstRunGuide.hidden || sampleDialog.open) return;
     if (elements.controllerDrawer.getAttribute("aria-hidden") !== "false") return;
     if (event.target.closest("input, select, textarea, [contenteditable=true]") || event.ctrlKey || event.metaKey || event.altKey) return;
     const commands = PicoJog.keys;

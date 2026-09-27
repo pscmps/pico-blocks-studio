@@ -14,7 +14,7 @@
       type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101a2d'/%3E%3Cpath d='M16 18h21a7 7 0 0 1 0 14H27v14H16V18Z' fill='%235eead4'/%3E%3Ccircle cx='45' cy='43' r='7' fill='%23ffb86b'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./styles.css?v=atom2" />
+    <link rel="stylesheet" href="./styles.css?v=samples1" />
   </head>
   <body>
     <header class="topbar">
@@ -47,6 +47,7 @@
               <span>コントローラ</span>
               <small>UARTブロックを置くと使えます</small>
             </button>
+            <button id="samplesMenuItem" type="button"><span>サンプル</span><small>サーボ3台・USB / Wi-Fi JOG</small></button>
             <button id="exchangeMenuItem" type="button">
               <span>対話AIとプログラムを作る</span>
               <small>依頼テンプレート・JSON貼り付け</small>
@@ -298,6 +299,7 @@
         <p>受信は接続キーで保護し、128 KiBまでを分割転送・SHA-256検証後に置換します。転送途中の失敗では旧プログラムが残ります。保存完了の応答が途切れた場合は新旧どちらか不明なので、待機へ戻して再送してください。通信は暗号化されないため信頼できるLANだけで使い、キーは秘密にしてください。</p>
         <p>接続できなくてもUSBで再設定・書き込みできます。受信機能は別ファイルなので、このサイトからのUSB保存でも残ります。他のツールでmain.pyを置き換えた場合は初回設定をやり直してください。実機・Android端末での動作検証は未実施です。</p>
       </details>
+      <details class="help-card"><summary>サンプルから始める</summary><p>メニューの「サンプル」でサーボの種類とUSB / Wi-Fi JOGを選ぶと、選択ボードに合う3台分のブロックを読み込めます。上下＝1、左右＝2、W/S＝3、Space＝中央です。GEEKはLCDに機種名とキー割り当ても表示します。</p><p>読み込みは今のブロックを置き換えます。「読み込み前に戻す」で直前の状態を復元できます。自動実行はしません。配線・電源・ID・通信速度・中央位置を確認してください。Wi-Fi版はボードが親機になる方式で、サンプル画面に接続手順を表示します。</p></details>
       <details id="advancedHelp" class="help-card"><summary>基本ブロックの整理と高度なブロック</summary>
         <p>「うごき」は廃止し、本体LEDとGPIO出力は「基本 → 入力・出力」、待ちは「時間・くり返し」に統一しました。古い保存データのGPIO出力・waitも読み込めます。</p>
         <p>「基本」の下の「高度なブロック」に45種類を追加。配列・辞書、関数、割り込み・ソフトタイマー、文字列・型変換・JSON、ビット演算・数学、汎用PWM、I2C/SPI、時間・メモリを扱えます。MicroPythonの全APIを網羅するものではありません。</p>
@@ -346,10 +348,37 @@
         <p id="exchangeStatus" role="status" aria-live="polite"></p>
       </section>
     </dialog>
+    <dialog id="sampleDialog" class="exchange-dialog sample-dialog" aria-labelledby="sampleTitle">
+      <div class="exchange-heading"><div><small>START WITH AN EXAMPLE</small><h2 id="sampleTitle">サンプル</h2></div><button id="sampleClose" type="button" aria-label="閉じる">×</button></div>
+      <p id="sampleBoard"></p>
+      <div class="sample-selectors">
+        <label for="sampleModel">サーボの種類<select id="sampleModel"><option value="pwm">PWMサーボ</option><option value="scs009">SCS009</option><option value="xl330">XL330</option><option value="sts3215">STS3215</option><option value="sts3235">STS3235</option></select></label>
+        <label for="sampleTransport">操作方法<select id="sampleTransport"><option value="usb">USB JOG</option><option value="wifi">Wi-Fi JOG</option></select></label>
+      </div>
+      <p id="sampleWifiUnavailable" class="exchange-note">Wi-Fi JOGはPico W / Pico 2 W / ATOM Liteで選べます。</p>
+      <section class="sample-preview">
+        <h3>同じ種類のサーボを3台</h3>
+        <p id="sampleWiring"></p><p id="sampleBaud" class="exchange-note"></p>
+        <p>上下キー → 1 ／ 左右キー → 2 ／ W・S → 3<br>Space → 3台を設定した中央へ。A・Dはサーボに割り当てません。</p>
+        <p id="sampleLcdNote">GEEKのLCDには機種名とキー割り当てを表示します。実測位置の表示ではありません。</p>
+      </section>
+      <details><summary>配線と実行の前に</summary>
+        <p>サーボは仕様に合う外部電源を使い、ボードとGNDを共通にします。左の配線図とHELPの信号レベルを確認してください。サンプルは実機未検証です。</p>
+        <p id="sampleSerialNote">IDをあらかじめ1・2・3に設定し、通信速度と位置制御モードを合わせてください。サンプルはID・通信速度・動作モードを書き換えません。実行時に3台のトルクをONにします。</p>
+        <p id="samplePwmNote">PWMは番号1・2・3の信号線を別々のGPIOへ。パルス幅1000〜2000 µsがサーボに適合するか確認してください。最初のJOG操作までPWMを出力しません。</p>
+        <p id="sampleExperimental">ATOM Liteは開発中・動作未確認です。</p>
+      </details>
+      <p id="sampleUsbSteps">USBで実行した後、メニューの「コントローラ」を開いて接続します。</p>
+      <p id="sampleWifiSteps">初回はUSBから実行します。Wi-Fi名「PicoBlocks-JOG」／仮パスワード「picoblocks」をブロックで変更してください。スマホをそのWi-Fiへ接続し、シリアル欄に出るURLを開きます。家庭のWi-Fiへの接続ではなく、ボードが親機になるJOG用です。USB JOGでも操作できます。</p>
+      <p class="sample-caution">初回JOGやSpaceで中央付近へ大きく動く場合があります。負荷を外し、中央位置と増減幅を確認してから操作してください。</p>
+      <p class="exchange-note">今のブロックを置き換え、読み込み前の状態を1件保存します。自動で実行・書き込みはしません。</p>
+      <div class="exchange-actions"><button id="loadSample" class="button button-primary" type="button">このサンプルに置き換える</button><button id="restoreSample" class="button button-secondary" type="button">読み込み前に戻す</button></div>
+      <p id="sampleStatus" role="status" aria-live="polite"></p>
+    </dialog>
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
-    <script src="./i18n.en.js?v=advanced1"></script>
+    <script src="./i18n.en.js?v=samples1"></script>
     <script src="./i18n.js?v=i18n1"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
     <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
@@ -364,6 +393,7 @@
     <script src="./boot.js?v=atom1"></script>
     <script src="./wifi.js?v=atom1"></script>
     <script src="./display.js?v=i18n1"></script>
-    <script src="./app.js?v=advanced1"></script>
+    <script src="./samples.js?v=samples1"></script>
+    <script src="./app.js?v=samples1"></script>
   </body>
 </html>

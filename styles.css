@@ -336,6 +336,12 @@ kbd { margin-left: 7px; padding: 2px 7px; border: 1px solid var(--line); border-
 #wiringDevice { width: 100%; margin: 8px 0; padding: 7px; border: 1px solid #e1e5eb; border-radius: 7px; background: #fff; color: #475467; font: inherit; font-size: 11px; }
 .exchange-dialog { width: min(700px, calc(100vw - 32px)); max-height: 90dvh; overflow: auto; border: 1px solid #e1e5eb; border-radius: 16px; padding: 28px; color: #344054; background: white; box-shadow: 0 24px 80px #17203326; }
 .exchange-dialog::backdrop { background: #17203355; }
+.sample-selectors { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+.sample-selectors label { display: grid; gap: 8px; font-size: 12px; }
+.sample-selectors select { width: 100%; min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); font: inherit; }
+.sample-caution { border-left: 3px solid #c9ac70; padding-left: 12px; }
+#sampleStatus[data-error="true"] { color: #b42318; }
+@media (max-width: 480px) { .sample-selectors { grid-template-columns: 1fr; } .sample-dialog { padding: 20px; } }
 .wifi-field { display: grid; gap: 6px; margin: 14px 0; font-size: 12px; }
 .wifi-field input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fafbfc; font: inherit; color: inherit; }
 .wifi-remember { display: flex; gap: 8px; align-items: center; margin: 14px 0; font-size: 12px; }
@@ -346,6 +352,8 @@ kbd { margin-left: 7px; padding: 2px 7px; border: 1px solid var(--line); border-
 .exchange-heading h2 { font-size: 20px; margin: 6px 0; }
 .exchange-heading button { border: 0; background: #f4f6f8; border-radius: 8px; width: 32px; height: 32px; font-size: 24px; color: #667085; cursor: pointer; }
 .exchange-dialog p { font-size: 13px; line-height: 1.8; }
+.sample-dialog p { line-height: 1.65; margin: 8px 0; }
+.sample-dialog .sample-preview { margin-top: 14px; padding-top: 10px; }
 .exchange-dialog section { border-top: 1px solid #eef0f3; margin-top: 22px; padding-top: 14px; }
 .exchange-dialog h3 { font-size: 14px; margin: 8px 0; }
 .exchange-dialog textarea { display: block; width: 100%; min-height: 150px; resize: vertical; border: 1px solid #d9dfe7; border-radius: 8px; background: #fafbfc; padding: 12px; font: 12px/1.6 ui-monospace, monospace; color: #344054; }

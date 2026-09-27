@@ -1,5 +1,17 @@
 # PicoBlocks Studio
 
+## Sample programs
+
+Open **Samples** in the menu to load a USB JOG example for three matching PWM, SCS009, XL330, STS3215 or STS3235 servos. Wi-Fi JOG is also available on Pico W, Pico 2 W and ATOM Lite. GPIOs follow the selected board; GEEK samples add LCD model/key labels, not measured positions.
+
+- Up/down = ID/channel 1, left/right = 2, W/S = 3, Space = center all three. A/D are not assigned to a servo.
+- Loading replaces blocks without running or writing to hardware. Restore previous blocks keeps one pre-load state, separately from the chat-import backup.
+- Configure serial servo IDs 1/2/3, baud rates and position-control mode beforehand. XL330 uses 57,600 bps; SCS/STS use 1 Mbps. Samples do not reconfigure these settings; running enables torque. PWM uses 50 Hz and 1000–2000 us, with no output until a JOG command.
+- Check external power, common GND and signal levels; disconnect the load for testing. The first JOG command or Space may cause a large move toward center. Adjust centers, steps and pulse widths for your hardware.
+- Wi-Fi samples use a board-hosted access point. Change the sample SSID/password before the first USB run, connect your phone to that Wi-Fi and open the URL printed in the serial console. USB JOG also works. This is separate from wireless programming over your home network.
+
+All 60 supported board/model/transport combinations are generated and syntax-checked; mock tests verify JOG commands target only the three servos. Hardware is untested, including experimental ATOM Lite. Explicit JOG bindings no longer auto-fill unassigned axes with SCS IDs; legacy four-axis defaults remain when there are no binding blocks.
+
 ## Consolidated basic tools and advanced blocks (2026-09-27)
 
 Removed Motion: board LED and GPIO output now live under Basic → Input / output; waits live under Time / loops. Use the single-line `basic_write` and `basic_wait` in new programs. Saved `gpio_write` / `wait_ms` blocks remain importable.
