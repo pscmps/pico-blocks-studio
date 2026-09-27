@@ -4,6 +4,24 @@
 
 A browser-based block programming prototype for RP2040 / RP2350 boards running MicroPython.
 
+## JOG and signal levels (updated 2026-09-27)
+
+Raw speed is hidden in shared USB/Wi-Fi JOG bindings; set Center and Step only. New bindings internally default to 500 for SCS009/STS3215/STS3235 and 20 for XL330. These are servo settings, not board speed or milliseconds. Existing serialized `SPEED` values remain supported. Explicit position-move blocks still expose servo speed.
+
+SCS009 (documented as SCS0009), STS3215 and STS3235: manufacturer sheets specify High 2–5 V and Low 0–0.45 V. They do not separate TX/RX limits or specify the internal pull-up voltage, so replies cannot be guaranteed to stay below 3.3 V.
+
+XL330: ROBOTIS specifies 3.3 V logic with 5 V compatibility. This applies to the servo, not 5 V tolerance on the ESP32.
+
+The user reported successful direct wiring with STS3235 and XL330 on 2026-09-27. Board, wiring and baud details are not recorded; this does not validate every board or condition in this app.
+
+A pull-up returns a released DATA line to High; it does not translate voltage. Adding a resistor to 3.3 V does not make a 5 V driver or existing 5 V pull-up safe. If voltage is unknown, do not connect GPIO directly: obtain manufacturer confirmation or measure with the board disconnected. A 5 V bus needs level translation suitable for its baud and bidirectional half-duplex operation.
+
+2.2 kΩ, rated at least 1/8 W, is a trial starting point only for a verified 3.3 V bus. It is not manufacturer-specified or guaranteed at 1 Mbps. Low-state current/power are about 1.5 mA/5 mW. Check sink-current limits, existing parallel pull-ups, capacitance and rise time. It is not a mandatory addition to an already stable bus.
+
+Direction switching via PIO/single-wire UART and voltage translation are separate matters. Supply servo V+ externally and share GND. ESP32 GPIO tolerance is 3.6 V; never connect 5 V directly.
+
+[SCS0009 (PDF)](https://www.feetechrc.com/Data/feetechrc/upload/file/20201231/6374501159851026569964966.pdf) · [STS3215 (PDF)](https://files.seeedstudio.com/products/Feetech/108090023_STS3215-C001_Datasheet.pdf) · [STS3235 (PDF)](https://www.feetechrc.com/Data/feetechrc/upload/file/20211211/6377481273721644411048359.pdf) · [XL330 / ROBOTIS](https://emanual.robotis.com/docs/en/dxl/x/xl330-m077/) · [ESP32 / Espressif](https://docs.espressif.com/projects/esp-faq/en/latest/hardware-related/hardware-design.html)
+
 ## ATOM Lite (in development / hardware untested)
 
 Experimental **M5Stack ATOM Lite / ESP32-PICO-D4** support, not AtomS3. Includes USB upload/JOG, Wi-Fi upload/JOG, SCS009 / XL330 / STS3215 / STS3235, PWM and basic blocks. LCD stays GEEK-only. **No hardware, signal-waveform or power-loss testing has been performed.**

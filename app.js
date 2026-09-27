@@ -285,7 +285,7 @@
       this.setPreviousStatement(true);
       this.setNextStatement(true);
       this.setColour(14);
-      this.setTooltip(t("SCS009 / SCS0009のDATA線を、選択中の基板で外部に出ているGPIOへ直接接続します。"));
+      this.setTooltip(t("SCS009 / SCS0009のDATA用GPIOを選びます。直結の前に左の信号レベルの注意を確認してください。"));
     },
   };
 
@@ -319,19 +319,18 @@
         { type: "field_dropdown", name: "AXIS", options: [["↑ ↓", "Y"], ["← →", "X"], ["W S", "Z"], ["A D", "R"]] },
         { type: "field_number", name: "ID", value: 1, min: 0, max: 253, precision: 1 },
       ],
-      message1: t("中央 %1  増減幅 %2  速度値（機種固有）%3"),
+      message1: t("中央 %1  増減幅 %2"),
       args1: [
         { type: "field_number", name: "CENTER", value: 511, min: 0, max: 1023, precision: 1 },
         { type: "field_number", name: "STEP", value: 10, min: 1, max: 1023, precision: 1 },
-        { type: "field_number", name: "SPEED", value: 500, min: 0, max: 1023, precision: 1 },
       ],
       previousStatement: null,
       nextStatement: null,
       colour: 262,
-      tooltip: t("USB／Wi-Fi共通のJOG割り当て。速度500はサーボに送る生の速度値で、500 msではありません。増減幅は1回のキー操作で動かす位置の差です。"),
+      tooltip: t("USB／Wi-Fi共通のJOG割り当て。増減幅は1回のキー操作で動かす位置の差です。速度は内部で設定します。"),
     },
   ]);
-
+  ServoBlocks.hideJogSpeed(Blockly, "uart_scs_bind", 500, 0, 1023);
   }
   registerBlocks();
 
@@ -757,6 +756,9 @@ class SCS009PIO:
     const visibleGroups = group ? [group] : groups;
     const primary = visibleGroups[0];
     $("#atomPullupGuide").hidden = !(profile.platform === "esp32" && visibleGroups.some(g => g.model !== "pwm"));
+    const serialGroups = visibleGroups.filter(g => g.model !== "pwm");
+    $("#signalLevelNote").hidden = !serialGroups.length;
+    $("#signalLevelNote").textContent = serialGroups.map(g => ServoWiring.signalNote(g.model)).join(" ");
     const setup = primary ? {type: primary.model + "_setup"} : null;
     const servoName = primary?.name || "";
     const allOption = document.createElement("option"); allOption.value = "all"; allOption.textContent = t("すべてのサーボ");
@@ -779,8 +781,8 @@ class SCS009PIO:
       ? t("PWMは番号ごと、シリアル系は種類ごとの信号線です。異なる種類には別GPIOを使い、V+は各機種の定格に合う外部電源へ、GNDはボードと共通にします。種類の異なるV+同士は図でも接続していません。GPIOへの5 V入力は禁止です。図の線色は識別用で、実物の線色・端子順ではありません。")
       : setup?.type === "pwm_setup"
       ? t("信号線を選択したGPIOへつなぎ、電源はサーボ仕様に合う外部電源、GNDはボードと共通にします。50 Hzで出力します。初期値は1000〜2000 µsです。可動範囲は機種に合わせて調整してください。")
-      : t`${servoName}の電源は専用の外部電源から供給し、GNDをボードと共通にします。DATAはGPIOへ接続し、PIOで方向を切り替えます。半二重変換回路は不要です。${setup?.type === "xl330_setup" ? t("XL330は3.7〜6.0 V（初回5 V）。DATAに220 Ωの直列保護抵抗を推奨します。") : t("電源電圧は機種・仕様を確認してください。")} GPIOへの5 V入力は禁止です。まず無負荷でPing・位置読取りを確認してください。`;
-    if (profile.experimental) elements.scsHelp.querySelector("p").textContent = t("ATOM Lite：開発中・動作未確認。シリアルサーボは同じGPIOのTX/RXとオープンドレインUARTを使います。半二重変換ICを使わない試作です。DATAのHighが3.3 V対応であることを確認し、5 V信号は直結しないでください。通信が不安定なら3.3 Vへの外付けプルアップが必要になる場合があります。サーボは外部給電、GND共通。線色は識別用です。");
+      : t`${servoName}の電源は専用の外部電源から供給し、GNDをボードと共通にします。PIOで送受信の方向を切り替えますが、電圧は変換しません。DATAの電圧を確認してから配線してください。${setup?.type === "xl330_setup" ? t("XL330は3.7〜6.0 V（初回5 V）。DATAに220 Ωの直列保護抵抗を推奨します。") : t("電源電圧は機種・仕様を確認してください。")} GPIOへの5 V入力は禁止です。まず無負荷でPing・位置読取りを確認してください。`;
+    if (profile.experimental && serialGroups.length) elements.scsHelp.querySelector("p").textContent = t("ATOM Lite：開発中・動作未確認。単線UARTで方向を切り替えますが、電圧は変換しません。プルアップの前にDATAの電圧を確認してください。サーボは外部給電、GND共通。線色は識別用です。");
     elements.boardPinHint.hidden = !setup;
     $("#signalLegend").replaceChildren(...visibleGroups.flatMap(g => (g.model === "pwm" ? g.devices : [g.devices[0]]).map(d => {
       const item = document.createElement("span"), swatch = document.createElement("i");

@@ -77,8 +77,10 @@
           <p id="wiringSummary" class="wiring-summary"></p>
           <select id="wiringDevice" aria-label="配線を表示するサーボ" hidden></select>
           <div id="signalLegend" class="wiring-legend" aria-label="サーボ別の信号線色"></div>
+          <p id="signalLevelNote" class="wiring-summary" hidden></p>
           <details id="atomPullupGuide" class="wiring-pullup" hidden>
             <summary>プルアップ：2.2 kΩ（試験値）</summary>
+            <p>追加前にDATAが3.3 Vのバスと確認してください。2.2 kΩは電圧変換・5 V保護ではありません。詳細はHELP「サーボの信号レベル」へ。</p>
             <p>DATAと本体拡張端子の3V3の間に2.2 kΩ・1/8 W以上を1本。サーボ1台ごとではなく、通信バスごとに追加します。</p>
             <p>Grove：黄＝G26、白＝G32、黒＝GND、赤＝5 V。Groveには3.3 V端子がないので本体側から取り出します。赤線・サーボV+へプルアップしないでください。</p>
             <p>2.2 kΩは短い配線での試験開始値で、1 Mbpsの動作保証値ではありません。波形・応答を確認し、必要なら1〜2.2 kΩで調整（相手側の電流仕様も確認）。既存のプルアップとの並列合成に注意。DATA自体が5 Vなら抵抗だけでは保護できません。実機未確認。</p>
@@ -207,7 +209,7 @@
       </div>
 
       <p class="controller-lead">↑↓でID1、←→でID2、W/SでID3、A/DでID4。SCS接続ブロックで標準割り当てが有効になり、割り当てブロックで変更できます。表示は指令位置です。</p>
-      <p class="controller-lead">「速度値 500」はサーボ固有の設定値で、500 msではありません。「増減幅」はキー1回で動かす位置の差です。</p>
+      <p class="controller-lead">「増減幅」でキー1回あたりの動きを調整できます。</p>
 
       <div class="controller-connection">
         <div>
@@ -280,7 +282,7 @@
       <button id="showFirstRun" class="button button-secondary" type="button">初回案内をもう一度表示</button>
       <details id="lcdHelp" class="help-card" hidden><summary>GEEKのLCD文字表示</summary><p>GEEKを選ぶと「基本 → LCD文字表示」が出ます。初期化や追加配線は不要。文字列・数値・変数をつなぎ、改行表示／指定行の書き換え／全消去ができます。</p><p>白文字・黒背景で15文字×8行。改行表示は折り返し・スクロール、指定行は15文字で切り詰めます。英数字・半角記号に対応し、日本語などは「?」に置き換えます。</p><p>「USBシリアル表示をLCDにも表示する」を実行すると、その後の「USBシリアルへ表示」ブロックの内容が両方に出ます。PCからの受信・サーボ読取りの内部ログ・JOG通信は自動転送しません。くり返し表示には100 ms程度の待ち時間を入れてください。</p><p>ドライバは生成Pythonに含まれ、初期ファームの入れ直し・追加ライブラリの転送は不要です。実機での表示は未確認です。</p></details>
       <details class="help-card"><summary>ブロックの操作・対話AIとの受け渡し</summary><p>左のツリーからブロックを置き、「プログラム開始」につなぎます。ブロック本体をダブルクリックすると複製できます。</p><p>メニューの「対話AIとプログラムを作る」で依頼文をコピーし、返答のJSONを取り込めます。取り込みは現在のブロックを置き換えますが、直前の状態に戻せます。</p></details>
-      <details class="help-card" id="jogHelp"><summary>USBとWi-FiのJOG割り当て</summary><p>PWM・SCS009・XL330・STS3215・STS3235の割り当てはUSB／Wi-Fi共通。Wi-Fi JOGだけならUART開始ブロックは不要です。</p><p>「速度値 500」はサーボに送る機種固有の設定値で、500 msではありません。「増減幅」はキー1回で動かす位置の差です。同じ速度値でも機種によって速さは異なります。PWMのJOGは角度の増減幅だけを指定します。</p><p>両方から操作すると、同じ指令位置を処理順に増減します。優先権・排他ロックはないため、操作者を決めてください。同じ軸への割り当ては1個だけです。</p><p>↑↓＝Y、←→＝X、W/S＝Z、A/D＝R、Space＝中央復帰。表示は実測位置ではなく指令位置です。</p></details>
+      <details class="help-card" id="jogHelp"><summary>USBとWi-FiのJOG割り当て</summary><p>PWM・SCS009・XL330・STS3215・STS3235の割り当てはUSB／Wi-Fi共通。Wi-Fi JOGだけならUART開始ブロックは不要です。</p><p>JOGは中央と増減幅だけを設定します。速度欄は非表示で、サーボ別の既定値を内部で使用します（ボードの設定ではありません）。以前保存した速度設定は維持します。PWMは角度の増減幅を指定します。</p><p>両方から操作すると、同じ指令位置を処理順に増減します。優先権・排他ロックはないため、操作者を決めてください。同じ軸への割り当ては1個だけです。</p><p>↑↓＝Y、←→＝X、W/S＝Z、A/D＝R、Space＝中央復帰。表示は実測位置ではなく指令位置です。</p></details>
       <details class="help-card"><summary>サーボを複数つなぐときの配線図</summary><p>PWMは番号とGPIOを分けて接続ブロックを追加します。全台のコネクタ・信号線が番号別の色で表示されます。色は図で見分けるためのものです。</p><p>シリアルサーボは同じ種類の接続ブロックを1個にして、操作・JOGブロックのIDを変えます。重複を除いたIDごとにコネクタが増え、DATA・V+・GNDのデイジーチェーンを表示します。ID未指定のときは仮のコネクタ1個です。SCSの標準JOG割り当ても表示対象です。</p><p>接続図は実機検出ではありません。同じバスの各サーボには事前に異なるIDを設定してください（この画面ではIDを書き換えません）。実物の端子順・定格電圧を確認し、台数に応じた電源と配線容量を確保してください。異なる電圧のサーボ電源は共用しません。</p></details>
       <details id="wifiHelp" class="help-card" hidden><summary>スマホでWi-Fi JOG</summary><p>Wi-Fi JOGの開始ブロックでWi-Fi名とパスワードを設定し、「保存して実行」を押します。</p><p>スマホをそのWi-Fiへ接続し、<a id="wifiJogAddress" href="http://192.168.4.1/" target="_blank" rel="noopener">http://192.168.4.1/</a> を開きます。実際のアドレスは起動時にシリアル欄へ表示されます。</p><p>Pico W / Pico 2 W / ATOM Lite（開発中）用。インターネット接続は不要です。</p></details>
       <details id="scsHelp" class="help-card" hidden><summary>サーボを接続する前に</summary><p></p></details>
@@ -295,6 +297,15 @@
         <p>Wi-Fi JOGはボードが親機になる別機能です。無線書き込みはルーターへ接続する方式で、同時には動きません。JOGから書き込みへ戻すときは、スマホもルーターのWi-Fiへ戻してください。</p>
         <p>受信は接続キーで保護し、128 KiBまでを分割転送・SHA-256検証後に置換します。転送途中の失敗では旧プログラムが残ります。保存完了の応答が途切れた場合は新旧どちらか不明なので、待機へ戻して再送してください。通信は暗号化されないため信頼できるLANだけで使い、キーは秘密にしてください。</p>
         <p>接続できなくてもUSBで再設定・書き込みできます。受信機能は別ファイルなので、このサイトからのUSB保存でも残ります。他のツールでmain.pyを置き換えた場合は初回設定をやり直してください。実機・Android端末での動作検証は未実施です。</p>
+      </details>
+      <details id="signalLevelHelp" class="help-card"><summary>サーボの信号レベル</summary>
+        <p>SCS009（資料名SCS0009）・STS3215・STS3235：メーカー資料はHigh 2〜5 V、Low 0〜0.45 V。送信側・受信側を分けた規格や内部プルアップ電圧は明記されておらず、返答が常に3.3 V以下とは保証できません。</p>
+        <p>XL330：ROBOTIS公式は3.3 Vロジック・5 V互換。これはサーボ側の仕様で、ESP32の5 V耐性を意味しません。</p>
+        <p>STS3235・XL330はユーザー環境で直結動作実績あり（2026-09-27申告）。ボード・配線・通信速度などの条件は未記録で、このサイトの全ボード・全条件での検証済みを意味しません。</p>
+        <p>プルアップは解放されたDATAをHighへ戻すための抵抗で、電圧変換ではありません。相手が5 Vを出力する場合や5 Vへの既存プルアップがある場合、3.3 Vに抵抗を足しても安全にはできません。電圧が不明ならGPIOへ直結せず、メーカー確認またはボードを切り離した測定で確認します。5 Vのバスには通信速度と双方向半二重に適合するレベル変換が必要です。</p>
+        <p>2.2 kΩ・1/8 W以上は、3.3 Vのバスと確認できた場合の試験開始値です。メーカー指定ではなく、1 Mbpsの保証もありません。Low時は約1.5 mA・5 mW。相手の許容電流、既存抵抗との並列合成、配線容量と立ち上がり波形を確認します。安定している配線へ必ず追加するものではありません。</p>
+        <p>PIO／単線UARTによる方向切替と、信号の電圧変換は別の話です。サーボV+は外部電源へ、GNDは共通。ESP32 GPIOの許容電圧は3.6 Vで、5 V直結は禁止です。</p>
+        <p><a href="https://www.feetechrc.com/Data/feetechrc/upload/file/20201231/6374501159851026569964966.pdf" target="_blank" rel="noopener">SCS0009 (PDF)</a> · <a href="https://files.seeedstudio.com/products/Feetech/108090023_STS3215-C001_Datasheet.pdf" target="_blank" rel="noopener">STS3215 (PDF)</a> · <a href="https://www.feetechrc.com/Data/feetechrc/upload/file/20211211/6377481273721644411048359.pdf" target="_blank" rel="noopener">STS3235 (PDF)</a> · <a href="https://emanual.robotis.com/docs/en/dxl/x/xl330-m077/" target="_blank" rel="noopener">XL330 / ROBOTIS</a> · <a href="https://docs.espressif.com/projects/esp-faq/en/latest/hardware-related/hardware-design.html" target="_blank" rel="noopener">ESP32 / Espressif</a></p>
       </details>
       <details id="atomHelp" class="help-card" hidden><summary>ATOM Lite（開発中・動作未確認）</summary>
         <p>対象はESP32-PICO-D4搭載のATOM Liteのみ。USB書き込み・USB JOG・Wi-Fi書き込み・Wi-Fi JOG・各ブロックは試験実装で、実機検証は未実施です。初期ファームは標準ESP32_GENERIC 1.29以降（通常版・LittleFS）。UIFlowやカスタムFAT版は対象外です。</p>
@@ -327,20 +338,20 @@
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
-    <script src="./i18n.en.js?v=atom2"></script>
+    <script src="./i18n.en.js?v=jog3"></script>
     <script src="./i18n.js?v=i18n1"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
     <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/ja.js"></script>
     <script>PicoI18n.captureBlockly("ja", Blockly.Msg); PicoI18n.setLanguage(PicoI18n.language); PicoI18n.bindDocument(document);</script>
-    <script src="./servo.js?v=atom1"></script>
+    <script src="./servo.js?v=jog3"></script>
     <script src="./jog.js?v=i18n1"></script>
     <script src="./basic.js?v=atom1"></script>
-    <script src="./wiring.js?v=atom2"></script>
+    <script src="./wiring.js?v=jog3"></script>
     <script src="./exchange.js?v=atom1"></script>
     <script src="./boot.js?v=atom1"></script>
     <script src="./wifi.js?v=atom1"></script>
     <script src="./display.js?v=i18n1"></script>
-    <script src="./app.js?v=atom2"></script>
+    <script src="./app.js?v=jog3"></script>
   </body>
 </html>

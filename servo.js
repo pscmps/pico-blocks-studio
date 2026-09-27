@@ -11,6 +11,17 @@ const ServoBlocks = (() => {
   };
   const axes = [["↑ ↓", "Y"], ["← →", "X"], ["W S", "Z"], ["A D", "R"]];
   const num = (name, value, min, max) => ({ type: "field_number", name, value, min, max, precision: 1 });
+  // Keep the serialized field for existing projects, without exposing a raw
+  // servo register value in the everyday JOG controls.
+  function hideJogSpeed(Blockly, type, value, min, max) {
+    const init = Blockly.Blocks[type].init;
+    Blockly.Blocks[type].init = function () {
+      init.call(this);
+      this.appendDummyInput("JOG_SPEED_INTERNAL")
+        .appendField(new Blockly.FieldNumber(value, min, max, 1), "SPEED")
+        .setVisible(false);
+    };
+  }
   function register(Blockly, pinOptions) {
     const defs = [];
     for (const [key, m] of Object.entries(models)) {
@@ -41,15 +52,18 @@ const ServoBlocks = (() => {
         add("pulse", { message0: t("PWMサーボ %1 のパルス幅を %2 µsに"), args0: [num("CHANNEL", 1, 1, 16), num("PULSE", 1500, 500, 2500)], tooltip: t("接続ブロックで設定した上下限の範囲内だけを出力します。") });
         add("stop", { message0: t("PWMサーボ %1 の出力を停止"), args0: [num("CHANNEL", 1, 1, 16)], tooltip: t("PWM信号を停止します。保持力の挙動はサーボに依存します。") });
       }
-      add("bind", { message0: t`JOGの %1 を ${m.name} ${key === "pwm" ? t("番号") : "ID"} %2 に割り当て`, args0: [{ type: "field_dropdown", name: "AXIS", options: axes }, num("ID", 1, key === "pwm" ? 1 : 0, key === "pwm" ? 16 : key === "xl330" ? 252 : 253)], message1: t("中央 %1  増減幅 %2") + (key === "pwm" ? t("（度）") : t("  速度値 %3")), args1: [num("CENTER", m.center, 0, m.max), num("STEP", key === "pwm" ? 2 : 10, 1, m.max), ...(key === "pwm" ? [] : [num("SPEED", m.speed, 1, key === "xl330" ? 100 : 3400)])] });
+      add("bind", { message0: t`JOGの %1 を ${m.name} ${key === "pwm" ? t("番号") : "ID"} %2 に割り当て`, args0: [{ type: "field_dropdown", name: "AXIS", options: axes }, num("ID", 1, key === "pwm" ? 1 : 0, key === "pwm" ? 16 : key === "xl330" ? 252 : 253)], message1: t("中央 %1  増減幅 %2") + (key === "pwm" ? t("（度）") : ""), args1: [num("CENTER", m.center, 0, m.max), num("STEP", key === "pwm" ? 2 : 10, 1, m.max)] });
     }
     for (const def of defs) {
       if (def.args1?.some(field => field.name === "SPEED")) {
-        def.message1 = def.message1.replace(t("速度値"), t("速度値（機種固有）"));
+        def.message1 = def.message1.replace(t("速度値"), t("サーボ速度値"));
         def.tooltip = (def.tooltip || "") + t(" 速度値はサーボへ渡す設定値です。時間（ms）ではなく、同じ値でも機種によって速さが異なります。");
       }
     }
     Blockly.defineBlocksWithJsonArray(defs);
+    for (const [key, m] of Object.entries(models)) {
+      if (key !== "pwm") hideJogSpeed(Blockly, key + "_bind", m.speed, 1, key === "xl330" ? 100 : 3400);
+    }
   }
   function toolbox() {
     return Object.entries(models).map(([key, m]) => ({ kind: "category", name: m.name, colour: String(m.colour), contents: ["setup", ...(key === "pwm" ? ["move", "pulse", "stop"] : ["ping", "read", "torque", "move"]), "value", "bind"].map(s => ({ kind: "block", type: key + "_" + s, ...(s === "value" ? {inputs: {VALUE: {shadow: {type:"basic_number",fields:{NUM:m.center}}}}} : {}) })) }));
@@ -447,6 +461,6 @@ class PWMServo:
     def stop(self):
         self.pwm.duty_u16(0)
 `;
-  return { models, register, toolbox, statement, runtime, BUS_DRIVER, ESP32_BUS_DRIVER, ESP32_LED_DRIVER, espScsDriver, XL330_DRIVER, STS_DRIVER, PWM_DRIVER };
+  return { models, register, hideJogSpeed, toolbox, statement, runtime, BUS_DRIVER, ESP32_BUS_DRIVER, ESP32_LED_DRIVER, espScsDriver, XL330_DRIVER, STS_DRIVER, PWM_DRIVER };
 })();
 if (typeof module !== "undefined") module.exports = ServoBlocks;

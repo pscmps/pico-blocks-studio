@@ -71,7 +71,7 @@ const ServoWiring = (() => {
         highlights += `<circle cx="190" cy="${start - 10}" r="3.5" fill="${colour}"/><circle cx="${p.x + shift}" cy="${p.y}" r="4" fill="#0f766e"/>`;
         connectors += `<g data-pullup="${group.model}" data-pin="${group.pin}"><rect x="108" y="${y - 6}" width="32" height="12" fill="white" stroke="#0f766e" stroke-width="2"/>`;
         connectors += text(70, y - 14, "3V3", "terminal-label") + text(111, y - 14, "2.2 kΩ", "terminal-label");
-        connectors += text(106, y + 22, t("必要時に追加 · 1/8 W以上"), "caption") + text(198, y - 14, `${group.name} DATA`, "caption") + "</g>";
+        connectors += text(106, y + 22, t("3.3 V確認後のみ · 1/8 W以上"), "caption") + text(198, y - 14, `${group.name} DATA`, "caption") + "</g>";
       }
       backgrounds += `<rect x="102" y="${supplyY}" width="198" height="48" rx="9" class="device-box"/>`;
       supplies += `<g data-supply="${group.model}">`;
@@ -114,6 +114,15 @@ const ServoWiring = (() => {
     const height = cursor + 18;
     return {width, height, content: `<g transform="translate(${shift} 0)">${drawing.board}</g>` + backgrounds + wires + supplies + connectors + highlights + text(width / 2, height - 6, t("機能の接続図です。実物の端子順・定格電圧は要確認"), "caption", "middle")};
   }
-  return {groups, render};
+  function signalNote(model) {
+    const notes = {
+      xl330: t("XL330：公式3.3 Vロジック。ユーザー環境で直結動作実績あり。"),
+      sts3235: t("STS3235：直結動作実績あり。資料のHighは2〜5 Vで、返答信号の最大電圧は未確定。"),
+      sts3215: t("STS3215：資料のHighは2〜5 V。3.3 V出力の保証とは読めないため、直結前にDATA電圧を確認。"),
+      scs009: t("SCS009：SCS0009資料のHighは2〜5 V。3.3 V出力の保証とは読めないため、直結前にDATA電圧を確認。"),
+    };
+    return notes[model] ? notes[model] + " " + t("プルアップは電圧変換・5 V保護ではありません。詳細はHELP「サーボの信号レベル」へ。") : "";
+  }
+  return {groups, render, signalNote};
 })();
 if (typeof module !== "undefined") module.exports = ServoWiring;

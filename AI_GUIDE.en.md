@@ -1,5 +1,7 @@
 # PicoBlocks Studio — Block JSON guide for chat AI, v1
 
+JOG bindings retain `SPEED` as a hidden compatibility field. Omit it in new JSON to use defaults; do not ask users for a raw speed value. Existing values can be preserved. Follow the signal-level and pull-up conditions in the [README](README.en.md); never describe a pull-up as a 5 V-to-3.3 V level shifter. Direct-wiring success with STS3235/XL330 is user-reported, not a guarantee for every condition.
+
 ## ATOM Lite (in development / hardware untested)
 
 Use `board: "atom_lite"` for ESP32-PICO-D4 ATOM Lite, not AtomS3. GPIOs: 19, 21, 22, 23, 25, 26, 32, 33; ADC: 32/33 only. USB/Wi-Fi JOG uses the same block format as Pico W. SCS009, XL330, STS3215, STS3235, PWM and basic blocks are available; LCD is not. Single-wire UART is selected automatically for serial servos (two types maximum). GPIO27 is the white RGB LED and GPIO39 the write-mode button. DATA must be 3.3 V-compatible, with external servo power and common GND; never wire 5 V signals directly. An external 3.3 V pull-up may be needed. Explicitly state hardware is untested. See the README's ATOM Lite section for firmware/wiring. The RP-specific ADC/PIO notes below do not apply to ATOM Lite.
