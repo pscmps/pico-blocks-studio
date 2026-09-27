@@ -179,7 +179,7 @@ globalThis.AdvancedBlocks = (() => {
       case "adv_i2c_setup":return `_adv_i2c[${n("BUS")}] = SoftI2C(scl=Pin(${n("SCL")}), sda=Pin(${n("SDA")}), freq=${n("FREQ")})\n`;
       case "adv_i2c_write":return `_adv_i2c[${n("BUS")}].writeto_mem(${n("ADDRESS")}, ${n("REGISTER")}, bytes(${v("DATA","[]")}))\n`;
       case "adv_spi_setup":return `_adv_cs[${n("BUS")}] = Pin(${n("CS")}, Pin.OUT, value=1)\n_adv_spi[${n("BUS")}] = SoftSPI(baudrate=${n("FREQ")}, polarity=${n("POLARITY")}, phase=${n("PHASE")}, bits=8, firstbit=SoftSPI.MSB, sck=Pin(${n("SCK")}), mosi=Pin(${n("MOSI")}), miso=Pin(${n("MISO")}))\n`;
-      default:return gcode.statement(block);
+      default:return gcode.statement(block,expression);
     }
   }
   function runtime(blocks,profile,jog) {

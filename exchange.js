@@ -10,6 +10,7 @@ const BlockExchange = (() => {
     const types = new Set(["program_start", "repeat_times", "gpio_write", "wait_ms"]);
     const walk = items => items.forEach(item => { if (item.type) types.add(item.type); if (item.contents) walk(item.contents); });
     walk(toolbox.contents);
+    if (types.has('gcode_execute')) types.add('gcode_reply'); // Saved value-style programs remain importable.
     const scratch = new Blockly.Workspace();
     const result = {};
     try {

@@ -18,12 +18,18 @@ for(const board of ['pico2','pico2w']) {
   load(board);assert.equal(valid(),true);
   const toolbox=vm.runInContext('buildToolbox()',context);
   assert.equal(toolbox.contents.find(c=>c.name==='高度なブロック').contents.at(-1).name,'Gcode');
-  assert.equal(Object.keys(catalog(board)).filter(k=>k.startsWith('gcode_')).length,9);
+  assert.equal(Object.keys(catalog(board)).filter(k=>k.startsWith('gcode_')).length,10); // Nine visible + legacy reply.
+  const gcodeTools=Gcode.toolbox(profiles[board]).contents.map(b=>b.type);
+  assert.ok(gcodeTools.includes('gcode_execute')&&!gcodeTools.includes('gcode_reply'));
+  const execution=workspace.getAllBlocks().find(b=>b.type==='gcode_execute');
+  assert.ok(execution.previousConnection&&execution.nextConnection&&!execution.outputConnection);
+  assert.equal(execution.getParent().type,'basic_if');
+  assert.ok(!workspace.getAllBlocks().some(b=>b.type==='gcode_reply'));
   const code=vm.runInContext('generatePython()',context);
   assert.ok(code.includes('StepperPIO(2, 3, 4, 5, 7, True)'));
   assert.ok(code.includes('Pen(12, 50, 1000, 1800)'));
   assert.ok(code.includes('CartesianPlanner(80, 80)'));
-  assert.ok(!code.includes('未対応'));assert.ok(code.includes('_pf_reply(user_'));
+  assert.ok(!code.includes('未対応'));assert.equal((code.match(/print\(_pf_reply\(user_/g)||[]).length,1);
   assert.ok(code.includes('_pf_stepper.close()'));
   programs.push({board,code});
   const saved=Blockly.serialization.workspaces.save(workspace);Blockly.serialization.workspaces.load(saved,workspace);assert.equal(valid(),true);
@@ -63,6 +69,26 @@ load();workspace.newBlock('adv_timer');assert.equal(valid(),false);
 load();workspace.newBlock('scs009_setup');assert.equal(valid(),false);
 load();workspace.newBlock('pwm_setup');assert.equal(valid(),false);
 load();workspace.newBlock('gcode_controller');assert.equal(valid(),false);
+load();workspace.getAllBlocks().find(b=>b.type==='gcode_controller').dispose(true);assert.equal(valid(),false,'execution requires controller');
+blocks=load();const earlyExecute=blocks.find(b=>b.type==='gcode_execute');earlyExecute.unplug(true);
+const earlyStart=blocks.find(b=>b.type==='program_start'),oldFirst=earlyStart.getNextBlock();oldFirst.unplug();
+earlyStart.nextConnection.connect(earlyExecute.previousConnection);earlyExecute.nextConnection.connect(oldFirst.previousConnection);
+assert.equal(valid(),false,'execution before setup is rejected');
+// Legacy value-style files stay importable and generate the same single execution.
+const legacy=Samples.plotterflow('pico2');
+function legacyReply(node) {
+  if(node.type==='gcode_execute')return {type:'basic_print',inputs:{VALUE:{block:{type:'gcode_reply',inputs:node.inputs}}}};
+  for(const input of Object.values(node.inputs||{}))for(const key of ['block','shadow'])if(input[key])input[key]=legacyReply(input[key]);
+  if(node.next)node.next.block=legacyReply(node.next.block);
+  return node;
+}
+legacy.workspace.blocks.blocks=legacy.workspace.blocks.blocks.map(legacyReply);
+Blockly.serialization.workspaces.load(Exchange.parse(JSON.stringify(legacy),profiles,catalog).workspace,workspace);
+assert.equal(valid(),true,'legacy JSON is still valid');
+assert.equal((vm.runInContext('generatePython()',context).match(/print\(_pf_reply\(user_/g)||[]).length,1);
+load();const emptyExecution=workspace.getAllBlocks().find(b=>b.type==='gcode_execute');
+emptyExecution.getInputTargetBlock('LINE').dispose();
+assert.equal(Gcode.statement(emptyExecution,(_,fallback)=>fallback),"print(_pf_reply(''))\n");
 load();workspace.getAllBlocks().find(b=>b.type==='gcode_controller').unplug(true);assert.equal(valid(),false);
 blocks=load();const control=blocks.find(b=>b.type==='gcode_controller');control.unplug(true);const start=blocks.find(b=>b.type==='program_start'),first=start.getNextBlock();first.unplug();start.nextConnection.connect(control.previousConnection);control.nextConnection.connect(first.previousConnection);assert.equal(valid(),false);
 load();const gpio=workspace.newBlock('basic_write');gpio.setFieldValue('2','PIN');assert.equal(valid(),false);

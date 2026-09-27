@@ -6,7 +6,7 @@
 
 Gcodeは高度なブロックの末尾です。RP2040 / RP2350専用の試作。`gcode_planner`（X/Y step/mm）→ `gcode_stepper`（X_STEP/Y_STEP/X_DIR/Y_DIR/ENABLE/ACTIVE_LOW）→ `gcode_pen`（PIN/FREQ/UP/DOWN）→ `gcode_controller` を開始直下へ各1個接続します。Y_STEP = X_STEP + 1、6端子は重複不可。ATOM非対応。JOG・シリアルサーボ・割り込み・タイマーと混在不可。
 
-`gcode_read` はUSBから改行まで待ち文字列を返します。変数に入れて空でなければ `gcode_reply` の入力LINEへ渡し、その応答文字列を `basic_print` で返信します。`gcode_ready` のBOARDは起動メッセージ用の名前、`gcode_parse` はcommand/wordsの辞書、`gcode_state` のKEYはx/y/z/feed/absolute/mm/enabled/pen_downです。reply/stateはcontrollerより後で使います。
+`gcode_read` はUSBから改行まで待ち文字列を返します。変数に入れて空でなければ、独立した文ブロック `gcode_execute` の入力LINEへ渡します。Gcodeを1回実行し、okまたはerrorをUSBへ返信します。`basic_print` は不要です。`gcode_reply` は旧形式の読込互換用で、新規プログラムでは使いません。`gcode_ready` のBOARDは起動メッセージ用の名前、`gcode_parse` はcommand/wordsの辞書、`gcode_state` のKEYはx/y/z/feed/absolute/mm/enabled/pen_downです。execute/reply/stateはcontrollerより後で使います。
 
 外付けSTEP/DIRドライバ（TMC等）と外部電源が必要。モータ直結不可。TMCのUART・電流・マイクロステップ設定は別途。F速度制御、加減速、原点復帰、リミット、即時停止は未実装です。実機未検証。サンプルと原本との差分は [GCODE.md](GCODE.md)。Python本文1個にファーム全体を隠さず、これらのブロックを使ってください。
 

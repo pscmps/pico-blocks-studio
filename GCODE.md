@@ -2,7 +2,9 @@
 
 [English](GCODE.en.md)
 
-「高度なブロック」の一番下の **Gcode** に9ブロックを用意しています。XY倍率、STEP/DIR、PWMペン、受信制御の開始、USBの1行受信、実行結果、起動メッセージ、解析、状態です。メニュー → サンプル → PlotterFlow / Gcode受信からPico 2 / Pico 2 Wのプログラムを読み込めます。読み込みは現在のブロックとボード選択を置き換え、元に戻せます。自動実行はしません。
+「高度なブロック」の一番下の **Gcode** に9ブロックを用意しています。XY倍率、STEP/DIR、PWMペン、受信制御の開始、USBの1行受信、実行してUSBへ応答、起動メッセージ、解析、状態です。メニュー → サンプル → PlotterFlow / Gcode受信からPico 2 / Pico 2 Wのプログラムを読み込めます。読み込みは現在のブロックとボード選択を置き換え、元に戻せます。自動実行はしません。
+
+繰り返しの中で、受信した行を独立した「Gcodeを実行してUSBへ応答」ブロックへ渡します。このブロックが1回実行し、`ok` または `error:…` をUSBへ返すので、出力ブロックは不要です。「Gcode処理を開始」は初期化だけを行います。保存済みの旧形式も読み込めます。新しい配置を使うにはサンプルを読み込み直してください。
 
 ## PlotterFlow Motor Shield v0.7
 
@@ -61,7 +63,7 @@ TMCのUART設定、電流設定、マイクロステップ設定はこのプロ�
 出典：pscmps [plotterflow-micropython-rp / firmware/rp_stepdir](https://github.com/pscmps/plotterflow-micropython-rp/tree/0e4917ee24309520e9e147308ff75fe1d22e56f1/firmware/rp_stepdir)、コミット `0e4917ee24309520e9e147308ff75fe1d22e56f1`。比較原本は `tests/fixtures/plotterflow` に保存しています。元リポジトリには確認時点でLICENSEファイルがなく、この原本に新たなライセンスを付与していません。
 
 - `board_config.py` → XY、STEP/DIR、PWMペンの各設定ブロック。
-- `main.py` → プログラム開始、4設定、起動メッセージ表示、ずっとくり返す、1行受信、空でなければ実行した応答を表示。
+- `main.py` → プログラム開始、4設定、起動メッセージ表示、ずっとくり返す、1行受信、空でなければ独立したブロックで実行してUSBへ応答。
 - `gcode.py`、`planner.py`、`protocol.py` → 生成Python内の解析・モーダル状態・XY補間・コントローラ。解析ブロックは `{"command": "G1", "words": {"G": 1.0, "X": 2.0}}` のような辞書を返します。
 - `update_store.py` は移植対象外。保存・書き込み待機・Wi-Fi転送はPicoBlocks既存の仕組みを使います。生成物は依存ファイル不要の1プログラムです。
 

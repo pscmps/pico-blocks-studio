@@ -18,6 +18,7 @@ globalThis.GcodeBlocks = (() => {
       stmt('pen',t('PWMペン：GPIO %1 / 周波数 %2 Hz'),[pin('PIN'),n('FREQ',50,1,400)],{message1:t('上げる %1 µs / 下げる %2 µs'),args1:[n('UP',1000,100,3000),n('DOWN',1800,100,3000)]}),
       stmt('controller',t('Gcode処理を開始'),[],{tooltip:t('Gcode開始より前にXY・STEP/DIR・PWMペンを設定してください。')}),
       expr('read',t('USBからGcodeを1行受信（改行まで待つ）')),
+      stmt('execute',t('Gcode %1 を実行してUSBへ応答'),[text],{tooltip:t('Gcodeを1回実行し、okまたはerrorをUSBへ返します。出力ブロックは不要です。')}),
       expr('reply',t('Gcode %1 を実行した応答'),[text]),
       expr('ready',t('PlotterFlow起動メッセージ：%1'),[{type:'field_input',name:'BOARD',text:'pico2-stepdir'}]),
       expr('parse',t('Gcode %1 を解析（命令・数値の辞書）'),[text],'Dictionary'),
@@ -29,8 +30,8 @@ globalThis.GcodeBlocks = (() => {
     }
   }
   function toolbox(profile={}) {
-    const types=profile.shield?['planner','shield','controller','read','reply','ready','parse','state']:['planner','stepper','pen','controller','read','reply','ready','parse','state'];
-    return {kind:'category',name:'Gcode',colour:'#478c9e',contents:types.map(type=>({kind:'block',type:'gcode_'+type,...(type==='shield'?{fields:{CARRIER:profile.shield}}:{}),...(['reply','parse'].includes(type)?{inputs:{LINE:{shadow:{type:'basic_text',fields:{TEXT:'M115'}}}}}:{})}))};
+    const types=profile.shield?['planner','shield','controller','read','execute','ready','parse','state']:['planner','stepper','pen','controller','read','execute','ready','parse','state'];
+    return {kind:'category',name:'Gcode',colour:'#478c9e',contents:types.map(type=>({kind:'block',type:'gcode_'+type,...(type==='shield'?{fields:{CARRIER:profile.shield}}:{}),...(['execute','parse'].includes(type)?{inputs:{LINE:{shadow:{type:'basic_text',fields:{TEXT:'M115'}}}}}:{})}))};
   }
   function expression(b,expression) {
     const v=()=>expression(b.getInputTargetBlock('LINE'),"''");
@@ -43,7 +44,7 @@ globalThis.GcodeBlocks = (() => {
       default:return null;
     }
   }
-  function statement(b) {
+  function statement(b,expression) {
     const n=k=>Number(b.getFieldValue(k));
     switch(b.type) {
       case 'gcode_shield':return shield.hardware(b).map(statement).join('');
@@ -51,6 +52,7 @@ globalThis.GcodeBlocks = (() => {
       case 'gcode_stepper':return `_pf_stepper = StepperPIO(${n('X_STEP')}, ${n('Y_STEP')}, ${n('X_DIR')}, ${n('Y_DIR')}, ${n('ENABLE')}, ${n('ACTIVE_LOW')?'True':'False'})\n`;
       case 'gcode_pen':return `_pf_pen = Pen(${n('PIN')}, ${n('FREQ')}, ${n('UP')}, ${n('DOWN')})\n`;
       case 'gcode_controller':return '_pf_controller = Controller(_pf_planner, _pf_stepper, _pf_pen)\n';
+      case 'gcode_execute':return `print(_pf_reply(${expression(b.getInputTargetBlock('LINE'),"''")}))\n`;
       default:return null;
     }
   }
@@ -66,7 +68,7 @@ globalThis.GcodeBlocks = (() => {
     if(presets.length && blocks.some(b=>['gcode_stepper','gcode_pen'].includes(b.type)))return t('Motor ShieldブロックにSTEP/DIRとPWMペンが含まれています。個別の接続ブロックとは併用できません。');
     if(blocks.some(b=>/^(uart_controller_setup|wifi_jog_setup|adv_irq|adv_timer|scs009_setup|xl330_setup|sts3215_setup|sts3235_setup|pwm_setup)$/.test(b.type)))return t('Gcodeは専用プログラムです。JOG・通常のサーボ接続・割り込み・タイマーとは分け、ペンにはGcodeのPWMペンを使ってください。');
     const top=[];for(let b=blocks.find(b=>b.type==='program_start');b;b=b.getNextBlock())top.push(b);
-    const required=blocks.some(b=>['gcode_controller','gcode_reply','gcode_state'].includes(b.type));
+    const required=blocks.some(b=>['gcode_controller','gcode_execute','gcode_reply','gcode_state'].includes(b.type));
     const initializers=presets.length?['gcode_planner','gcode_shield','gcode_controller']:initTypes;
     for(const type of initializers) {
       const list=blocks.filter(b=>b.type===type);
@@ -75,7 +77,7 @@ globalThis.GcodeBlocks = (() => {
     if(required) {
       const start=top.findIndex(b=>b.type==='gcode_controller');
       if(initializers.slice(0,-1).some(type=>top.findIndex(b=>b.type===type)>start))return t('Gcode開始より前にXY・STEP/DIR・PWMペンを設定してください。');
-      for(const b of blocks.filter(b=>['gcode_reply','gcode_state'].includes(b.type))) {
+      for(const b of blocks.filter(b=>['gcode_execute','gcode_reply','gcode_state'].includes(b.type))) {
         let p=b;while(p&&!top.includes(p))p=p.getParent();
         if(!p||top.indexOf(p)<=start||['adv_function','adv_python_function','adv_irq','adv_timer'].includes(p.type))return t('Gcodeの実行・状態取得はGcode開始より後につないでください。');
       }

@@ -4,6 +4,8 @@
 
 Nine blocks at the bottom of **Advanced blocks → Gcode** cover XY steps/mm, STEP/DIR drivers, PWM pen, controller initialization, USB line input, execute-and-reply, startup message, parsing and modal state. **Menu → Samples → PlotterFlow / Gcode receiver** loads the Pico 2 or Pico 2 W example. This replaces the board selection and blocks, keeps one restorable backup and does not run automatically.
 
+Inside the loop, pass the received line to the standalone **Execute Gcode and reply over USB** statement block. It executes once and sends `ok` or `error:…` over USB; no print block is needed. Start Gcode only initializes the controller. Previously saved value-style programs remain loadable. Reload the sample to use the new layout.
+
 ## PlotterFlow Motor Shield v0.7
 
 Enable **Show features in development at the bottom of HELP** to select the six new board configurations, dedicated blocks and samples. Off by default; the preference is stored in this browser. Turning it off preserves saved blocks and the board setting, but re-enable it before resuming or uploading. This display preference does not stop a running device.
@@ -59,7 +61,7 @@ Close PlotterFlow's port before reconnecting here for write mode. Existing HELP 
 Source: pscmps [plotterflow-micropython-rp / firmware/rp_stepdir](https://github.com/pscmps/plotterflow-micropython-rp/tree/0e4917ee24309520e9e147308ff75fe1d22e56f1/firmware/rp_stepdir), commit `0e4917ee24309520e9e147308ff75fe1d22e56f1`. Exact reference files are under `tests/fixtures/plotterflow`. No LICENSE file was present in the source repository at inspection; no new license is assigned to those reference files here.
 
 - `board_config.py`: XY, STEP/DIR and PWM pen settings blocks.
-- `main.py`: program start, four setup blocks, startup print, forever loop, USB line input and nonempty-line execute-and-reply print.
+- `main.py`: program start, four setup blocks, startup print, forever loop, USB line input and a standalone execute-and-reply statement for nonempty lines.
 - `gcode.py`, `planner.py`, `protocol.py`: parser, modal state, XY interpolation and controller in generated Python. Parse-only returns a dictionary such as `{"command":"G1","words":{"G":1.0,"X":2.0}}`.
 - `update_store.py` is not ported: PicoBlocks already provides saving, write mode and Wi-Fi upload. The generated program is self-contained.
 

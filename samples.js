@@ -54,7 +54,7 @@ const PicoSamples = (() => {
       node('basic_print',{}, {VALUE:node('gcode_ready',{BOARD:board+'-stepdir'})}),
       node('forever_loop',{}, {DO:chain(
         node('basic_set',{NAME:'gcode_line'},{VALUE:node('gcode_read')}),
-        node('basic_if',{}, {IF:node('adv_convert',{TYPE:'bool'},{VALUE:get()}),DO:node('basic_print',{}, {VALUE:node('gcode_reply',{}, {LINE:get()})})})
+        node('basic_if',{}, {IF:node('adv_convert',{TYPE:'bool'},{VALUE:get()}),DO:node('gcode_execute',{}, {LINE:get()})})
       )}));
     return {format:'picoblocks',version:1,board,workspace:{blocks:{languageVersion:0,blocks:[first]}}};
   }

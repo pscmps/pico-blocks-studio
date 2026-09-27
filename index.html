@@ -344,7 +344,7 @@
         <p>下面のU1/X・U2/Yへ互換StepStickを2台装着し、J5/X・J6/Yへモータを接続。J7は外部12 V、J8は外部安定化5 V、J9はPWMペンです。USBからモータを給電しません。J13はシリアルサーボ専用電源で、PWMペンだけなら使用しません。全GND共通、各電源の＋は別系統です。</p>
         <p>TMC2209の電流・マイクロステップ・UART設定と読戻し確認は別途必要です。このサンプルはTMC初期化、原点復帰、リミット停止、LCD表示を実装していません。80 step/mmは仮値です。ジャンパ・電流・倍率を実機に合わせるまでM17を送らないでください。基板上にヒューズ・逆接保護はないため外部保護が必要です。コントローラは1枚だけ装着します。</p>
         </div>
-        <p>「高度なブロック」の一番下にGcodeがあります。XYのstep/mm、外付けSTEP/DIRドライバ、PWMペンを設定してからGcode処理を開始し、USBの1行受信 → 実行した応答 → USBへ表示をくり返します。解析だけのブロックはcommandとwordsの辞書を返します。</p>
+        <p>「高度なブロック」の一番下にGcodeがあります。XYのstep/mm、外付けSTEP/DIRドライバ、PWMペンを設定してからGcode処理を開始し、USBの1行受信 → 「Gcodeを実行してUSBへ応答」をくり返します。実行ブロックがokまたはerrorを返すので、出力ブロックは不要です。解析だけのブロックはcommandとwordsの辞書を返します。</p>
         <p>ステッピングモータはGPIOに直結できません。各軸にTMC2209などの3.3 V対応STEP/DIRドライバとモータ用外部電源が必要です。TMCのUART通信・電流・マイクロステップの設定は行いません。キャリア基板の説明書で設定し、step/mmと合わせてください。</p>
         <p>左の図は機能端子の接続例で、製品の端子順ではありません。X STEP=GP2、Y STEP=GP3、X DIR=GP4、Y DIR=GP5、共通EN=GP7、PWMペン=GP12がサンプルの初期値です。STEPの2本は連続番号。ENの有効レベルを合わせ、VMは定格に合う外部電源へ、GNDは共通、VIOは対応基板のみ3.3 Vへ。モータやペンをPicoから給電しないでください。</p>
         <p>サンプルはPico 2 / Pico 2 W向けのPlotterFlow受信プログラムです。このサイトで「保存して実行」→ USBを切断 → PlotterFlowで同じポートへ接続します。2サイトから同じポートを同時に開けません。JOG・シリアルサーボ・割り込み・タイマーとは別プログラムにしてください。</p>
@@ -421,7 +421,7 @@
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
     <script src="https://unpkg.com/@blockly/field-multilineinput@5.0.17/dist/index.js"></script>
-    <script src="./i18n.en.js?v=development1"></script>
+    <script src="./i18n.en.js?v=gcode-execute1"></script>
     <script src="./i18n.js?v=gcode1"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
     <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
@@ -431,15 +431,15 @@
     <script src="./jog.js?v=i18n1"></script>
     <script src="./gcode-runtime.js?v=gcode1"></script>
     <script src="./shield.js?v=shield1"></script>
-    <script src="./gcode.js?v=shield1"></script>
-    <script src="./advanced.js?v=shield1"></script>
+    <script src="./gcode.js?v=gcode-execute1"></script>
+    <script src="./advanced.js?v=gcode-execute1"></script>
     <script src="./basic.js?v=shield1"></script>
     <script src="./wiring.js?v=series220"></script>
-    <script src="./exchange.js?v=python1"></script>
+    <script src="./exchange.js?v=gcode-execute1"></script>
     <script src="./boot.js?v=atom1"></script>
     <script src="./wifi.js?v=atom1"></script>
     <script src="./display.js?v=i18n1"></script>
-    <script src="./samples.js?v=shield1"></script>
+    <script src="./samples.js?v=gcode-execute1"></script>
     <script src="./app.js?v=development1"></script>
   </body>
 </html>
