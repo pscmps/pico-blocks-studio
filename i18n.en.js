@@ -703,6 +703,9 @@ const PicoEnglish = {
 "選んだボードとブロックに置き換えます。元の設定とUSB受信ループを再現し、自動実行はしません。": "Replaces the board selection and blocks with the source settings and USB receive loop. Does not start automatically.",
 "Gcodeサンプルに置き換える": "Replace with Gcode sample",
 "Gcode処理を開始": "Start Gcode controller",
+"直列抵抗": "Series resistor",
+"配線図はGPIO → 220 Ω直列抵抗 → DATAです。抵抗は通信バスごとに1本で、プルアップとは別です。電圧変換・5 V保護にはなりません。詳細はHELP「サーボの信号レベル」へ。": "Diagram: GPIO -> 220 ohm series resistor -> DATA. One resistor per bus, separate from the pull-up. It does not translate voltage or protect against 5 V. See Servo signal levels in HELP.",
+"SCS009・XL330・STS3215・STS3235の配線図は、GPIO → 220 Ω直列抵抗 → DATAの構成です。抵抗は各通信バスのGPIO側に1本だけ置き、その先でサーボをデイジーチェーン接続します。PWMサーボには追加しません。プルアップとは別の部品で、220 Ωを入れても電圧変換・5 V保護にはなりません。": "The SCS009, XL330, STS3215 and STS3235 diagrams use GPIO -> 220 ohm series resistor -> DATA. Place one resistor at the GPIO end of each bus, then daisy-chain the servos downstream. None is added for PWM servos. This is separate from a pull-up; 220 ohms does not translate voltage or provide 5 V protection.",
 "Gcodeは専用プログラムです。JOG・通常のサーボ接続・割り込み・タイマーとは分け、ペンにはGcodeのPWMペンを使ってください。": "Gcode is a dedicated program. Keep it separate from JOG, standard servo setup, interrupts and timers. Use the Gcode PWM pen block for the pen."
 };
 if (typeof module !== "undefined") module.exports = PicoEnglish;

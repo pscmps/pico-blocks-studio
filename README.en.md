@@ -270,6 +270,8 @@ Connection starts with no output. Stop disables pulses; a later angle command re
 
 ## Wiring guide
 
+Serial servos (SCS009, XL330, STS3215 and STS3235) are drawn as `GPIO -> 220 ohm series resistor -> DATA`: one resistor at the GPIO end of each bus, followed by the daisy-chained IDs. PWM servo wiring is unchanged. ATOM's conditional 2.2 kohm pull-up is a separate component connected on the DATA side of the 220 ohm resistor. Neither resistor provides voltage translation or 5 V input protection.
+
 The collapsible left panel follows the board and connection blocks. With no servo connection blocks, it shows only the board pinout, not phantom servos or power wiring. “All servos” displays mixed types together; the selector can isolate one type.
 
 - Pico diagrams label all 40 physical pins. Hover for physical pin numbers.

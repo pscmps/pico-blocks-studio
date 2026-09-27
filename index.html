@@ -320,6 +320,7 @@
         <p>本文は複製・保存・言語切替・ブロックJSONの取り込みでも保持されます。Pythonファイル全体から通常のブロックへの変換機能ではありません。</p>
       </details>
       <details id="signalLevelHelp" class="help-card"><summary>サーボの信号レベル</summary>
+        <p>SCS009・XL330・STS3215・STS3235の配線図は、GPIO → 220 Ω直列抵抗 → DATAの構成です。抵抗は各通信バスのGPIO側に1本だけ置き、その先でサーボをデイジーチェーン接続します。PWMサーボには追加しません。プルアップとは別の部品で、220 Ωを入れても電圧変換・5 V保護にはなりません。</p>
         <p>SCS009（資料名SCS0009）・STS3215・STS3235：メーカー資料はHigh 2〜5 V、Low 0〜0.45 V。送信側・受信側を分けた規格や内部プルアップ電圧は明記されておらず、返答が常に3.3 V以下とは保証できません。</p>
         <p>XL330：ROBOTIS公式は3.3 Vロジック・5 V互換。これはサーボ側の仕様で、ESP32の5 V耐性を意味しません。</p>
         <p>直結できるかは、ボードとサーボ双方の信号電圧・配線・通信速度で判断してください。別の構成での動作例だけでは安全を保証できません。</p>
@@ -404,7 +405,7 @@
 
     <script src="https://unpkg.com/blockly@11.2.2/blockly.min.js"></script>
     <script src="https://unpkg.com/@blockly/field-multilineinput@5.0.17/dist/index.js"></script>
-    <script src="./i18n.en.js?v=gcode1"></script>
+    <script src="./i18n.en.js?v=series220"></script>
     <script src="./i18n.js?v=gcode1"></script>
     <script src="https://unpkg.com/blockly@11.2.2/msg/en.js"></script>
     <script>PicoI18n.captureBlockly("en", Blockly.Msg);</script>
@@ -416,7 +417,7 @@
     <script src="./gcode.js?v=gcode1"></script>
     <script src="./advanced.js?v=gcode1"></script>
     <script src="./basic.js?v=advanced1"></script>
-    <script src="./wiring.js?v=gcode2"></script>
+    <script src="./wiring.js?v=series220"></script>
     <script src="./exchange.js?v=python1"></script>
     <script src="./boot.js?v=atom1"></script>
     <script src="./wifi.js?v=atom1"></script>

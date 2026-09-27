@@ -60,7 +60,7 @@ const ServoWiring = (() => {
     for (const group of groups) {
       const pwm = group.model === "pwm";
       const pullup = drawing.layout === "atom" && !pwm;
-      const extra = pullup ? 64 : 0, start = cursor + 80 + extra;
+      const extra = pullup ? 64 : 0, start = cursor + 80 + extra + (pwm ? 0 : 48);
       const supplyY = cursor + 15 + extra;
       if (pullup) {
         // Optional component, once per bus (not once per servo ID). 3V3 is
@@ -92,8 +92,13 @@ const ServoWiring = (() => {
       } else {
         const positions = [190, 230, 270], colours = [colour, power, ground];
         if (index === 0) {
-          signal(group.pin, y - 10, 190, colour, group.model);
-          wires += path(`M190 ${y - 10} V${y + 34}`, colour);
+          // One series resistor at the GPIO end of each bus, not per servo.
+          // Leave an actual gap in the wire: no hidden bypass through the body.
+          signal(group.pin, y - 52, 190, colour, group.model);
+          wires += path(`M190 ${y - 52} V${y - 40}`, colour, `data-series-input="${group.model}"`);
+          wires += path(`M190 ${y - 16} V${y + 34}`, colour, `data-series-output="${group.model}"`);
+          connectors += `<g data-series-resistor="${group.model}" data-ohms="220" data-pin="${group.pin}"><rect x="184" y="${y - 40}" width="12" height="24" fill="white" stroke="${colour}" stroke-width="2"/>`;
+          connectors += text(205,y - 25,"220 Ω") + text(205,y - 12,t("直列抵抗"),"caption") + "</g>";
           wires += path(`M125 ${supplyY + 34} V${y - 5} H230 V${y + 34}`, power) + path(`M210 ${supplyY + 34} V${y} H270 V${y + 34}`, ground);
         } else {
           positions.forEach((x, i) => { wires += path(`M${x} ${y - stride + 76} V${y + 34}`, colours[i], `data-chain="${group.model}-${index}"`); });
@@ -121,7 +126,7 @@ const ServoWiring = (() => {
       sts3215: t("STS3215：資料のHighは2〜5 V。3.3 V出力の保証とは読めないため、直結前にDATA電圧を確認。"),
       scs009: t("SCS009：SCS0009資料のHighは2〜5 V。3.3 V出力の保証とは読めないため、直結前にDATA電圧を確認。"),
     };
-    return notes[model] ? notes[model] + " " + t("プルアップは電圧変換・5 V保護ではありません。詳細はHELP「サーボの信号レベル」へ。") : "";
+    return notes[model] ? notes[model] + " " + t("配線図はGPIO → 220 Ω直列抵抗 → DATAです。抵抗は通信バスごとに1本で、プルアップとは別です。電圧変換・5 V保護にはなりません。詳細はHELP「サーボの信号レベル」へ。") : "";
   }
   function renderPlotterflow(blocks,drawPin,pinLabel) {
     const step=blocks.find(b=>b.type==='gcode_stepper'),pen=blocks.find(b=>b.type==='gcode_pen');

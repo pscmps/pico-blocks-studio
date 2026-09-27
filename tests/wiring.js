@@ -13,6 +13,7 @@ assert.equal(new Set(groups[0].devices.map(d=>d.colour)).size,2);
 let dom = svg(groups[0]);
 assert.equal(dom.querySelectorAll('[data-servo="pwm"]').length,2);
 assert.equal(dom.querySelectorAll('[data-signal]').length,2);
+assert.equal(dom.querySelectorAll('[data-series-resistor]').length,0,'No series resistor on PWM');
 assert.notEqual(dom.querySelector('[data-signal="pwm-1"]').getAttribute('stroke'),dom.querySelector('[data-signal="pwm-2"]').getAttribute('stroke'));
 assert.ok(dom.body.textContent.includes('PWM 1 · GP2') && dom.body.textContent.includes('PWM 2 · GP3'));
 for (const model of ['scs009','xl330','sts3215','sts3235']) {
@@ -23,6 +24,15 @@ for (const model of ['scs009','xl330','sts3215','sts3235']) {
   assert.equal(dom.querySelectorAll('[data-servo]').length,2);
   assert.equal(dom.querySelectorAll('[data-chain]').length,3); // DATA + V+ + GND
   assert.equal(dom.querySelectorAll('[data-signal]').length,1);
+  const resistor=dom.querySelector(`[data-series-resistor="${model}"]`);
+  assert.equal(dom.querySelectorAll('[data-series-resistor]').length,1,'One per bus, not per ID');
+  assert.equal(resistor.getAttribute('data-ohms'),'220');
+  assert.equal(resistor.getAttribute('data-pin'),'2');
+  const rect=resistor.querySelector('rect'),top=Number(rect.getAttribute('y')),bottom=top+Number(rect.getAttribute('height'));
+  assert.equal(dom.querySelector(`[data-series-input="${model}"]`).getAttribute('d'),`M190 ${top-12} V${top}`);
+  assert.match(dom.querySelector(`[data-series-output="${model}"]`).getAttribute('d'),new RegExp(`^M190 ${bottom} V`));
+  assert.equal(rect.getAttribute('stroke'),dom.querySelector('[data-signal]').getAttribute('stroke'));
+  assert.ok(resistor.textContent.includes('220 Ω'));
   assert.equal(W.groups([setup])[0].devices[0].id,null);
   assert.deepEqual(W.groups([setup,block(model+'_move',{ID:0})])[0].devices.map(d=>d.id),[0]);
 }
@@ -45,6 +55,7 @@ dom=svg(mixed);
 assert.equal(dom.querySelectorAll('[data-signal]').length,20);
 assert.equal(dom.querySelectorAll('[data-servo]').length,20);
 assert.equal(dom.querySelectorAll('[data-supply]').length,5);
+assert.equal(dom.querySelectorAll('[data-series-resistor]').length,4,'Mixed PWM and serial buses');
 for (const g of mixed) {
   const alone=W.groups(mixedBlocks.filter(b=>b.type===g.model+'_setup'))[0];
   assert.deepEqual(g.devices.map(d=>d.colour),alone.devices.map(d=>d.colour));
@@ -71,6 +82,7 @@ for (const [key, profile] of Object.entries(profiles)) {
   context.workspace={getAllBlocks:()=>[block('sts3235_setup',{PIN:profile.pins[0]}),block('sts3235_move',{ID:1}),block('sts3235_move',{ID:2})]};
   vm.runInContext('renderWiringDiagram()',context);
   assert.equal($('#wiringDiagram').querySelectorAll('[data-chain]').length,3);
+  assert.equal($('#wiringDiagram').querySelectorAll('[data-series-resistor]').length,1);
   const mixedSetups=[block('pwm_setup',{CHANNEL:1,PIN:profile.pins[0]}),block('pwm_setup',{CHANNEL:2,PIN:profile.pins.at(-1)}),block('scs009_setup',{PIN:profile.pins[1]}),block('sts3235_setup',{PIN:profile.pins[2]})];
   context.workspace={getAllBlocks:()=>mixedSetups}; $('#wiringDevice').value='all';
   vm.runInContext('renderWiringDiagram()',context);
@@ -87,6 +99,7 @@ for (const [key, profile] of Object.entries(profiles)) {
   assert.equal($('#signalLegend').children.length,1);
   context.workspace={getAllBlocks:()=>[]}; vm.runInContext('renderWiringDiagram()',context);
   assert.equal($('#wiringDiagram').querySelectorAll('[data-servo]').length,0);
+  assert.equal($('#wiringDiagram').querySelectorAll('[data-series-resistor]').length,0);
 }
 console.log('PASS: app wiring renderer for 9 boards, multi-PWM, serial chains, removal');
 vm.runInContext("selectedBoard='atom_lite'",context);
@@ -94,6 +107,13 @@ for(const pin of [19,26,32]) {
   context.workspace={getAllBlocks:()=>[block('scs009_setup',{PIN:pin}),block('scs009_move',{ID:1}),block('scs009_move',{ID:2})]};
   vm.runInContext('renderWiringDiagram()',context);
   assert.equal($('#wiringDiagram').querySelectorAll('[data-pullup]').length,1,'One resistor per bus, not per ID');
+  assert.equal($('#wiringDiagram').querySelectorAll('[data-series-resistor]').length,1,'Series and pull-up are separate');
+  const series=$('#wiringDiagram').querySelector('[data-series-resistor] rect');
+  const seriesBottom=Number(series.getAttribute('y'))+Number(series.getAttribute('height'));
+  const output=$('#wiringDiagram').querySelector('[data-series-output]').getAttribute('d').match(/^M190 (\d+) V(\d+)$/);
+  const pullupY=Number($('#wiringDiagram').querySelector('[data-pullup-data]').getAttribute('d').match(/ V(\d+) H190$/)[1]);
+  assert.equal(Number(output[1]),seriesBottom);
+  assert.ok(pullupY>seriesBottom&&pullupY<Number(output[2]),'Pull-up joins DATA downstream of series resistor');
   assert.equal($('#wiringDiagram').querySelector('[data-pullup]').getAttribute('data-pin'),String(pin));
   assert.match($('#wiringDiagram').querySelector('[data-pullup-source]').getAttribute('d'),/^M90 186 /,'Starts at expansion 3V3, not Grove 5V');
   assert.match($('#wiringDiagram').querySelector('[data-pullup-data]').getAttribute('d'),/H310 V\d+ H190$/,'Routes around the external supply card');
