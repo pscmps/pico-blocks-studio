@@ -105,7 +105,9 @@ clock.sleep_ms = sleep
 sys.modules['time'] = clock
 scope = {}
 try:
-    exec(data['eventProgram'], scope)
+    # String exec can leave CPython's unhandled-interrupt flag set even when
+    # KeyboardInterrupt is caught below. A code object keeps this mock local.
+    exec(compile(data['eventProgram'], '<generated IRQ/timer>', 'exec'), scope)
 except KeyboardInterrupt:
     pass
 def user(name):
