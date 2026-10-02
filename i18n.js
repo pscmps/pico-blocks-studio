@@ -46,6 +46,8 @@ const PicoI18n = (() => {
     if (select) select.value = language;
     const guide = document.querySelector("#exchangeGuideLink");
     if (guide) guide.href = `https://github.com/pscmps/pico-blocks-studio/blob/main/AI_GUIDE${language === "en" ? ".en" : ""}.md`;
+    const gcodeGuide = document.querySelector('#gcodeGuideLink');
+    if(gcodeGuide)gcodeGuide.href=`./GCODE${language === 'en' ? '.en' : ''}.md`;
   }
   return {t, setLanguage, captureBlockly, bindDocument, renderDocument, get language() {return language;}, english};
 })();

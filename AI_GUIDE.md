@@ -2,6 +2,24 @@
 
 ## 高度なブロック
 
+### Gcode / PlotterFlow
+
+Gcodeは高度なブロックの末尾です。RP2040 / RP2350専用の試作。`gcode_planner`（X/Y step/mm）→ `gcode_stepper`（X_STEP/Y_STEP/X_DIR/Y_DIR/ENABLE/ACTIVE_LOW）→ `gcode_pen`（PIN/FREQ/UP/DOWN）→ `gcode_controller` を開始直下へ各1個接続します。Y_STEP = X_STEP + 1、6端子は重複不可。ATOM非対応。JOG・シリアルサーボ・割り込み・タイマーと混在不可。
+
+`gcode_read` はUSBから改行まで待ち文字列を返します。変数に入れて空でなければ、独立した文ブロック `gcode_execute` の入力LINEへ渡します。Gcodeを1回実行し、okまたはerrorをUSBへ返信します。`basic_print` は不要です。`gcode_reply` は旧形式の読込互換用で、新規プログラムでは使いません。`gcode_ready` のBOARDは起動メッセージ用の名前、`gcode_parse` はcommand/wordsの辞書、`gcode_state` のKEYはx/y/z/feed/absolute/mm/enabled/pen_downです。execute/reply/stateはcontrollerより後で使います。
+
+外付けSTEP/DIRドライバ（TMC等）と外部電源が必要。モータ直結不可。TMCのUART・電流・マイクロステップ設定は別途。F速度制御、加減速、原点復帰、リミット、即時停止は未実装です。実機未検証。サンプルと原本との差分は [GCODE.md](GCODE.md)。Python本文1個にファーム全体を隠さず、これらのブロックを使ってください。
+
+### Python本文から関数ブロックを作る
+
+`adv_python_function`の`fields.NAME`に名前、`fields.CODE`にPython関数の本文を指定できます。`def`行は不要で、引数は`arg`、戻り値は`return`。本文は16384文字まで、JSON文字列内の改行は`\n`です。通常の`adv_function`と名前を重複させず、`program_start`直下のnext列へ置きます。同名の`adv_call`（結果）または`adv_call_do`（実行）から引数を渡します。定義だけでは実行されません。
+
+定義例：`{"type":"adv_python_function","fields":{"NAME":"double","CODE":"result = arg * 2\nreturn result"}}`
+
+呼び出し例：`{"type":"adv_call","fields":{"NAME":"double"},"inputs":{"ARG":{"block":{"type":"basic_number","fields":{"NUM":3}}}}}`
+
+複数の引数は配列・辞書にまとめます。ローカル変数はブロックの変数名と別で、importは本文へ。文法・GPIO競合・無限ループは自動検査されず、通常Pythonと同じ権限でボード上で実行されます。自動実行されることはありませんが、取り込んだ本文は必ず確認してください。長い処理はJOG・タイマーを妨げます。関数名は生成時に内部名へ変換されるため、本文から別のブロック関数を表示名で直接呼ぶことはできません。
+
 新規では `basic_write` / `basic_wait` を使用。`gpio_write` / `wait_ms` は旧データ読込み用でツリーには出しません。本体LEDは入出力へ移しました。
 
 `adv_function` / `adv_irq` / `adv_timer` / `adv_i2c_setup` / `adv_spi_setup` は `program_start.next` の直列へ置き、関数・条件・ループの中に入れないでください。関数名、同じ種類のタイマー番号・バス番号は重複不可。関数定義は先頭へまとめますが、接続・タイマー開始は配置順に実行します。関数内で使う場合も先にバスを接続してください。名前付き変数は全体で共有・初期値0。「引数の値」は呼出しごとの値です。
@@ -146,7 +164,7 @@ JOGの割り当てブロックでは`SPEED`は非表示の互換フィールド�
 
 取り込みは現在のブロックを置き換える。直前の状態とボード選択はブラウザ内に1件保存し、「取り込み前に戻す」で戻せる。AIへの自動送信はしない。テンプレートには現在のプログラムや実際のWi-Fiパスワードを含めない。
 
-これは**ブロックJSONの受け渡し**。任意のPythonからブロックへの逆変換、Python貼り付け実行、外部コードの読み込みには対応しない。AIが正しく作れる保証はないため、範囲と配線を人が確認する。
+これは**ブロックJSONの受け渡し**。Python本文は`adv_python_function.fields.CODE`内に限って指定できる。Pythonファイル全体を通常ブロックへ変換する機能ではない。AIが正しく作れる保証はないため、コード・範囲・配線を人が確認する。
 
 ## 出力契約
 

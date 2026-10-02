@@ -64,7 +64,7 @@ const BasicBlocks = (() => {
   function toolbox(profile = {}) {
     const category = (name, colour, contents) => ({kind:"category",name,colour,contents});
     return [
-      category(t("入力・出力"), "#bd903c", [...(profile.ledPin === null ? [] : [entry("pico_led")]),entry("basic_adc"),entry("basic_read"),entry("basic_write",{VALUE:shadow(1)})]),
+      category(t("入力・出力"), "#bd903c", [...(profile.ledPin === null ? [] : [entry("pico_led")]),...(profile.adcPins?.length===0?[]:[entry("basic_adc")]),entry("basic_read"),entry("basic_write",{VALUE:shadow(1)})]),
       category(t("計算"), "#527baa", [entry("basic_number"),entry("basic_math",{A:shadow(1),B:shadow(2)}),entry("basic_unary",{VALUE:shadow(-10)}),entry("basic_limit",{VALUE:shadow(90),MIN:shadow(0),MAX:shadow(180)}),entry("basic_map",{VALUE:shadow(0),IN_MIN:shadow(0),IN_MAX:shadow(65535),OUT_MIN:shadow(0),OUT_MAX:shadow(180)}),entry("basic_random",{MIN:shadow(0),MAX:shadow(100)})]),
       category(t("条件・論理"), "#6885b2", [entry("basic_if"),entry("basic_compare",{A:shadow(0),B:shadow(100)}),entry("basic_boolean"),entry("basic_logic"),entry("basic_not")]),
       category(t("変数"), "#ac71a3", [entry("basic_set",{VALUE:shadow(0)}),entry("basic_get"),entry("basic_change",{VALUE:shadow(1)})]),
@@ -149,7 +149,7 @@ def _map_range(value, in_min, in_max, out_min, out_max):
 `;
     return code + advanced.runtime(blocks,profile,jog);
   }
-  return {register,toolbox,expression,statement,runtime,variableName,
+  return {register,toolbox,expression,statement,runtime,variableName,shield:advanced.shield,
     advancedToolbox:advanced.toolbox, hasEvents:advanced.hasEvents, validate:advanced.validate,
     advancedDefinitions:(blocks,chain,indent)=>advanced.definitions(blocks,chain,indent,expression,variableName),
     wrapAdvanced:advanced.wrap};

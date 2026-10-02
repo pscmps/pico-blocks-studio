@@ -19,6 +19,8 @@ function load() {
   return {$,dom,scrolled:()=>scrolled};
 }
 let page=load(), $=page.$;
+assert.doesNotMatch($('#helpDialog').textContent,/うごき|廃止|統一しました|以前保存|この版|申告|45種類を追加/);
+assert.match($('#advancedHelp').textContent,/基本 → 入力・出力/);
 assert.equal($('#firstRunGuide').hidden,false);
 const ids=[...page.dom.window.document.querySelectorAll('[id]')].map(e=>e.id);
 assert.equal(ids.length,new Set(ids).size);

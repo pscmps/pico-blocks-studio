@@ -1,5 +1,25 @@
 # PicoBlocks Studio
 
+## Gcode / PlotterFlow
+
+The new Motor Shield boards appear only when **HELP → Show features in development** is enabled at the bottom of HELP (off by default, saved in this browser). Dedicated blocks and samples follow the same preference. Existing programs are preserved when turned off.
+
+**Motor Shield v0.7** adds six configurations: Pico / Pico W / Pico 2 / Pico 2 W, RP2350-LCD-1.47-A and RP2350-Touch-LCD-2 / -C (camera/FPC removed). Includes board selection, a dedicated setup block, connector/pin diagram and USB Gcode samples. Zero boards are excluded. TMC initialization, homing, limit-stop and LCD support are not implemented; hardware is untested. [Pins, power and usage](GCODE.en.md#plotterflow-motor-shield-v07).
+
+**Advanced blocks → Gcode** and **Menu → Samples** provide a PlotterFlow STEP/DIR XY + PWM pen receiver for Pico 2 / Pico 2 W. Settings, USB line input, Gcode execution and replies are editable blocks. External drivers (e.g. TMC) for both axes and external supplies are required and shown in the left wiring guide. TMC UART configuration is not included.
+
+Compared against the pinned source with host tests; hardware untested. F speed control and immediate STOP are not implemented. See [GCODE.en.md](GCODE.en.md) for setup, intentional compatibility/safety fixes and limitations.
+
+## Create a block with Python
+
+**Advanced blocks → Create blocks (Python)** contains a function definition with a multiline code field. Connect it directly under Program start and enter a name and body, without `def`. Read the argument as `arg`, return a result with `return`, and call it from a same-name function-result or function-run block. For example, `return arg * 2` returns 6 when passed 3.
+
+Enter inserts a newline, Tab adds four spaces, and Ctrl+Enter or clicking outside commits. Bodies allow 16384 characters and survive duplication, saving, language changes and JSON import. For multiple arguments, pass a list or dictionary. Local variables are separate from block variable names; place necessary imports in the body.
+
+Definitions do not run by themselves; calls execute on the board. This is neither a browser Python interpreter nor an entire Python-file-to-block converter. Body syntax and GPIO conflicts cannot be checked automatically; syntax errors appear in the serial console at execution time. Use only trusted code. Long operations and infinite loops can block JOG and timers.
+
+The field uses the official Blockly [@blockly/field-multilineinput](https://www.npmjs.com/package/@blockly/field-multilineinput) 5.0.17 plugin (Apache-2.0), pinned for Blockly 11.2.2 compatibility.
+
 ## Sample programs
 
 Open **Samples** in the menu to load a USB JOG example for three matching PWM, SCS009, XL330, STS3215 or STS3235 servos. Wi-Fi JOG is also available on Pico W, Pico 2 W and ATOM Lite. GPIOs follow the selected board; GEEK samples add LCD model/key labels, not measured positions.
@@ -254,6 +274,8 @@ Connection starts with no output. Stop disables pulses; a later angle command re
 
 ## Wiring guide
 
+Serial servos (SCS009, XL330, STS3215 and STS3235) are drawn as `GPIO -> 220 ohm series resistor -> DATA`: one resistor at the GPIO end of each bus, followed by the daisy-chained IDs. PWM servo wiring is unchanged. ATOM's conditional 2.2 kohm pull-up is a separate component connected on the DATA side of the 220 ohm resistor. Neither resistor provides voltage translation or 5 V input protection.
+
 The collapsible left panel follows the board and connection blocks. With no servo connection blocks, it shows only the board pinout, not phantom servos or power wiring. “All servos” displays mixed types together; the selector can isolate one type.
 
 - Pico diagrams label all 40 physical pins. Hover for physical pin numbers.
@@ -293,7 +315,7 @@ Import replaces current blocks, keeps one pre-import backup, validates format / 
 
 ## Development and verification
 
-The site consists of static files and needs no build. Blockly and Acorn in `devDependencies` are for tests only. Host-side checks require Node.js 18+ (with npm) and Python 3.8+. Python uses only the standard library; no pip packages are needed.
+The site consists of static files and needs no build. The packages in `devDependencies` are for tests only. Host-side checks require Node.js 18+ (with npm) and Python 3.8+. Python uses only the standard library; no pip packages are needed.
 
 Run from the repository root. The same commands work on Windows, macOS and Linux:
 
@@ -304,18 +326,22 @@ npm test
 
 `npm ci` installs the versions pinned in the existing `package-lock.json`. If PowerShell execution policy blocks `npm.ps1`, replace `npm` with `npm.cmd`.
 
-`npm test` discovers `tests/*.js` and `tests/*_runtime.py` and runs each file in a separate process: currently **11 JavaScript + 10 Python = 21 files**. It continues after test failures, then reports passed/failed counts and failed filenames. Test failures, launch errors, empty suites and missing Python all return a nonzero exit code. Missing Python stops the run before tests start. Python suites also invoke Node, so they need both runtimes and the npm dependencies.
+`npm test` discovers `tests/*.js` and `tests/*_runtime.py` and runs each file in a separate process: currently **15 JavaScript + 12 Python = 27 files**. It continues after test failures, then reports passed/failed counts and failed filenames. Test failures, launch errors, empty suites and missing Python all return a nonzero exit code. Missing Python stops the run before tests start. Python suites also invoke Node, so they need both runtimes and the npm dependencies.
 
 | Coverage | JavaScript (`tests/`) | Python (`tests/`) |
 | --- | --- | --- |
 | Advanced blocks, IRQs and timers | `advanced.js` | `advanced_runtime.py` |
 | ATOM Lite | `atom.js` | `atom_runtime.py` |
 | Basic blocks and import | `basics.js` | `basics_runtime.py` |
+| Controller menu | `controller_menu.js` | — |
+| Development board/sample visibility | `development.js` | — |
+| G-code and motor shields | `gcode.js` | `gcode_runtime.py` |
 | Servo generation, protocols and PWM | `generation.js` | `servo_runtime.py` |
 | HELP and onboarding | `help.js` | — |
 | Localization and generated code | `i18n.js` | `i18n_runtime.py` |
 | JOG UI and commands | `jog_ui.js` | `jog_runtime.py` |
 | Run, save and boot gate | `modes.js` | `boot_runtime.py` |
+| Handwritten Python blocks | `python_blocks.js` | `python_blocks_runtime.py` |
 | Samples | `samples.js` | `samples_runtime.py` |
 | Wi-Fi upload | `wifi.js` | `wifi_runtime.py` |
 | Wiring diagrams | `wiring.js` | — |
@@ -334,9 +360,9 @@ npm.cmd test
 PYTHON=/path/to/python3 npm test
 ```
 
-The runner uses Python UTF-8 mode and ignores Python environment settings such as `PYTHONOPTIMIZE` so assertions cannot be disabled by that setting. Tests cover nine board catalogs, input validation, import protection/restoration, servo protocols, JOG, startup/saving, LCD behavior, localization, 45 advanced blocks, 60 sample configurations and the Wi-Fi receiver. Generated Python is syntax-checked and exercised with mocked hardware.
+The runner uses Python UTF-8 mode and ignores Python environment settings such as `PYTHONOPTIMIZE` so assertions cannot be disabled by that setting. Tests cover supported board catalogs, input validation, import protection/restoration, servo protocols, JOG, startup/saving, LCD behavior, localization, advanced blocks, samples, the Wi-Fi receiver, handwritten Python, G-code/motor shields and development-feature visibility. Generated Python is syntax-checked and exercised with mocked hardware.
 
-The additional official PIO assembler check is **not included in `npm test`**. With a separately supplied MicroPython v1.29.0 `ports/rp2/modules/rp2.py`, run `python tests/servo_runtime.py --pio-assembler /path/to/rp2.py`. Passing the standard 21 files does not establish this extra check or physical ADC accuracy, electrical waveforms, buttons, LCDs, servo motion or browser LAN permissions. Tests do not connect to USB or a real board.
+The additional official PIO assembler check is **not included in `npm test`**. With a separately supplied MicroPython v1.29.0 `ports/rp2/modules/rp2.py`, run `python tests/servo_runtime.py --pio-assembler /path/to/rp2.py`. Passing the standard 27 files does not establish this extra check or physical ADC accuracy, electrical waveforms, buttons, LCDs, servo motion or browser LAN permissions. Tests do not connect to USB or a real board.
 
 Serve locally with any static server, for example:
 

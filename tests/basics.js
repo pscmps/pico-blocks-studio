@@ -37,7 +37,8 @@ for (const board of Object.keys(profiles)) {
   const schema=catalog(board);
   assert.equal(Boolean(schema.wifi_jog_setup),Boolean(profiles[board].wifi));
   assert.equal(Boolean(schema.lcd_print),profiles[board].layout === 'geek');
-  assert.equal(JSON.stringify(schema.basic_adc.fields.PIN.options),JSON.stringify((profiles[board].adcPins || profiles[board].pins.filter(p=>p>=26&&p<=29)).map(String)));
+  if(profiles[board].adcPins?.length===0)assert.ok(!schema.basic_adc);
+  else assert.equal(JSON.stringify(schema.basic_adc.fields.PIN.options),JSON.stringify((profiles[board].adcPins || profiles[board].pins.filter(p=>p>=26&&p<=29)).map(String)));
   const categories=vm.runInContext('buildToolbox().contents.map(c=>c.name)',context);
   assert.ok(categories.indexOf('PWMサーボ')<categories.indexOf('SCS009'));
   assert.ok(categories.indexOf('SCS009')<categories.indexOf('XL330'));
@@ -46,7 +47,7 @@ for (const board of Object.keys(profiles)) {
   assert.ok(vm.runInContext('buildToolbox().contents.find(c=>c.name==="SCS009").contents.every(c=>c.kind==="block")', context));
   const prompt=Exchange.prompt(board,profiles[board],schema);
   assert.ok(prompt.includes('AI_GUIDE.md') && prompt.includes('basic_map'));
-  generate(wrap(node('basic_print',{}, {VALUE:node('basic_adc',{PIN:schema.basic_adc.fields.PIN.options[0],MODE:'RAW'})}),board));
+  if(schema.basic_adc)generate(wrap(node('basic_print',{}, {VALUE:node('basic_adc',{PIN:schema.basic_adc.fields.PIN.options[0],MODE:'RAW'})}),board));
 }
 const schema=catalog();
 for (const board of ['rp2040_geek','rp2350_geek']) {

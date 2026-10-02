@@ -1,5 +1,25 @@
 # PicoBlocks Studio
 
+## Gcode / PlotterFlow
+
+今回のMotor Shield系は **HELP最下部 →「開発中の項目を表示」** をONにしたときだけ選択肢へ表示します（初期OFF・ブラウザに保存）。専用ブロック・サンプルも同じ設定で切り替わります。作成済みプログラムはOFFでも保持します。
+
+**Motor Shield v0.7**：Pico / Pico W / Pico 2 / Pico 2 W、RP2350-LCD-1.47-A、RP2350-Touch-LCD-2 / -C（カメラ/FPC取り外し）の6構成を追加。基板選択・専用接続ブロック・端子番号付き簡略図・USB Gcodeサンプルを用意しています。Zero系は対象外。TMC初期化・原点復帰・リミット停止・LCDは未実装、実機未検証です。[ピン・電源・使い方](GCODE.md#plotterflow-motor-shield-v07)。
+
+「高度なブロック → Gcode」と、メニュー → サンプルにPlotterFlow受信プログラムを追加しています。Pico 2 / Pico 2 WのSTEP/DIR式XY＋PWMペンを、設定・USBの1行受信・Gコード実行・返信のブロックで再現します。各軸の外付けドライバ（TMCなど）と外部電源が必須で、左の図にも表示します。TMC UART設定は含みません。
+
+元ファームとの比較テスト済み、実機未検証。Fによる速度制御や即時STOPは未実装です。元ファームからの互換性・安全面の修正と使い方は [GCODE.md](GCODE.md) を参照してください。
+
+## Pythonでブロックを作る
+
+**高度なブロック → ブロック作成（Python）**に、複数行のコード欄を持つ関数定義があります。プログラム開始の直下へつなぎ、名前と本文だけを書きます。`def`は不要。引数は`arg`、戻り値は`return`で指定し、同名の「関数の結果」「関数を実行」ブロックから呼び出します。たとえば`return arg * 2`に引数3を渡すと6になります。
+
+Enterで改行、Tabで4スペース、Ctrl+Enterまたは欄の外をクリックして確定。本文は16384文字までで、複製・保存・言語切替・JSON取り込みにも対応します。複数の引数は配列や辞書にまとめて渡してください。ローカル変数は通常ブロックの変数名とは別で、必要なimportは本文に書きます。
+
+定義だけでは実行せず、呼び出し時にボード上で動きます。ブラウザーでPythonを実行する機能や、Pythonファイル全体を通常ブロックへ変換する機能ではありません。本文の文法やGPIO競合は自動検査できず、構文エラーは実行時にシリアル欄で確認します。信頼できるコードだけを使い、長い処理・無限ループによるJOGやタイマーの停止に注意してください。
+
+入力欄はBlockly公式の[@blockly/field-multilineinput](https://www.npmjs.com/package/@blockly/field-multilineinput) 5.0.17（Apache-2.0）を使用し、Blockly 11.2.2との互換性を固定しています。
+
 ## サンプルプログラム
 
 メニュー → **サンプル**から、PWM・SCS009・XL330・STS3215・STS3235の同種3台をUSB JOGで操作する例を呼び出せます。Pico W / Pico 2 W / ATOM LiteではWi-Fi JOG版も選べます。選択ボードに合わせてGPIOを設定し、GEEKにはLCDの機種名・キー割り当て表示を追加します（実測位置ではありません）。
@@ -139,7 +159,7 @@ USBが標準です。無線は **Pico W / Pico 2 W、MicroPython 1.29以降、PC
 
 ### 開発時のテスト
 
-サイト自体は引き続きビルド不要の静的ファイルです。Blockly・Acornは開発テスト専用です。ホスト側の検査にはNode.js 18以上（npmを含む）とPython 3.8以上が必要です。Pythonは標準ライブラリのみを使い、pipの追加インストールは不要です。
+サイト自体は引き続きビルド不要の静的ファイルです。`devDependencies`のパッケージは開発テスト専用です。ホスト側の検査にはNode.js 18以上（npmを含む）とPython 3.8以上が必要です。Pythonは標準ライブラリのみを使い、pipの追加インストールは不要です。
 
 リポジトリのルートで実行します。Windows / macOS / Linuxで同じ手順です。
 
@@ -150,18 +170,22 @@ npm test
 
 `npm ci`は既存の`package-lock.json`に固定された依存を導入します。PowerShellの実行ポリシーで`npm.ps1`が拒否される場合は、`npm`を`npm.cmd`に置き換えてください。
 
-`npm test`は`tests/*.js`と`tests/*_runtime.py`を自動列挙し、各ファイルを独立したプロセスで実行します。現在は**JavaScript 11本＋Python 10本＝21本**です。失敗しても残りを実行し、最後に成功数・失敗数・失敗ファイル名を表示します。テスト失敗、起動エラー、対象ファイルなし、Python不足はいずれも非ゼロ終了です。Python不足時は実行前に停止します。Python側もNodeを呼ぶため、両方の実行環境とnpm依存が必要です。
+`npm test`は`tests/*.js`と`tests/*_runtime.py`を自動列挙し、各ファイルを独立したプロセスで実行します。現在は**JavaScript 15本＋Python 12本＝27本**です。失敗しても残りを実行し、最後に成功数・失敗数・失敗ファイル名を表示します。テスト失敗、起動エラー、対象ファイルなし、Python不足はいずれも非ゼロ終了です。Python不足時は実行前に停止します。Python側もNodeを呼ぶため、両方の実行環境とnpm依存が必要です。
 
 | 対象 | JavaScript (`tests/`) | Python (`tests/`) |
 | --- | --- | --- |
 | 高度なブロック・IRQ・タイマー | `advanced.js` | `advanced_runtime.py` |
 | ATOM Lite | `atom.js` | `atom_runtime.py` |
 | 基本ブロック・取り込み | `basics.js` | `basics_runtime.py` |
+| コントローラメニュー | `controller_menu.js` | — |
+| 開発中ボード・サンプルの表示設定 | `development.js` | — |
+| G-code・モーターシールド | `gcode.js` | `gcode_runtime.py` |
 | サーボ生成・プロトコル・PWM | `generation.js` | `servo_runtime.py` |
 | HELP・初回案内 | `help.js` | — |
 | 日英切替・生成コード | `i18n.js` | `i18n_runtime.py` |
 | JOGのUI・指令 | `jog_ui.js` | `jog_runtime.py` |
 | 実行・保存・起動ゲート | `modes.js` | `boot_runtime.py` |
+| 手書きPythonブロック | `python_blocks.js` | `python_blocks_runtime.py` |
 | サンプル | `samples.js` | `samples_runtime.py` |
 | Wi-Fi書き込み | `wifi.js` | `wifi_runtime.py` |
 | 配線図 | `wiring.js` | — |
@@ -180,9 +204,9 @@ npm.cmd test
 PYTHON=/path/to/python3 npm test
 ```
 
-runnerはPythonをUTF-8モードで実行し、`PYTHONOPTIMIZE`等のPython環境設定を無視してassert検査の無効化を防ぎます。9ボードの候補・入力検査・取り込み保護・復元、サーボ通信、JOG、起動・保存、LCD、日英切替、45種類の高度なブロック、60構成のサンプル、Wi-Fi受信処理を、生成Pythonの構文検査と模擬ハードウェアで確認します。
+runnerはPythonをUTF-8モードで実行し、`PYTHONOPTIMIZE`等のPython環境設定を無視してassert検査の無効化を防ぎます。対応ボードの候補・入力検査・取り込み保護・復元、サーボ通信、JOG、起動・保存、LCD、日英切替、高度なブロック、サンプル、Wi-Fi受信処理、手書きPython、G-code・モーターシールド、開発中機能の表示設定を、生成Pythonの構文検査と模擬ハードウェアで確認します。
 
-公式PIOアセンブラによる追加検査は`npm test`には含みません。別途用意したMicroPython v1.29.0の`ports/rp2/modules/rp2.py`を使い、`python tests/servo_runtime.py --pio-assembler /path/to/rp2.py`で実行します。通常の21本が成功しても、この追加検査や実機のADC精度・通信波形・ボタン・LCD・サーボ動作・ブラウザーのLAN権限を検証したことにはなりません。テストはUSBや実ボードへ接続しません。
+公式PIOアセンブラによる追加検査は`npm test`には含みません。別途用意したMicroPython v1.29.0の`ports/rp2/modules/rp2.py`を使い、`python tests/servo_runtime.py --pio-assembler /path/to/rp2.py`で実行します。通常の27本が成功しても、この追加検査や実機のADC精度・通信波形・ボタン・LCD・サーボ動作・ブラウザーのLAN権限を検証したことにはなりません。テストはUSBや実ボードへ接続しません。
 
 ## 追加サーボの使い方
 
@@ -336,6 +360,8 @@ GEEK基板のLCDやmicroSDに内部接続された端子は候補に含めてい
 ダウンロード先: [Pico](https://micropython.org/download/RPI_PICO/) / [Pico W](https://micropython.org/download/RPI_PICO_W/) / [Pico 2](https://micropython.org/download/RPI_PICO2/) / [Pico 2 W](https://micropython.org/download/RPI_PICO2_W/) / [RP2040-GEEK用ZIP](https://files.waveshare.com/wiki/RP2350-Plus/WAVESHARE-RP2040-Board.zip) / [RP2350-GEEK用ZIP](https://files.waveshare.com/wiki/RP2350-Plus/WAVESHARE-RP2350A-Board.zip)
 
 ## 配線図について
+
+シリアルサーボ（SCS009・XL330・STS3215・STS3235）は `GPIO → 220 Ω直列抵抗 → DATA` で表示します。GPIO側に通信バスごと1本、その先の各IDへはデイジーチェーン接続です。PWMサーボには追加しません。ATOMの条件付き2.2 kΩプルアップは別部品で、220 ΩよりDATA側に接続します。どちらも電圧変換や5 V入力保護ではありません。
 
 配線ガイドはFritzing部品、製品写真、メーカーのピンアウト画像を複製していません。公式資料に記載された端子番号・信号名を参照し、四角形・円・線だけで独自に描画する簡略図です。正確な向きやコネクター形状の代用ではないため、実配線前に画面下の「公式ピン情報」も確認してください。
 

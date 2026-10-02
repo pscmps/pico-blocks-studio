@@ -1,5 +1,6 @@
 /* Editable examples using the same validated JSON format as chat imports. */
 const PicoSamples = (() => {
+  const shield = typeof module !== 'undefined' ? require('./shield.js') : globalThis.PlotterShield;
   const t = (...args) => globalThis.PicoI18n ? globalThis.PicoI18n.t(...args) : typeof args[0] === "string" ? args[0] : String.raw({raw: args[0]}, ...args.slice(1));
   const models = ["pwm", "scs009", "xl330", "sts3215", "sts3235"];
   const label = model => model === "pwm" ? t("PWMサーボ") : model.toUpperCase();
@@ -17,6 +18,7 @@ const PicoSamples = (() => {
     throw new Error(t("このボードでは3台分のサンプル用GPIOを選べません。"));
   }
   function create(board, profile, model, transport) {
+    if(profile.shield)throw new Error(t('Motor Shieldでは下のGcodeサンプルを使用してください。'));
     if (!models.includes(model) || !["usb", "wifi"].includes(transport)) throw new Error(t("サンプルの種類を選び直してください。"));
     if (transport === "wifi" && !profile.wifi) throw new Error(t("このボードはWi-Fi JOGに対応していません。"));
     const gpio = pins(profile), pwm = model === "pwm", scs = model === "scs009";
@@ -38,6 +40,24 @@ const PicoSamples = (() => {
     const first = [node("program_start"), ...items].reduceRight((next, block) => ({...block, ...(next ? {next: {block: next}} : {})}), null);
     return {format: "picoblocks", version: 1, board, workspace: {blocks: {languageVersion: 0, blocks: [first]}}};
   }
-  return {models, label, pins, create};
+  function plotterflow(board='pico2') {
+    const carrier=shield.carrier(board);
+    if(!['pico2','pico2w',...shield.boardKeys].includes(board))throw new Error('Unsupported PlotterFlow sample board');
+    const get=()=>node('basic_get',{NAME:'gcode_line'});
+    const chain=(...items)=>items.reduceRight((next,b)=>({...b,...(next?{next:{block:next}}:{})}),null);
+    const first=chain(node('program_start'),
+      node('gcode_planner',{X:80,Y:80}),
+      ...(carrier?[node('gcode_shield',{CARRIER:carrier,FREQ:50,UP:1000,DOWN:1800})]:[
+        node('gcode_stepper',{X_STEP:'2',Y_STEP:'3',X_DIR:'4',Y_DIR:'5',ENABLE:'7',ACTIVE_LOW:'1'}),
+        node('gcode_pen',{PIN:'12',FREQ:50,UP:1000,DOWN:1800})]),
+      node('gcode_controller'),
+      node('basic_print',{}, {VALUE:node('gcode_ready',{BOARD:board+'-stepdir'})}),
+      node('forever_loop',{}, {DO:chain(
+        node('basic_set',{NAME:'gcode_line'},{VALUE:node('gcode_read')}),
+        node('basic_if',{}, {IF:node('adv_convert',{TYPE:'bool'},{VALUE:get()}),DO:node('gcode_execute',{}, {LINE:get()})})
+      )}));
+    return {format:'picoblocks',version:1,board,workspace:{blocks:{languageVersion:0,blocks:[first]}}};
+  }
+  return {models, label, pins, create, plotterflow};
 })();
 if (typeof module !== "undefined") module.exports = PicoSamples;

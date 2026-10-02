@@ -12,6 +12,7 @@ function catalog(board) {
   return Exchange.catalog(Blockly,vm.runInContext('buildToolbox()',context));
 }
 for(const [board,profile] of Object.entries(profiles)) {
+  if(profile.shield) {assert.throws(()=>Samples.create(board,profile,'pwm','usb'));continue;}
   const schema=catalog(board);
   for(const model of Samples.models) for(const transport of ['usb','wifi']) {
     if(transport==='wifi'&&!profile.wifi) {
@@ -56,7 +57,9 @@ context.$=$;context.PicoSamples=Samples;context.BlockExchange=Exchange;
 context.Blockly={...Blockly,svgResize:()=>{}};
 context.localStorage={getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)};
 context.elements={pythonCode:$('#pythonCode')};context.normalizeWorkspace=()=>{};
-context.updateBoardUi=()=>{};context.updateControllerUi=()=>{};context.setMenuOpen=()=>{};
+context.document=dom.window.document;
+vm.runInContext(app.slice(app.indexOf('  function updateDevelopmentUi()'),app.indexOf('  function changeDevelopmentVisibility')),context);
+context.updateBoardUi=()=>vm.runInContext('updateDevelopmentUi()',context);context.updateControllerUi=()=>{};context.setMenuOpen=()=>{};
 context.boardCatalog=catalog;context.isBusy=false;context.controllerActive=false;context.backupKey='chat-backup';
 vm.runInContext(app.slice(app.indexOf('  function replaceFromExchange'),app.indexOf('  $("#importBlocks").addEventListener')),context);
 vm.runInContext(app.slice(app.indexOf('  const sampleDialog ='),app.indexOf('  $("#restoreImport").addEventListener')),context);
@@ -69,6 +72,16 @@ assert.equal($('#sampleStatus').dataset.error,'false',$('#sampleStatus').textCon
 assert.equal(JSON.stringify(JSON.parse(storage.get('picoblocks-sample-backup-v1')).workspace),original);
 assert.ok(!storage.has('chat-backup'));
 $('#restoreSample').click();assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
+storage.set('picoblocks-show-development-v1','1');context.updateBoardUi();
+context.board='shield_touch2';vm.runInContext('selectedBoard=board',context);$('#samplesMenuItem').click();
+assert.equal($('#servoSampleSection').hidden,true);assert.equal($('#loadSample').hidden,true);
+assert.equal($('#gcodeSampleBoard').value,'shield_touch2');
+$('#loadGcodeSample').click();assert.equal($('#sampleStatus').dataset.error,'false',$('#sampleStatus').textContent);
+assert.ok(workspace.getAllBlocks().some(b=>b.type==='gcode_shield'));
+$('#restoreSample').click();assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
+assert.equal($('#servoSampleSection').hidden,true); // Restores the pre-load shield board, too.
+context.board='pico';vm.runInContext('selectedBoard=board',context);$('#samplesMenuItem').click();
+assert.equal($('#servoSampleSection').hidden,false);
 context.isBusy=true;$('#loadSample').click();assert.equal($('#sampleStatus').dataset.error,'true');
 assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);context.isBusy=false;
 context.controllerActive=true;$('#loadSample').click();assert.equal($('#sampleStatus').dataset.error,'true');context.controllerActive=false;
@@ -79,6 +92,17 @@ assert.equal($('#sampleWifiSteps').hidden,false);$('#loadSample').click();
 assert.equal($('#sampleStatus').dataset.error,'false',$('#sampleStatus').textContent);assert.ok(workspace.getAllBlocks(false).some(b=>b.type==='wifi_jog_setup'));
 $('#restoreSample').click();assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
 assert.ok(app.includes('|| sampleDialog.open) return;'),'modal suppresses motor keyboard commands');
+for(const board of ['pico2','pico2w']) {
+  $('#gcodeSampleBoard').value=board;$('#loadGcodeSample').click();
+  assert.equal($('#sampleStatus').dataset.error,'false',$('#sampleStatus').textContent);
+  assert.equal(vm.runInContext('selectedBoard',context),board);
+  assert.ok(workspace.getAllBlocks(false).some(b=>b.type==='gcode_stepper'));
+  $('#restoreSample').click();assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
+}
+context.isBusy=true;$('#loadGcodeSample').click();assert.equal($('#sampleStatus').dataset.error,'true');context.isBusy=false;
+assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
+context.controllerActive=true;$('#loadGcodeSample').click();assert.equal($('#sampleStatus').dataset.error,'true');context.controllerActive=false;
+assert.equal(JSON.stringify(Blockly.serialization.workspaces.save(workspace)),original);
 workspace.dispose();
 if(process.argv.includes('--json'))process.stdout.write(JSON.stringify({programs,jogs}));
 else console.log(`PASS: ${programs.length} samples across 9 boards; 3-servo mapping, Wi-Fi gates, LCD and legacy compatibility`);

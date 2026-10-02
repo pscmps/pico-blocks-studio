@@ -2,6 +2,24 @@
 
 ## Advanced blocks
 
+### Gcode / PlotterFlow
+
+Gcode is the last Advanced category: an RP2040 / RP2350 prototype, not ATOM. Connect one each of `gcode_planner` (X/Y steps/mm), `gcode_stepper` (X_STEP/Y_STEP/X_DIR/Y_DIR/ENABLE/ACTIVE_LOW), `gcode_pen` (PIN/FREQ/UP/DOWN), and `gcode_controller` directly in the start chain. Y_STEP must equal X_STEP + 1; all six GPIOs must differ. Do not mix with JOG, serial servos, interrupts or timers.
+
+`gcode_read` waits for a USB newline and returns text. Store it in a variable; if nonempty, pass it to the LINE input of the standalone statement block `gcode_execute`. It executes Gcode once and sends ok or error over USB; no `basic_print` is needed. `gcode_reply` is only for importing legacy programs; do not use it in new programs. `gcode_ready` uses BOARD for the startup-message name; `gcode_parse` returns command/words; `gcode_state` KEY is x/y/z/feed/absolute/mm/enabled/pen_down. Use execute/reply/state after controller setup.
+
+External STEP/DIR drivers (e.g. TMC) and external supplies are required: never connect motors directly. TMC UART, current and microstep configuration are separate. No F speed control, acceleration, homing, limits or immediate stopping; hardware untested. See [GCODE.en.md](GCODE.en.md) for source differences. Use these blocks rather than hiding the whole firmware in one Python-body block.
+
+### Functions with a Python body
+
+`adv_python_function` accepts a name in `fields.NAME` and a Python function body in `fields.CODE`. Omit `def`; read the argument as `arg` and return a result with `return`. Maximum 16384 characters; encode JSON string newlines as `\n`. Names must be unique across these and ordinary `adv_function` blocks. Connect directly in the `program_start.next` chain. Use a same-name `adv_call` (value) or `adv_call_do` (statement) to pass an argument. Definitions do not execute on their own.
+
+Definition: `{"type":"adv_python_function","fields":{"NAME":"double","CODE":"result = arg * 2\nreturn result"}}`
+
+Call: `{"type":"adv_call","fields":{"NAME":"double"},"inputs":{"ARG":{"block":{"type":"basic_number","fields":{"NUM":3}}}}}`
+
+Pass a list/dictionary for multiple arguments. Local names are separate from block variables; place imports in the body. Syntax, GPIO conflicts and infinite loops are not automatically checked. Code executes with normal Python privileges on the board, never automatically on import; review every imported body. Long operations can block JOG/timers. Names are encoded internally, so another block function cannot be called directly by its display name from a Python body.
+
 Use `basic_write` and `basic_wait` in new programs. `gpio_write` / `wait_ms` are legacy import types, no longer shown in the toolbox. LED lives under Input / output.
 
 Place `adv_function`, `adv_irq`, `adv_timer`, `adv_i2c_setup` and `adv_spi_setup` directly in the `program_start.next` chain, not inside functions/conditions/loops. Function names and timer/bus IDs within a type must be unique. Functions are hoisted; hardware/timer setup executes in sequence. Set up buses before use, including calls to functions using them. All named variables are global and initialize to 0; argument values are local to each call.
@@ -148,7 +166,7 @@ This guide: https://raw.githubusercontent.com/pscmps/pico-blocks-studio/main/AI_
 
 Import replaces current blocks. One pre-import backup, including board selection, is kept in the browser and can be restored. Nothing is sent to an AI automatically. The prompt excludes the current program and actual Wi-Fi password.
 
-This is **block JSON exchange**, not arbitrary Python-to-block conversion, pasted Python execution, or external code loading. AI output is not guaranteed correct; a person must verify ranges and wiring.
+This is **block JSON exchange**. Python bodies may be supplied only inside `adv_python_function.fields.CODE`; entire Python files are not converted into ordinary blocks. AI output is not guaranteed correct; a person must verify code, ranges and wiring.
 
 Language affects labels and explanations, not JSON block types, field keys, dropdown values, protocol commands, or board IDs. Do not translate those identifiers. User-written text and variable names are preserved when changing the app language.
 
