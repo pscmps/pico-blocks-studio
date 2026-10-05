@@ -347,6 +347,10 @@ npm test
 | Wiring diagrams | `wiring.js` | — |
 | GEEK LCD | — | `display_runtime.py` |
 
+Run `npm run test:runner` for 11 separate regression checks of the runner itself. Temporary fixtures check failure propagation, Python discovery/selection, paths with spaces, a different working directory, assertions under `PYTHONOPTIMIZE`, and empty suites, then clean up. No additional npm dependencies are needed.
+
+[Host tests](.github/workflows/host-tests.yml) runs the 27 suites and 11 runner checks for PRs targeting main and pushes to main, using Ubuntu 24.04 / Windows Server 2022 with Node.js 22 / Python 3.12. CI exercises host-side mocks only; it does not deploy the site or operate hardware. macOS and minimum supported runtime versions are outside this CI matrix.
+
 For diagnosis, `npm run test:js` and `npm run test:python` use the same runner. Individual files still work from the root, for example `node tests/advanced.js` or `python tests/advanced_runtime.py`.
 
 Python detection tries `py -3`, `python`, then `python3` on Windows; `python3`, then `python` on macOS / Linux. Set `PYTHON` to an executable path to choose a particular interpreter (no arguments). An invalid explicit path fails without falling back to another interpreter.

@@ -4,7 +4,8 @@
   "scripts": {
     "test": "node scripts/run-tests.js",
     "test:js": "node scripts/run-tests.js js",
-    "test:python": "node scripts/run-tests.js python"
+    "test:python": "node scripts/run-tests.js python",
+    "test:runner": "node scripts/check-test-runner.js"
   },
   "devDependencies": {
     "@blockly/field-multilineinput": "5.0.17",

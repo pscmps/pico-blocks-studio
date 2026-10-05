@@ -191,6 +191,10 @@ npm test
 | 配線図 | `wiring.js` | — |
 | GEEK LCD | — | `display_runtime.py` |
 
+ランナー自体の回帰検査は`npm run test:runner`で実行します（別の11項目）。一時フォルダーで失敗の伝播、Pythonの検出・選択、空白入りパス、別の作業ディレクトリ、`PYTHONOPTIMIZE`下のassert、空のテスト群などを確認し、終了時に片付けます。追加のnpm依存は不要です。
+
+[Host tests](.github/workflows/host-tests.yml)はmain向けPRとmainへのpushで、Ubuntu 24.04 / Windows Server 2022、Node.js 22 / Python 3.12を使い、27本とランナー11項目を実行します。CIはホスト側の模擬テストのみで、サイトの配信や実機操作は行いません。macOS・最小対応バージョンの組み合わせはこのCIの対象外です。
+
 切り分け用に`npm run test:js`、`npm run test:python`でも同じrunnerを使えます。単独ファイルは従来どおりルートから`node tests/advanced.js`や`python tests/advanced_runtime.py`で実行できます。
 
 Pythonの自動検出順はWindowsで`py -3` → `python` → `python3`、macOS / Linuxで`python3` → `python`です。特定のPythonを使う場合は環境変数`PYTHON`に実行ファイルのパスだけを設定します（引数は含めません）。明示したパスが使えなければ失敗し、別のPythonへ切り替えません。
