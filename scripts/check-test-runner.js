@@ -16,7 +16,7 @@ try {
     : process.platform === 'win32' ? [['py', '-3'], ['python'], ['python3']] : [['python3'], ['python']];
   let python;
   for (const [command, ...args] of candidates) {
-    const probe = spawnSync(command, [...args, '-E', '-c', 'import sys; print(sys.executable)'], {
+    const probe = spawnSync(command, [...args, '-E', '-X', 'utf8', '-c', 'import sys; print(sys.executable)'], {
       encoding: 'utf8', timeout: 5000, windowsHide: true,
     });
     if (!probe.error && probe.status === 0) { python = probe.stdout.trim(); break; }
@@ -24,7 +24,8 @@ try {
   assert.ok(python, 'Python is required to verify the runner');
   const write = (file, text) => fs.writeFileSync(path.join(fixture, 'tests', file), text);
   const jsPass = "require('node:assert/strict').equal(process.cwd(), require('node:path').resolve(__dirname, '..')); console.log('JS_RAN');";
-  const pyPass = "import pathlib, subprocess, sys\nassert pathlib.Path.cwd() == pathlib.Path(__file__).resolve().parents[1]\nassert sys.flags.optimize == 0\nassert sys.flags.utf8_mode == 1\nassert subprocess.check_output(['node', '-p', '1 + 1']).strip() == b'2'\nprint('PYTHON_RAN')\n";
+  // Windows temp paths can use 8.3 aliases; compare directory identity, not spelling.
+  const pyPass = "import pathlib, subprocess, sys\nassert pathlib.Path.cwd().samefile(pathlib.Path(__file__).resolve().parents[1])\nassert sys.flags.optimize == 0\nassert sys.flags.utf8_mode == 1\nassert subprocess.check_output(['node', '-p', '1 + 1']).strip() == b'2'\nprint('PYTHON_RAN')\n";
   write('a.js', jsPass);
   write('z.js', jsPass);
   write('a_runtime.py', pyPass);
@@ -99,8 +100,8 @@ try {
     assert.equal(result.status, 0, result.output);
     assert.match(result.output, /5 passed, 0 failed, 5 total/);
   });
-  check('Python executable path with spaces is passed without a shell', () => {
-    const venv = path.join(fixture, 'python environment');
+  check('Python executable path with spaces and Unicode is passed without a shell', () => {
+    const venv = path.join(fixture, 'python environment 日本語');
     const created = spawnSync(python, ['-m', 'venv', '--without-pip', venv], { encoding: 'utf8', timeout: 30000 });
     assert.ifError(created.error);
     assert.equal(created.status, 0, created.stdout + created.stderr);
