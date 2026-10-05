@@ -159,20 +159,58 @@ USBが標準です。無線は **Pico W / Pico 2 W、MicroPython 1.29以降、PC
 
 ### 開発時のテスト
 
-サイト自体は引き続きビルド不要の静的ファイルです。Node側のBlocklyは開発テスト専用です。
+サイト自体は引き続きビルド不要の静的ファイルです。`devDependencies`のパッケージは開発テスト専用です。ホスト側の検査にはNode.js 18以上（npmを含む）とPython 3.8以上が必要です。Pythonは標準ライブラリのみを使い、pipの追加インストールは不要です。
+
+リポジトリのルートで実行します。Windows / macOS / Linuxで同じ手順です。
 
 ```sh
-npm ci --ignore-scripts
+npm ci --ignore-scripts --registry=https://registry.npmjs.org
 npm test
-python tests/basics_runtime.py
-python tests/servo_runtime.py
-python tests/jog_runtime.py
-python tests/boot_runtime.py
-python tests/display_runtime.py
-python tests/i18n_runtime.py
 ```
 
-基本ブロック・8ボードの候補・入力検査・取り込み失敗時の保護・バックアップ復元・Python構文と模擬実行を検査します。実機のADC精度やサーボ動作はこの検査には含みません。
+`npm ci`は既存の`package-lock.json`に固定された依存を導入します。PowerShellの実行ポリシーで`npm.ps1`が拒否される場合は、`npm`を`npm.cmd`に置き換えてください。
+
+`npm test`は`tests/*.js`と`tests/*_runtime.py`を自動列挙し、各ファイルを独立したプロセスで実行します。現在は**JavaScript 15本＋Python 12本＝27本**です。失敗しても残りを実行し、最後に成功数・失敗数・失敗ファイル名を表示します。テスト失敗、起動エラー、対象ファイルなし、Python不足はいずれも非ゼロ終了です。Python不足時は実行前に停止します。Python側もNodeを呼ぶため、両方の実行環境とnpm依存が必要です。
+
+| 対象 | JavaScript (`tests/`) | Python (`tests/`) |
+| --- | --- | --- |
+| 高度なブロック・IRQ・タイマー | `advanced.js` | `advanced_runtime.py` |
+| ATOM Lite | `atom.js` | `atom_runtime.py` |
+| 基本ブロック・取り込み | `basics.js` | `basics_runtime.py` |
+| コントローラメニュー | `controller_menu.js` | — |
+| 開発中ボード・サンプルの表示設定 | `development.js` | — |
+| G-code・モーターシールド | `gcode.js` | `gcode_runtime.py` |
+| サーボ生成・プロトコル・PWM | `generation.js` | `servo_runtime.py` |
+| HELP・初回案内 | `help.js` | — |
+| 日英切替・生成コード | `i18n.js` | `i18n_runtime.py` |
+| JOGのUI・指令 | `jog_ui.js` | `jog_runtime.py` |
+| 実行・保存・起動ゲート | `modes.js` | `boot_runtime.py` |
+| 手書きPythonブロック | `python_blocks.js` | `python_blocks_runtime.py` |
+| サンプル | `samples.js` | `samples_runtime.py` |
+| Wi-Fi書き込み | `wifi.js` | `wifi_runtime.py` |
+| 配線図 | `wiring.js` | — |
+| GEEK LCD | — | `display_runtime.py` |
+
+ランナー自体の回帰検査は`npm run test:runner`で実行します（別の11項目）。一時フォルダーで失敗の伝播、Pythonの検出・選択、空白入りパス、別の作業ディレクトリ、`PYTHONOPTIMIZE`下のassert、空のテスト群などを確認し、終了時に片付けます。追加のnpm依存は不要です。
+
+[Host tests](.github/workflows/host-tests.yml)はmain向けPRとmainへのpushで、Ubuntu 24.04 / Windows Server 2022、Node.js 22 / Python 3.12を使い、27本とランナー11項目を実行します。CIはホスト側の模擬テストのみで、サイトの配信や実機操作は行いません。macOS・最小対応バージョンの組み合わせはこのCIの対象外です。
+
+切り分け用に`npm run test:js`、`npm run test:python`でも同じrunnerを使えます。単独ファイルは従来どおりルートから`node tests/advanced.js`や`python tests/advanced_runtime.py`で実行できます。
+
+Pythonの自動検出順はWindowsで`py -3` → `python` → `python3`、macOS / Linuxで`python3` → `python`です。特定のPythonを使う場合は環境変数`PYTHON`に実行ファイルのパスだけを設定します（引数は含めません）。明示したパスが使えなければ失敗し、別のPythonへ切り替えません。
+
+```powershell
+$env:PYTHON = 'C:\path with spaces\python.exe'
+npm.cmd test
+```
+
+```sh
+PYTHON=/path/to/python3 npm test
+```
+
+runnerはPythonをUTF-8モードで実行し、`PYTHONOPTIMIZE`等のPython環境設定を無視してassert検査の無効化を防ぎます。対応ボードの候補・入力検査・取り込み保護・復元、サーボ通信、JOG、起動・保存、LCD、日英切替、高度なブロック、サンプル、Wi-Fi受信処理、手書きPython、G-code・モーターシールド、開発中機能の表示設定を、生成Pythonの構文検査と模擬ハードウェアで確認します。
+
+公式PIOアセンブラによる追加検査は`npm test`には含みません。別途用意したMicroPython v1.29.0の`ports/rp2/modules/rp2.py`を使い、`python tests/servo_runtime.py --pio-assembler /path/to/rp2.py`で実行します。通常の27本が成功しても、この追加検査や実機のADC精度・通信波形・ボタン・LCD・サーボ動作・ブラウザーのLAN権限を検証したことにはなりません。テストはUSBや実ボードへ接続しません。
 
 ## 追加サーボの使い方
 

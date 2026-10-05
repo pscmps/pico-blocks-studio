@@ -315,22 +315,58 @@ Import replaces current blocks, keeps one pre-import backup, validates format / 
 
 ## Development and verification
 
-The site consists of static files and needs no build. Blockly and Acorn in `devDependencies` are for tests only.
+The site consists of static files and needs no build. The packages in `devDependencies` are for tests only. Host-side checks require Node.js 18+ (with npm) and Python 3.8+. Python uses only the standard library; no pip packages are needed.
+
+Run from the repository root. The same commands work on Windows, macOS and Linux:
 
 ```sh
-npm ci --ignore-scripts
+npm ci --ignore-scripts --registry=https://registry.npmjs.org
 npm test
-python tests/basics_runtime.py
-python tests/servo_runtime.py
-python tests/jog_runtime.py
-python tests/boot_runtime.py
-python tests/display_runtime.py
-python tests/i18n_runtime.py
 ```
 
-Tests cover eight board catalogs, generation, import validation / restoration, pin conflicts, servo CRC / stuffing / checksum and malformed replies, range limits, USB / HTTP commands, startup / save behavior, mixed wiring, and LCD initialization / windows / scaling / wrapping / overwriting / mirroring / CS cleanup. Localization tests check translation coverage, placeholders, both language catalogs, prompt / mobile pages, and preservation of user text. Generated programs are syntax-checked and exercised with mocked hardware. Earlier PIO tests also checked assembly and instruction-memory limits against MicroPython v1.29.0.
+`npm ci` installs the versions pinned in the existing `package-lock.json`. If PowerShell execution policy blocks `npm.ps1`, replace `npm` with `npm.cmd`.
 
-These are not tests of physical ADC accuracy, electrical waveforms, buttons, LCDs, or servo motion. This remains a prototype requiring hardware validation and appropriate safety measures.
+`npm test` discovers `tests/*.js` and `tests/*_runtime.py` and runs each file in a separate process: currently **15 JavaScript + 12 Python = 27 files**. It continues after test failures, then reports passed/failed counts and failed filenames. Test failures, launch errors, empty suites and missing Python all return a nonzero exit code. Missing Python stops the run before tests start. Python suites also invoke Node, so they need both runtimes and the npm dependencies.
+
+| Coverage | JavaScript (`tests/`) | Python (`tests/`) |
+| --- | --- | --- |
+| Advanced blocks, IRQs and timers | `advanced.js` | `advanced_runtime.py` |
+| ATOM Lite | `atom.js` | `atom_runtime.py` |
+| Basic blocks and import | `basics.js` | `basics_runtime.py` |
+| Controller menu | `controller_menu.js` | — |
+| Development board/sample visibility | `development.js` | — |
+| G-code and motor shields | `gcode.js` | `gcode_runtime.py` |
+| Servo generation, protocols and PWM | `generation.js` | `servo_runtime.py` |
+| HELP and onboarding | `help.js` | — |
+| Localization and generated code | `i18n.js` | `i18n_runtime.py` |
+| JOG UI and commands | `jog_ui.js` | `jog_runtime.py` |
+| Run, save and boot gate | `modes.js` | `boot_runtime.py` |
+| Handwritten Python blocks | `python_blocks.js` | `python_blocks_runtime.py` |
+| Samples | `samples.js` | `samples_runtime.py` |
+| Wi-Fi upload | `wifi.js` | `wifi_runtime.py` |
+| Wiring diagrams | `wiring.js` | — |
+| GEEK LCD | — | `display_runtime.py` |
+
+Run `npm run test:runner` for 11 separate regression checks of the runner itself. Temporary fixtures check failure propagation, Python discovery/selection, paths with spaces, a different working directory, assertions under `PYTHONOPTIMIZE`, and empty suites, then clean up. No additional npm dependencies are needed.
+
+[Host tests](.github/workflows/host-tests.yml) runs the 27 suites and 11 runner checks for PRs targeting main and pushes to main, using Ubuntu 24.04 / Windows Server 2022 with Node.js 22 / Python 3.12. CI exercises host-side mocks only; it does not deploy the site or operate hardware. macOS and minimum supported runtime versions are outside this CI matrix.
+
+For diagnosis, `npm run test:js` and `npm run test:python` use the same runner. Individual files still work from the root, for example `node tests/advanced.js` or `python tests/advanced_runtime.py`.
+
+Python detection tries `py -3`, `python`, then `python3` on Windows; `python3`, then `python` on macOS / Linux. Set `PYTHON` to an executable path to choose a particular interpreter (no arguments). An invalid explicit path fails without falling back to another interpreter.
+
+```powershell
+$env:PYTHON = 'C:\path with spaces\python.exe'
+npm.cmd test
+```
+
+```sh
+PYTHON=/path/to/python3 npm test
+```
+
+The runner uses Python UTF-8 mode and ignores Python environment settings such as `PYTHONOPTIMIZE` so assertions cannot be disabled by that setting. Tests cover supported board catalogs, input validation, import protection/restoration, servo protocols, JOG, startup/saving, LCD behavior, localization, advanced blocks, samples, the Wi-Fi receiver, handwritten Python, G-code/motor shields and development-feature visibility. Generated Python is syntax-checked and exercised with mocked hardware.
+
+The additional official PIO assembler check is **not included in `npm test`**. With a separately supplied MicroPython v1.29.0 `ports/rp2/modules/rp2.py`, run `python tests/servo_runtime.py --pio-assembler /path/to/rp2.py`. Passing the standard 27 files does not establish this extra check or physical ADC accuracy, electrical waveforms, buttons, LCDs, servo motion or browser LAN permissions. Tests do not connect to USB or a real board.
 
 Serve locally with any static server, for example:
 

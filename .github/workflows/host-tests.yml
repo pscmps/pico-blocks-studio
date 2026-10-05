@@ -1,0 +1,46 @@
+name: Host tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: host-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-tests:
+    name: Host tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        id: python
+        with:
+          python-version: '3.12'
+      - name: Install locked test dependencies
+        run: npm ci --ignore-scripts --registry=https://registry.npmjs.org --no-audit --no-fund
+      - name: Run all host suites
+        run: npm test
+        env:
+          PYTHON: ${{ steps.python.outputs.python-path }}
+      - name: Verify runner behavior
+        run: npm run test:runner
+        env:
+          PYTHON: ${{ steps.python.outputs.python-path }}
